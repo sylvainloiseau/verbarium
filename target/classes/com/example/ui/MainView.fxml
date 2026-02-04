@@ -85,6 +85,7 @@
           <TableColumn fx:id="entryColumn" text="Entrée" prefWidth="220"/>
           <TableColumn fx:id="categoryColumn" text="Catégorie" prefWidth="160"/>
           <TableColumn fx:id="langColumn" text="Langue" prefWidth="140"/>
+          <TableColumn fx:id="metaLangColumn" text="Métalangues" prefWidth="160"/>
           <TableColumn fx:id="defColumn" text="Définitions" prefWidth="260"/>
           <TableColumn fx:id="fieldsColumn" text="" prefWidth="60"/>
         </columns>

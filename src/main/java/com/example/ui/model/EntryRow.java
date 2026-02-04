@@ -5,14 +5,16 @@ public final class EntryRow {
     private final String entry;
     private final String category;
     private final String language;
+    private final String metaLanguage;
     private final String definitions;
     private final boolean hasDetails;
 
-    public EntryRow(String id, String entry, String category, String language, String definitions, boolean hasDetails) {
+    public EntryRow(String id, String entry, String category, String language, String metaLanguage, String definitions, boolean hasDetails) {
         this.id = id;
         this.entry = entry;
         this.category = category;
         this.language = language;
+        this.metaLanguage = metaLanguage;
         this.definitions = definitions;
         this.hasDetails = hasDetails;
     }
@@ -31,6 +33,10 @@ public final class EntryRow {
 
     public String getLang() {
         return language;
+    }
+
+    public String getMetaLang() {
+        return metaLanguage;
     }
 
     public String getDefinition() {

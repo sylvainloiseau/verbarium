@@ -27,6 +27,9 @@ public final class MainController {
     private TableColumn<EntryRow, String> langColumn;
 
     @FXML
+    private TableColumn<EntryRow, String> metaLangColumn;
+
+    @FXML
     private TableColumn<EntryRow, String> defColumn;
 
     @FXML
@@ -44,6 +47,7 @@ public final class MainController {
         entryColumn.setCellValueFactory(new PropertyValueFactory<>("entry"));
         categoryColumn.setCellValueFactory(new PropertyValueFactory<>("category"));
         langColumn.setCellValueFactory(new PropertyValueFactory<>("lang"));
+        metaLangColumn.setCellValueFactory(new PropertyValueFactory<>("metaLang"));
         defColumn.setCellValueFactory(new PropertyValueFactory<>("definition"));
 
         fieldsColumn.setCellValueFactory(new PropertyValueFactory<>("hasFields"));
@@ -72,10 +76,10 @@ public final class MainController {
         sortByCombo.getSelectionModel().selectFirst();
 
         entryTable.setItems(FXCollections.observableArrayList(
-                new EntryRow("01", "chien", "Nom", "Français", "animal", true),
-                new EntryRow("02", "to dance", "Verbe", "Français", "action", true),
-                new EntryRow("03", "ouragan", "Nom", "Français", "vent", true),
-                new EntryRow("04", "huracán", "Nom", "ESP", "viento muy fuerte", true)
+                new EntryRow("01", "chien", "Nom", "Français", "standard", "animal", true),
+                new EntryRow("02", "to dance", "Verbe", "Français", "standard", "action", true),
+                new EntryRow("03", "ouragan", "Nom", "Français", "dialecte A", "vent", true),
+                new EntryRow("04", "huracán", "Nom", "ESP", "dialecto", "viento muy fuerte", true)
         ));
     }
 }
