@@ -107,6 +107,15 @@
   -fx-text-fill: #66767a;
 }
 
+.edit-grid {
+  -fx-padding: 4px 0 4px 0;
+}
+
+.form-label {
+  -fx-text-fill: #324a50;
+  -fx-font-size: 13px;
+}
+
 .edit-tabs .tab-header-area .tab-header-background {
   -fx-background-color: transparent;
 }

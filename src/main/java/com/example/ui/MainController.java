@@ -10,6 +10,8 @@ import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftExample;
+import fr.cnrs.lacito.liftapi.model.LiftFactory;
+import fr.cnrs.lacito.liftapi.model.LiftPronunciation;
 import fr.cnrs.lacito.liftapi.model.LiftSense;
 import fr.cnrs.lacito.liftapi.model.LiftTrait;
 import fr.cnrs.lacito.liftapi.model.MultiText;
@@ -19,12 +21,17 @@ import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.GridPane;
+import javafx.geometry.Insets;
 import javafx.stage.FileChooser;
 
 import java.io.File;
@@ -43,6 +50,7 @@ import java.util.stream.Collectors;
 public final class MainController {
 
     private final DictionaryService dictionaryService = new DictionaryService();
+    private LiftDictionary currentDictionary;
     private final Map<String, LiftEntry> entryById = new HashMap<>();
     private final ObservableList<EntryRow> baseRows = FXCollections.observableArrayList();
     private final FilteredList<EntryRow> filteredRows = new FilteredList<>(baseRows, r -> true);
@@ -92,6 +100,15 @@ public final class MainController {
 
     @FXML
     private Label editEntryCode;
+
+    @FXML
+    private TextField codeEditField;
+
+    @FXML
+    private TextField pronEditField;
+
+    @FXML
+    private TextField dialectEditField;
 
     @FXML
     private TableView<FormRow> formsTable;
@@ -285,6 +302,7 @@ public final class MainController {
     }
 
     private void setDictionary(LiftDictionary dictionary) {
+        this.currentDictionary = dictionary;
         entryById.clear();
         baseRows.clear();
 
@@ -416,7 +434,20 @@ public final class MainController {
         MultiText forms = entry.getForms();
         Form preferred = forms.getForm("fr").orElseGet(() -> forms.getForms().stream().findFirst().orElse(Form.EMPTY_FORM));
         editEntryTitle.setText(preferred == Form.EMPTY_FORM ? "(sans forme)" : preferred.toString());
-        editEntryCode.setText(entry.getTraits().stream().filter(t -> "code".equals(t.getName())).findFirst().map(LiftTrait::getValue).orElse(""));
+        String code = entry.getTraits().stream().filter(t -> "code".equals(t.getName())).findFirst().map(LiftTrait::getValue).orElse("");
+        String dialecte = entry.getTraits().stream().filter(t -> "dialecte".equals(t.getName())).findFirst().map(LiftTrait::getValue).orElse("");
+        editEntryCode.setText(code);
+
+        codeEditField.setText(code);
+        dialectEditField.setText(dialecte);
+
+        // Pronunciation: display first available pronunciation form
+        String pron = entry.getPronunciations().stream()
+                .findFirst()
+                .flatMap(p -> p.getProunciation().getForms().stream().findFirst())
+                .map(Form::toString)
+                .orElse("");
+        pronEditField.setText(pron);
 
         // Formes tab: all lexical-unit forms
         ObservableList<FormRow> formRows = FXCollections.observableArrayList();
@@ -455,6 +486,242 @@ public final class MainController {
             }
         }
         examplesTable.setItems(exampleRows);
+    }
+
+    @FXML
+    private void onModifyEntry() {
+        EntryRow selectedRow = entryTable.getSelectionModel().getSelectedItem();
+        if (selectedRow == null || selectedRow.getId() == null) {
+            showError("Modification", "Aucune entrée sélectionnée.");
+            return;
+        }
+        if (currentDictionary == null) {
+            showError("Modification", "Aucun dictionnaire chargé.");
+            return;
+        }
+
+        LiftEntry entry = entryById.get(selectedRow.getId());
+        if (entry == null) {
+            showError("Modification", "Entrée introuvable dans le dictionnaire en mémoire.");
+            return;
+        }
+
+        LiftFactory factory = getFactory(currentDictionary);
+        if (factory == null) {
+            showError("Modification", "Impossible d'accéder à la factory interne (édition non supportée).");
+            return;
+        }
+
+        boolean saved = showEditEntryDialog(factory, entry);
+        if (!saved) return;
+
+        // Persist changes
+        try {
+            currentDictionary.save(); // overwrite file it was read from
+        } catch (Exception e) {
+            showError("Modification", "Impossible d'enregistrer le fichier LIFT: " + e.getMessage());
+            return;
+        }
+
+        // Refresh only the modified row (keeps filters/sort and selection)
+        String keepId = selectedRow.getId();
+        EntryRow updatedRow = toRow(entry);
+        for (int i = 0; i < baseRows.size(); i++) {
+            if (keepId.equals(baseRows.get(i).getId())) {
+                baseRows.set(i, updatedRow);
+                break;
+            }
+        }
+        refreshLanguageFilter();
+        applyFilters();
+        applySort(sortedRows);
+        selectRowById(keepId);
+        entryTable.refresh();
+        populateEditor(entry);
+    }
+
+    private boolean showEditEntryDialog(LiftFactory factory, LiftEntry entry) {
+        if (entryTable == null || entryTable.getScene() == null) return false;
+
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Modifier l’entrée");
+        dialog.initOwner(entryTable.getScene().getWindow());
+
+        ButtonType saveType = new ButtonType("Enregistrer", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(saveType, ButtonType.CANCEL);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(16));
+
+        // Current values
+        String currentCode = entry.getTraits().stream()
+                .filter(t -> "code".equals(t.getName()))
+                .findFirst()
+                .map(LiftTrait::getValue)
+                .orElse("");
+        String currentDialecte = entry.getTraits().stream()
+                .filter(t -> "dialecte".equals(t.getName()))
+                .findFirst()
+                .map(LiftTrait::getValue)
+                .orElse("");
+        String currentPron = entry.getPronunciations().stream()
+                .findFirst()
+                .flatMap(p -> p.getProunciation().getForms().stream().findFirst())
+                .map(Form::toString)
+                .orElse("");
+        MultiText forms = entry.getForms();
+        Form preferred = forms.getForm("fr").orElseGet(() -> forms.getForms().stream().findFirst().orElse(Form.EMPTY_FORM));
+        String derivedLangCode = extractLangCodeFromCodeTrait(currentCode)
+                .orElseGet(() -> preferred == Form.EMPTY_FORM ? "" : preferred.getLang());
+
+        // Inputs
+        TextField codeField = new TextField(currentCode);
+        TextField pronField = new TextField(currentPron);
+        TextField dialectField = new TextField(currentDialecte);
+        TextField langCodeField = new TextField(derivedLangCode);
+
+        Label langNamePreview = new Label(displayLang(derivedLangCode));
+        langNamePreview.getStyleClass().add("muted");
+        langCodeField.textProperty().addListener((obs, o, n) -> langNamePreview.setText(displayLang(safeTrim(n))));
+
+        int r = 0;
+        grid.add(new Label("Code"), 0, r);
+        grid.add(codeField, 1, r++);
+        grid.add(new Label("Prononciation"), 0, r);
+        grid.add(pronField, 1, r++);
+        grid.add(new Label("Dialecte"), 0, r);
+        grid.add(dialectField, 1, r++);
+        grid.add(new Label("Langue (code)"), 0, r);
+        grid.add(langCodeField, 1, r++);
+        grid.add(new Label("Langue (nom)"), 0, r);
+        grid.add(langNamePreview, 1, r);
+
+        dialog.getDialogPane().setContent(grid);
+
+        Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isEmpty() || result.get() != saveType) {
+            return false; // cancelled
+        }
+
+        String newCode = safeTrim(codeField.getText());
+        String newDialect = safeTrim(dialectField.getText());
+        String newPronValue = safeTrim(pronField.getText());
+        String newLangCode = safeTrim(langCodeField.getText());
+
+        // Apply changes
+        replaceTrait(factory, entry, "code", newCode);
+        replaceTrait(factory, entry, "dialecte", newDialect);
+
+        // Change preferred form language when requested (best-effort)
+        if (!newLangCode.isBlank()) {
+            try {
+                replacePreferredFormLang(entry, newLangCode);
+            } catch (Exception e) {
+                showError("Modification", "Impossible de modifier la langue de l’entrée: " + e.getMessage());
+                return false;
+            }
+        }
+
+        // Update pronunciation (use explicit lang if provided)
+        replacePronunciation(factory, entry, newCode, newLangCode, newPronValue);
+        return true;
+    }
+
+    private static void replacePreferredFormLang(LiftEntry entry, String newLangCode) {
+        if (entry == null || newLangCode == null) return;
+        String lang = newLangCode.trim();
+        if (lang.isEmpty()) return;
+
+        MultiText mt = entry.getForms();
+        if (mt == null || mt.isEmpty()) return;
+
+        Form preferred = mt.getForm("fr").orElseGet(() -> mt.getForms().stream().findFirst().orElse(Form.EMPTY_FORM));
+        if (preferred == Form.EMPTY_FORM) return;
+        String oldLang = preferred.getLang();
+        if (lang.equals(oldLang)) return;
+
+        String text = preferred.toString();
+
+        // If a form already exists for the new language, overwrite its text and remove the old one
+        mt.getForm(lang).ifPresentOrElse(existing -> {
+            existing.changeText(text);
+            try {
+                mt.removeForm(oldLang);
+            } catch (Exception ignored) {
+            }
+        }, () -> {
+            // Otherwise, move preferred text to new language
+            try {
+                mt.removeForm(oldLang);
+            } catch (Exception ignored) {
+            }
+            mt.add(new Form(lang, text));
+        });
+    }
+
+    private static String safeTrim(String s) {
+        return s == null ? "" : s.trim();
+    }
+
+    private static LiftFactory getFactory(LiftDictionary d) {
+        if (d == null) return null;
+        if (d.getLiftDictionaryComponents() instanceof LiftFactory lf) return lf;
+        return null;
+    }
+
+    private static void replaceTrait(LiftFactory factory, LiftEntry target, String name, String value) {
+        // Remove existing traits with same name
+        target.getTraits().removeIf(t -> name.equals(t.getName()));
+        if (value != null && !value.isBlank()) {
+            factory.createTrait(name, value, target);
+        }
+    }
+
+    private static void replacePronunciation(LiftFactory factory, LiftEntry entry, String codeTrait, String langOverride, String pronunciationValue) {
+        // Blank => remove pronunciations
+        if (pronunciationValue == null || pronunciationValue.isBlank()) {
+            entry.getPronunciations().clear();
+            return;
+        }
+
+        String langCode = Optional.ofNullable(langOverride)
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .orElseGet(() -> extractLangCodeFromCodeTrait(codeTrait).orElseGet(() -> {
+                    Form preferred = entry.getForms().getForm("fr").orElseGet(() -> entry.getForms().getForms().stream().findFirst().orElse(Form.EMPTY_FORM));
+                    return preferred == Form.EMPTY_FORM ? "fr" : preferred.getLang();
+                }));
+
+        LiftPronunciation p;
+        if (entry.getPronunciations().isEmpty()) {
+            p = factory.createPronunciation(entry);
+        } else {
+            p = entry.getPronunciations().getFirst();
+        }
+
+        MultiText mt = p.getProunciation();
+        // Clear existing forms
+        for (String l : List.copyOf(mt.getLangs())) {
+            try {
+                mt.removeForm(l);
+            } catch (Exception ignored) {
+                // ignore
+            }
+        }
+        mt.add(new Form(langCode, pronunciationValue));
+    }
+
+    private void selectRowById(String id) {
+        if (id == null) return;
+        for (EntryRow row : entryTable.getItems()) {
+            if (id.equals(row.getId())) {
+                entryTable.getSelectionModel().select(row);
+                entryTable.scrollTo(row);
+                return;
+            }
+        }
     }
 
     private static Optional<String> extractLangCodeFromCodeTrait(String code) {

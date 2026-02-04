@@ -131,6 +131,22 @@
         <Label fx:id="editEntryCode" text="" styleClass="edit-entry-code"/>
       </HBox>
 
+      <GridPane hgap="10" vgap="10" styleClass="edit-grid">
+        <columnConstraints>
+          <javafx.scene.layout.ColumnConstraints hgrow="NEVER" minWidth="110"/>
+          <javafx.scene.layout.ColumnConstraints hgrow="ALWAYS"/>
+        </columnConstraints>
+
+        <Label text="Code" GridPane.rowIndex="0" GridPane.columnIndex="0" styleClass="form-label"/>
+        <TextField fx:id="codeEditField" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+        <Label text="Prononciation" GridPane.rowIndex="1" GridPane.columnIndex="0" styleClass="form-label"/>
+        <TextField fx:id="pronEditField" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+
+        <Label text="Dialecte" GridPane.rowIndex="2" GridPane.columnIndex="0" styleClass="form-label"/>
+        <TextField fx:id="dialectEditField" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+      </GridPane>
+
       <TabPane fx:id="editTabs" tabClosingPolicy="UNAVAILABLE" styleClass="edit-tabs">
         <tabs>
           <Tab text="Formes">
@@ -175,6 +191,11 @@
 
       <HBox alignment="CENTER_RIGHT">
         <Button text="+ Exemple" styleClass="example-add-button" maxWidth="1.7976931348623157E308" HBox.hgrow="ALWAYS"/>
+      </HBox>
+
+      <HBox alignment="CENTER_RIGHT">
+        <Button text="Modifier l’entrée" onAction="#onModifyEntry" styleClass="example-add-button"
+                maxWidth="1.7976931348623157E308" HBox.hgrow="ALWAYS"/>
       </HBox>
     </VBox>
   </right>
