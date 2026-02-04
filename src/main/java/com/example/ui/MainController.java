@@ -27,6 +27,12 @@ public final class MainController {
     private TableColumn<EntryRow, String> pronColumn;
 
     @FXML
+    private TableColumn<EntryRow, String> langColumn;
+
+    @FXML
+    private TableColumn<EntryRow, String> defColumn;
+
+    @FXML
     private TableColumn<EntryRow, String> contentColumn;
 
     @FXML
@@ -34,6 +40,12 @@ public final class MainController {
 
     @FXML
     private ComboBox<String> filterByCombo;
+
+    @FXML
+    private ComboBox<String> languageFilterCombo;
+
+    @FXML
+    private ComboBox<String> sortByCombo;
 
     @FXML
     private Label tableCountLabel;
@@ -79,6 +91,8 @@ public final class MainController {
         entryColumn.setCellValueFactory(new PropertyValueFactory<>("entry"));
         codeColumn.setCellValueFactory(new PropertyValueFactory<>("code"));
         pronColumn.setCellValueFactory(new PropertyValueFactory<>("pron"));
+        langColumn.setCellValueFactory(new PropertyValueFactory<>("lang"));
+        defColumn.setCellValueFactory(new PropertyValueFactory<>("def"));
         contentColumn.setCellValueFactory(new PropertyValueFactory<>("content"));
         metaLangColumn.setCellValueFactory(new PropertyValueFactory<>("metaLang"));
 
@@ -100,11 +114,32 @@ public final class MainController {
         ));
         filterByCombo.getSelectionModel().selectFirst();
 
+        languageFilterCombo.setItems(FXCollections.observableArrayList(
+                "Toutes",
+                "Français",
+                "EN",
+                "ES",
+                "ESP",
+                "tpi",
+                "tww"
+        ));
+        languageFilterCombo.getSelectionModel().selectFirst();
+
+        sortByCombo.setItems(FXCollections.observableArrayList(
+                "Entrée",
+                "Code",
+                "Prononciation",
+                "Langue",
+                "Définitions",
+                "Métalangue"
+        ));
+        sortByCombo.getSelectionModel().selectFirst();
+
         entryTable.setItems(FXCollections.observableArrayList(
-                new EntryRow("chat", "n./fr", "/ʃa/", "cat | chat", "fr"),
-                new EntryRow("chien", "n./fr", "/ʃjɛ̃/", "dog | chien", "fr"),
-                new EntryRow("blanc", "adj./fr", "/blɑ̃/", "1. white | 2. blank", "fr"),
-                new EntryRow("maison", "adj./fr", "/mɛzɔ̃/", "house | maison", "fr")
+                new EntryRow("chat", "n./fr", "/ʃa/", "Français", "cat; chat", "cat | chat", "fr"),
+                new EntryRow("chien", "n./fr", "/ʃjɛ̃/", "Français", "dog; chien", "dog | chien", "fr"),
+                new EntryRow("blanc", "adj./fr", "/blɑ̃/", "Français", "white; blank", "1. white | 2. blank", "fr"),
+                new EntryRow("maison", "adj./fr", "/mɛzɔ̃/", "Français", "house; maison", "house | maison", "fr")
         ));
 
         tableCountLabel.setText("4 entrées affichées sur 124");
