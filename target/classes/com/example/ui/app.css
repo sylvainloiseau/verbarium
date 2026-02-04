@@ -35,15 +35,10 @@
   -fx-background-color: rgba(255, 255, 255, 0.12);
 }
 
-.nav-icon {
-  -fx-text-fill: white;
-  -fx-font-size: 16px;
-  -fx-min-width: 22px;
-}
-
 .right-panel {
   -fx-background-color: #eef2f3;
-  -fx-min-width: 300px;
+  -fx-min-width: 240px;
+  -fx-pref-width: 300px;
 }
 
 .panel-title {

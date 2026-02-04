@@ -43,41 +43,19 @@
 
       <Label text="Navigation" styleClass="section-title"/>
 
-      <Button text="Entrées" maxWidth="1.7976931348623157E308" styleClass="nav-button" graphicTextGap="10">
-        <graphic><Label text="🗂" styleClass="nav-icon"/></graphic>
-      </Button>
-      <Button text="Sens" maxWidth="1.7976931348623157E308" styleClass="nav-button" graphicTextGap="10">
-        <graphic><Label text="≡" styleClass="nav-icon"/></graphic>
-      </Button>
-      <Button text="Exemples" maxWidth="1.7976931348623157E308" styleClass="nav-button" graphicTextGap="10">
-        <graphic><Label text="🔎" styleClass="nav-icon"/></graphic>
-      </Button>
-      <Button text="Notes" maxWidth="1.7976931348623157E308" styleClass="nav-button" graphicTextGap="10">
-        <graphic><Label text="📝" styleClass="nav-icon"/></graphic>
-      </Button>
-      <Button text="Variantes" maxWidth="1.7976931348623157E308" styleClass="nav-button" graphicTextGap="10">
-        <graphic><Label text="↔" styleClass="nav-icon"/></graphic>
-      </Button>
-      <Button text="Étymologies" maxWidth="1.7976931348623157E308" styleClass="nav-button" graphicTextGap="10">
-        <graphic><Label text="✎" styleClass="nav-icon"/></graphic>
-      </Button>
+      <Button text="Entrées" maxWidth="1.7976931348623157E308" styleClass="nav-button"/>
+      <Button text="Sens" maxWidth="1.7976931348623157E308" styleClass="nav-button"/>
+      <Button text="Exemples" maxWidth="1.7976931348623157E308" styleClass="nav-button"/>
+      <Button text="Notes" maxWidth="1.7976931348623157E308" styleClass="nav-button"/>
+      <Button text="Variantes" maxWidth="1.7976931348623157E308" styleClass="nav-button"/>
+      <Button text="Étymologies" maxWidth="1.7976931348623157E308" styleClass="nav-button"/>
 
       <Label text="Navigation par facettes" styleClass="section-title"/>
-      <Button text="Langues objet" maxWidth="1.7976931348623157E308" styleClass="nav-button" graphicTextGap="10">
-        <graphic><Label text="✍" styleClass="nav-icon"/></graphic>
-      </Button>
-      <Button text="Méta-langues" maxWidth="1.7976931348623157E308" styleClass="nav-button" graphicTextGap="10">
-        <graphic><Label text="🌐" styleClass="nav-icon"/></graphic>
-      </Button>
-      <Button text="Tags" maxWidth="1.7976931348623157E308" styleClass="nav-button" graphicTextGap="10">
-        <graphic><Label text="🏷" styleClass="nav-icon"/></graphic>
-      </Button>
-      <Button text="Annotations" maxWidth="1.7976931348623157E308" styleClass="nav-button" graphicTextGap="10">
-        <graphic><Label text="🔖" styleClass="nav-icon"/></graphic>
-      </Button>
-      <Button text="Type de notes" maxWidth="1.7976931348623157E308" styleClass="nav-button" graphicTextGap="10">
-        <graphic><Label text="𝑻" styleClass="nav-icon"/></graphic>
-      </Button>
+      <Button text="Langues objet" maxWidth="1.7976931348623157E308" styleClass="nav-button"/>
+      <Button text="Méta-langues" maxWidth="1.7976931348623157E308" styleClass="nav-button"/>
+      <Button text="Tags" maxWidth="1.7976931348623157E308" styleClass="nav-button"/>
+      <Button text="Annotations" maxWidth="1.7976931348623157E308" styleClass="nav-button"/>
+      <Button text="Type de notes" maxWidth="1.7976931348623157E308" styleClass="nav-button"/>
     </VBox>
   </left>
 

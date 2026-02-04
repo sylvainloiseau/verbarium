@@ -1,0 +1,88 @@
+{
+  "meta": {
+    "name": "Mock dictionary dataset",
+    "version": 1,
+    "generatedAt": "2026-02-04",
+    "notes": "Données factices pour l'UI JavaFX (table + formulaire d’édition)."
+  },
+  "ui": {
+    "languageFilter": ["Toutes", "Français", "EN", "ES", "ESP"],
+    "sortBy": ["ID", "Entrée", "Catégorie", "Langue"]
+  },
+  "entries": [
+    {
+      "id": "01",
+      "entry": "chien",
+      "category": "Nom",
+      "language": "Français",
+      "definitions": ["animal"],
+      "trait": "canin",
+      "dateModified": "2024-04-28",
+      "meta": "",
+      "senses": [
+        {
+          "glosses": { "FR": "animal", "EN": "dog", "ES": "perro" }
+        }
+      ],
+      "examples": [
+        { "type": "phrase", "fr": "un chien aboie", "gloss": "a dog barks", "em": "bark" }
+      ]
+    },
+    {
+      "id": "02",
+      "entry": "to dance",
+      "category": "Verbe",
+      "language": "EN",
+      "definitions": ["action"],
+      "trait": "",
+      "dateModified": "2024-04-28",
+      "meta": "",
+      "senses": [
+        {
+          "glosses": { "FR": "danser", "EN": "to dance", "ES": "bailar" }
+        }
+      ],
+      "examples": [
+        { "type": "phrase", "fr": "ils dansent", "gloss": "they dance", "em": "dance" }
+      ]
+    },
+    {
+      "id": "03",
+      "entry": "ouragan",
+      "category": "Nom",
+      "language": "Français",
+      "definitions": ["vent"],
+      "trait": "morucan",
+      "dateModified": "2024-04-28",
+      "meta": "",
+      "senses": [
+        {
+          "glosses": { "FR": "vent", "EN": "wind", "ES": "viento" }
+        }
+      ],
+      "examples": [
+        { "type": "phrase", "fr": "un ouragan approche", "gloss": "is coming", "em": "wind" },
+        { "type": "phrase", "fr": "aa hurricane", "gloss": "is coming", "em": "viento" }
+      ]
+    },
+    {
+      "id": "04",
+      "entry": "huracán",
+      "category": "Nom",
+      "language": "ESP",
+      "definitions": ["viento muy fuerte"],
+      "trait": "",
+      "dateModified": "2024-04-28",
+      "meta": "",
+      "senses": [
+        {
+          "glosses": { "FR": "ouragan", "EN": "hurricane", "ES": "huracán" }
+        }
+      ],
+      "examples": [
+        { "type": "phrase", "fr": "un ouragan", "gloss": "hurricane", "em": "huracán" }
+      ]
+    }
+  ]
+}
+
