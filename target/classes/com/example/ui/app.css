@@ -47,6 +47,64 @@
   -fx-font-weight: bold;
 }
 
+.center-toolbar {
+  -fx-padding: 0 0 6px 0;
+}
+
+.primary-button {
+  -fx-background-color: #2f7eea;
+  -fx-text-fill: white;
+  -fx-font-size: 14px;
+  -fx-background-radius: 18px;
+  -fx-padding: 8px 14px 8px 14px;
+}
+
+.primary-button:hover {
+  -fx-background-color: #2a72d1;
+}
+
+.section-header {
+  -fx-padding: 6px 0 0 0;
+}
+
+.section-header-title {
+  -fx-font-size: 18px;
+  -fx-text-fill: #324a50;
+  -fx-font-weight: bold;
+}
+
+.table-footer-text {
+  -fx-text-fill: #66767a;
+  -fx-font-size: 13px;
+}
+
+.page-button {
+  -fx-background-color: transparent;
+  -fx-border-color: rgba(0,0,0,0.15);
+  -fx-border-radius: 4px;
+  -fx-background-radius: 4px;
+  -fx-padding: 4px 10px 4px 10px;
+}
+
+.edit-entry-title {
+  -fx-font-size: 20px;
+  -fx-font-weight: bold;
+  -fx-text-fill: #324a50;
+}
+
+.edit-entry-code {
+  -fx-font-size: 14px;
+  -fx-text-fill: #66767a;
+}
+
+.edit-tabs .tab-header-area .tab-header-background {
+  -fx-background-color: transparent;
+}
+
+.tab-content {
+  -fx-padding: 6px 0 0 0;
+}
+
 .bullet {
   -fx-font-size: 16px;
   -fx-text-fill: #4c6f76;

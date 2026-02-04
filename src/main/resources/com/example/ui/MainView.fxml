@@ -7,6 +7,8 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.Menu?>
 <?import javafx.scene.control.MenuBar?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
 <?import javafx.scene.control.TableCell?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
@@ -65,31 +67,35 @@
         <Insets top="18" right="18" bottom="18" left="18"/>
       </padding>
 
-      <HBox alignment="CENTER_LEFT" spacing="16">
-        <Label text="Tableau Principal" styleClass="panel-title"/>
+      <HBox spacing="12" alignment="CENTER_LEFT" styleClass="center-toolbar">
+        <TextField fx:id="searchField" promptText="Rechercher..." styleClass="search-input" HBox.hgrow="ALWAYS"/>
+        <Button text="+ Note" styleClass="primary-button"/>
+        <ComboBox fx:id="filterByCombo" promptText="Filtrer par" prefWidth="160" />
       </HBox>
 
-      <VBox spacing="10" styleClass="search-bar">
-        <TextField fx:id="searchField" promptText="Rechercher..." styleClass="search-input"/>
-        <HBox spacing="14" alignment="CENTER_RIGHT">
-          <Label text="Langue:" styleClass="search-label"/>
-          <ComboBox fx:id="languageFilterCombo" prefWidth="180" />
-          <Label text="Trier par:" styleClass="search-label"/>
-          <ComboBox fx:id="sortByCombo" prefWidth="180" />
-        </HBox>
-      </VBox>
+      <HBox alignment="CENTER_LEFT" styleClass="section-header">
+        <Label text="Entrées" styleClass="section-header-title"/>
+      </HBox>
 
       <TableView fx:id="entryTable" styleClass="entry-table" VBox.vgrow="ALWAYS">
         <columns>
-          <TableColumn fx:id="idColumn" text="ID" prefWidth="80"/>
           <TableColumn fx:id="entryColumn" text="Entrée" prefWidth="220"/>
-          <TableColumn fx:id="categoryColumn" text="Catégorie" prefWidth="160"/>
-          <TableColumn fx:id="langColumn" text="Langue" prefWidth="140"/>
-          <TableColumn fx:id="metaLangColumn" text="Métalangues" prefWidth="160"/>
-          <TableColumn fx:id="defColumn" text="Définitions" prefWidth="260"/>
-          <TableColumn fx:id="fieldsColumn" text="" prefWidth="60"/>
+          <TableColumn fx:id="codeColumn" text="Code" prefWidth="120"/>
+          <TableColumn fx:id="pronColumn" text="Prononciation" prefWidth="150"/>
+          <TableColumn fx:id="contentColumn" text="Contenu linguistique" prefWidth="260"/>
+          <TableColumn fx:id="metaLangColumn" text="Métalangue" prefWidth="140"/>
         </columns>
       </TableView>
+
+      <HBox alignment="CENTER_LEFT" spacing="10" styleClass="table-footer">
+        <Label fx:id="tableCountLabel" text="0 entrées affichées sur 0" styleClass="table-footer-text"/>
+        <HBox HBox.hgrow="ALWAYS"/>
+        <Button text="◀" styleClass="page-button"/>
+        <Button text="1" styleClass="page-button"/>
+        <Button text="2" styleClass="page-button"/>
+        <Button text="3" styleClass="page-button"/>
+        <Button text="▶" styleClass="page-button"/>
+      </HBox>
     </VBox>
   </center>
 
@@ -101,46 +107,53 @@
 
       <Label text="Formulaire d’édition" styleClass="panel-title"/>
 
-      <TextField fx:id="selectedEntryField" promptText="(sélectionne une entrée dans le tableau)" styleClass="selected-entry" />
+      <HBox spacing="10" alignment="CENTER_LEFT" styleClass="edit-header">
+        <Label fx:id="editEntryTitle" text="(sélectionne une entrée)" styleClass="edit-entry-title"/>
+        <Label fx:id="editEntryCode" text="" styleClass="edit-entry-code"/>
+      </HBox>
 
-      <GridPane hgap="10" vgap="10" styleClass="edit-grid">
-        <columnConstraints>
-          <javafx.scene.layout.ColumnConstraints hgrow="NEVER" minWidth="150"/>
-          <javafx.scene.layout.ColumnConstraints hgrow="ALWAYS"/>
-        </columnConstraints>
+      <TabPane fx:id="editTabs" tabClosingPolicy="UNAVAILABLE" styleClass="edit-tabs">
+        <tabs>
+          <Tab text="Formes">
+            <content>
+              <VBox spacing="10" styleClass="tab-content">
+                <TableView fx:id="formsTable" prefHeight="160" styleClass="sub-table">
+                  <columns>
+                    <TableColumn fx:id="formLangColumn" text="Langue" prefWidth="120"/>
+                    <TableColumn fx:id="formValueColumn" text="Forme" prefWidth="200"/>
+                  </columns>
+                </TableView>
+              </VBox>
+            </content>
+          </Tab>
+          <Tab text="Sens">
+            <content>
+              <VBox spacing="10" styleClass="tab-content">
+                <TableView fx:id="sensesTable" prefHeight="180" styleClass="sub-table">
+                  <columns>
+                    <TableColumn fx:id="senseLangColumn" text="Langue" prefWidth="120"/>
+                    <TableColumn fx:id="senseValueColumn" text="Sens" prefWidth="220"/>
+                  </columns>
+                </TableView>
+              </VBox>
+            </content>
+          </Tab>
+        </tabs>
+      </TabPane>
 
-        <Label text="Trait" GridPane.rowIndex="0" GridPane.columnIndex="0" styleClass="form-label"/>
-        <TextField fx:id="traitField" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+      <HBox alignment="CENTER_LEFT" spacing="10" styleClass="section-header">
+        <Label text="Exemples" styleClass="section-header-title"/>
+        <HBox HBox.hgrow="ALWAYS"/>
+        <Button text="+ Ajouter exemple" styleClass="primary-button"/>
+      </HBox>
 
-        <Label text="Date de modification" GridPane.rowIndex="1" GridPane.columnIndex="0" styleClass="form-label"/>
-        <DatePicker fx:id="modifiedDatePicker" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
-
-        <Label text="Meta" GridPane.rowIndex="2" GridPane.columnIndex="0" styleClass="form-label"/>
-        <TextField fx:id="metaField" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
-      </GridPane>
-
-      <Label text="Sens" styleClass="subsection-title"/>
-      <TableView fx:id="sensesTable" prefHeight="160" styleClass="sub-table">
+      <TableView fx:id="examplesTable" prefHeight="200" styleClass="sub-table">
         <columns>
-          <TableColumn fx:id="senseFrColumn" text="FR" prefWidth="120"/>
-          <TableColumn fx:id="senseEnColumn" text="EN" prefWidth="120"/>
-          <TableColumn fx:id="senseEsColumn" text="ES" prefWidth="120"/>
+          <TableColumn fx:id="exTypeColumn" text="Type" prefWidth="90"/>
+          <TableColumn fx:id="exPhraseColumn" text="Phrase" prefWidth="210"/>
+          <TableColumn fx:id="exGlossColumn" text="Gloss" prefWidth="160"/>
         </columns>
       </TableView>
-
-      <Label text="Exemples" styleClass="subsection-title"/>
-      <GridPane hgap="10" vgap="10" styleClass="edit-grid">
-        <columnConstraints>
-          <javafx.scene.layout.ColumnConstraints hgrow="NEVER" minWidth="150"/>
-          <javafx.scene.layout.ColumnConstraints hgrow="ALWAYS"/>
-        </columnConstraints>
-
-        <Label text="Type" GridPane.rowIndex="0" GridPane.columnIndex="0" styleClass="form-label"/>
-        <TextField fx:id="exampleTypeField" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
-
-        <Label text="Phrase" GridPane.rowIndex="1" GridPane.columnIndex="0" styleClass="form-label"/>
-        <TextArea fx:id="examplePhraseArea" GridPane.rowIndex="1" GridPane.columnIndex="1" prefRowCount="3" wrapText="true"/>
-      </GridPane>
     </VBox>
   </right>
 
