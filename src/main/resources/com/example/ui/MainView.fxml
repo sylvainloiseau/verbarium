@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Menu?>
+<?import javafx.scene.control.MenuBar?>
+<?import javafx.scene.control.TableCell?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.example.ui.MainController"
+            styleClass="root">
+
+  <top>
+    <MenuBar BorderPane.alignment="CENTER" styleClass="top-menu">
+      <menus>
+        <Menu text="Article"/>
+        <Menu text="Fichier"/>
+        <Menu text="Édition"/>
+        <Menu text="Vue"/>
+        <Menu text="Configuration du dictionnaire"/>
+        <Menu text="Outil"/>
+      </menus>
+    </MenuBar>
+  </top>
+
+  <left>
+    <VBox spacing="14.0" BorderPane.alignment="CENTER" styleClass="left-nav">
+      <padding>
+        <Insets top="18" right="14" bottom="18" left="14"/>
+      </padding>
+
+      <Label text="Navigation" styleClass="section-title"/>
+
+      <Button text="Entrées" maxWidth="1.7976931348623157E308" styleClass="nav-button" graphicTextGap="10">
+        <graphic><Label text="🗂" styleClass="nav-icon"/></graphic>
+      </Button>
+      <Button text="Sens" maxWidth="1.7976931348623157E308" styleClass="nav-button" graphicTextGap="10">
+        <graphic><Label text="≡" styleClass="nav-icon"/></graphic>
+      </Button>
+      <Button text="Exemples" maxWidth="1.7976931348623157E308" styleClass="nav-button" graphicTextGap="10">
+        <graphic><Label text="🔎" styleClass="nav-icon"/></graphic>
+      </Button>
+      <Button text="Notes" maxWidth="1.7976931348623157E308" styleClass="nav-button" graphicTextGap="10">
+        <graphic><Label text="📝" styleClass="nav-icon"/></graphic>
+      </Button>
+      <Button text="Variantes" maxWidth="1.7976931348623157E308" styleClass="nav-button" graphicTextGap="10">
+        <graphic><Label text="↔" styleClass="nav-icon"/></graphic>
+      </Button>
+      <Button text="Étymologies" maxWidth="1.7976931348623157E308" styleClass="nav-button" graphicTextGap="10">
+        <graphic><Label text="✎" styleClass="nav-icon"/></graphic>
+      </Button>
+
+      <Label text="Navigation par facettes" styleClass="section-title"/>
+      <Button text="Langues objet" maxWidth="1.7976931348623157E308" styleClass="nav-button" graphicTextGap="10">
+        <graphic><Label text="✍" styleClass="nav-icon"/></graphic>
+      </Button>
+      <Button text="Méta-langues" maxWidth="1.7976931348623157E308" styleClass="nav-button" graphicTextGap="10">
+        <graphic><Label text="🌐" styleClass="nav-icon"/></graphic>
+      </Button>
+      <Button text="Tags" maxWidth="1.7976931348623157E308" styleClass="nav-button" graphicTextGap="10">
+        <graphic><Label text="🏷" styleClass="nav-icon"/></graphic>
+      </Button>
+      <Button text="Annotations" maxWidth="1.7976931348623157E308" styleClass="nav-button" graphicTextGap="10">
+        <graphic><Label text="🔖" styleClass="nav-icon"/></graphic>
+      </Button>
+      <Button text="Type de notes" maxWidth="1.7976931348623157E308" styleClass="nav-button" graphicTextGap="10">
+        <graphic><Label text="𝑻" styleClass="nav-icon"/></graphic>
+      </Button>
+    </VBox>
+  </left>
+
+  <center>
+    <VBox spacing="12.0" BorderPane.alignment="CENTER" styleClass="center">
+      <padding>
+        <Insets top="18" right="18" bottom="18" left="18"/>
+      </padding>
+
+      <HBox alignment="CENTER_LEFT" spacing="16">
+        <Label text="Tableau Principal" styleClass="panel-title"/>
+      </HBox>
+
+      <VBox spacing="10" styleClass="search-bar">
+        <TextField fx:id="searchField" promptText="Rechercher..." styleClass="search-input"/>
+        <HBox spacing="14" alignment="CENTER_RIGHT">
+          <Label text="Langue:" styleClass="search-label"/>
+          <ComboBox fx:id="languageFilterCombo" prefWidth="180" />
+          <Label text="Trier par:" styleClass="search-label"/>
+          <ComboBox fx:id="sortByCombo" prefWidth="180" />
+        </HBox>
+      </VBox>
+
+      <TableView fx:id="entryTable" styleClass="entry-table" VBox.vgrow="ALWAYS">
+        <columns>
+          <TableColumn fx:id="idColumn" text="ID" prefWidth="80"/>
+          <TableColumn fx:id="entryColumn" text="Entrée" prefWidth="220"/>
+          <TableColumn fx:id="categoryColumn" text="Catégorie" prefWidth="160"/>
+          <TableColumn fx:id="langColumn" text="Langue" prefWidth="140"/>
+          <TableColumn fx:id="defColumn" text="Définitions" prefWidth="260"/>
+          <TableColumn fx:id="fieldsColumn" text="" prefWidth="60"/>
+        </columns>
+      </TableView>
+    </VBox>
+  </center>
+
+  <right>
+    <VBox spacing="12.0" BorderPane.alignment="CENTER" styleClass="right-panel">
+      <padding>
+        <Insets top="14" right="14" bottom="14" left="14"/>
+      </padding>
+
+      <Label text="Formulaire d’édition" styleClass="panel-title"/>
+
+      <TextField fx:id="selectedEntryField" promptText="(sélectionne une entrée dans le tableau)" styleClass="selected-entry" />
+
+      <GridPane hgap="10" vgap="10" styleClass="edit-grid">
+        <columnConstraints>
+          <javafx.scene.layout.ColumnConstraints hgrow="NEVER" minWidth="150"/>
+          <javafx.scene.layout.ColumnConstraints hgrow="ALWAYS"/>
+        </columnConstraints>
+
+        <Label text="Trait" GridPane.rowIndex="0" GridPane.columnIndex="0" styleClass="form-label"/>
+        <TextField fx:id="traitField" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+        <Label text="Date de modification" GridPane.rowIndex="1" GridPane.columnIndex="0" styleClass="form-label"/>
+        <DatePicker fx:id="modifiedDatePicker" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+
+        <Label text="Meta" GridPane.rowIndex="2" GridPane.columnIndex="0" styleClass="form-label"/>
+        <TextField fx:id="metaField" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+      </GridPane>
+
+      <Label text="Sens" styleClass="subsection-title"/>
+      <TableView fx:id="sensesTable" prefHeight="160" styleClass="sub-table">
+        <columns>
+          <TableColumn fx:id="senseFrColumn" text="FR" prefWidth="120"/>
+          <TableColumn fx:id="senseEnColumn" text="EN" prefWidth="120"/>
+          <TableColumn fx:id="senseEsColumn" text="ES" prefWidth="120"/>
+        </columns>
+      </TableView>
+
+      <Label text="Exemples" styleClass="subsection-title"/>
+      <GridPane hgap="10" vgap="10" styleClass="edit-grid">
+        <columnConstraints>
+          <javafx.scene.layout.ColumnConstraints hgrow="NEVER" minWidth="150"/>
+          <javafx.scene.layout.ColumnConstraints hgrow="ALWAYS"/>
+        </columnConstraints>
+
+        <Label text="Type" GridPane.rowIndex="0" GridPane.columnIndex="0" styleClass="form-label"/>
+        <TextField fx:id="exampleTypeField" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+        <Label text="Phrase" GridPane.rowIndex="1" GridPane.columnIndex="0" styleClass="form-label"/>
+        <TextArea fx:id="examplePhraseArea" GridPane.rowIndex="1" GridPane.columnIndex="1" prefRowCount="3" wrapText="true"/>
+      </GridPane>
+    </VBox>
+  </right>
+
+</BorderPane>
+
