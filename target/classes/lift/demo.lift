@@ -1,7 +1,7 @@
 <lift producer="multilingual-dictionary-editor" version="0.13">
   <!--
     Démonstration LIFT (données factices) pour l'application JavaFX.
-    Object languages: fr, en, es, de, tpi, tww
+    Object languages: fr, en, es, de, it, pt, ru, ar, zh, ja, tpi
     Meta languages (definitions): fr, en
   -->
 
@@ -161,11 +161,10 @@
     </sense>
   </entry>
 
-  <!-- Exemples multilingues (Tok Pisin / tww) -->
+  <!-- Exemples multilingues (Tok Pisin) -->
   <entry id="e_wanem" dateCreated="2024-04-04T08:00:00Z" dateModified="2024-04-28T12:00:00Z">
     <lexical-unit>
       <form lang="tpi"><text>wanem</text></form>
-      <form lang="tww"><text>nala</text></form>
     </lexical-unit>
     <trait name="code" value="pro./tpi"/>
     <trait name="dialecte" value="tpi-standard"/>
@@ -186,6 +185,144 @@
   </entry>
 
   <!-- Série d'entrées supplémentaires (pour un dataset plus massif) -->
+  <entry id="e_ciao" dateCreated="2024-04-06T09:00:00Z" dateModified="2024-04-28T12:00:00Z">
+    <lexical-unit>
+      <form lang="it"><text>ciao</text></form>
+      <form lang="en"><text>hi</text></form>
+      <form lang="fr"><text>salut</text></form>
+    </lexical-unit>
+    <trait name="code" value="intj./it"/>
+    <trait name="dialecte" value="standard"/>
+    <sense id="s_ciao_1" order="1">
+      <gloss lang="en"><text>hi</text></gloss>
+      <definition>
+        <form lang="fr"><text>salutation informelle (italien)</text></form>
+        <form lang="en"><text>informal greeting (Italian)</text></form>
+      </definition>
+      <example>
+        <form lang="it"><text>Ciao! Come stai?</text></form>
+        <translation type="">
+          <form lang="en"><text>Hi! How are you?</text></form>
+        </translation>
+      </example>
+    </sense>
+  </entry>
+
+  <entry id="e_ola" dateCreated="2024-04-06T09:00:00Z" dateModified="2024-04-28T12:00:00Z">
+    <lexical-unit>
+      <form lang="pt"><text>olá</text></form>
+      <form lang="en"><text>hello</text></form>
+      <form lang="fr"><text>bonjour</text></form>
+    </lexical-unit>
+    <trait name="code" value="intj./pt"/>
+    <trait name="dialecte" value="pt-BR"/>
+    <sense id="s_ola_1" order="1">
+      <gloss lang="en"><text>hello</text></gloss>
+      <definition>
+        <form lang="fr"><text>salutation (portugais)</text></form>
+        <form lang="en"><text>greeting (Portuguese)</text></form>
+      </definition>
+      <example>
+        <form lang="pt"><text>Olá, tudo bem?</text></form>
+        <translation type="">
+          <form lang="en"><text>Hello, how are you?</text></form>
+        </translation>
+      </example>
+    </sense>
+  </entry>
+
+  <entry id="e_privet" dateCreated="2024-04-06T09:00:00Z" dateModified="2024-04-28T12:00:00Z">
+    <lexical-unit>
+      <form lang="ru"><text>привет</text></form>
+      <form lang="en"><text>hi</text></form>
+      <form lang="fr"><text>salut</text></form>
+    </lexical-unit>
+    <trait name="code" value="intj./ru"/>
+    <trait name="dialecte" value="standard"/>
+    <sense id="s_privet_1" order="1">
+      <gloss lang="en"><text>hi</text></gloss>
+      <definition>
+        <form lang="fr"><text>salutation informelle (russe)</text></form>
+        <form lang="en"><text>informal greeting (Russian)</text></form>
+      </definition>
+      <example>
+        <form lang="ru"><text>Привет! Как дела?</text></form>
+        <translation type="">
+          <form lang="en"><text>Hi! How are you?</text></form>
+        </translation>
+      </example>
+    </sense>
+  </entry>
+
+  <entry id="e_salam" dateCreated="2024-04-06T09:00:00Z" dateModified="2024-04-28T12:00:00Z">
+    <lexical-unit>
+      <form lang="ar"><text>سلام</text></form>
+      <form lang="en"><text>peace</text></form>
+      <form lang="fr"><text>paix</text></form>
+    </lexical-unit>
+    <trait name="code" value="n./ar"/>
+    <trait name="dialecte" value="ar-MA"/>
+    <sense id="s_salam_1" order="1">
+      <gloss lang="en"><text>peace</text></gloss>
+      <definition>
+        <form lang="fr"><text>état d’absence de conflit</text></form>
+        <form lang="en"><text>state of no conflict</text></form>
+      </definition>
+      <example>
+        <form lang="ar"><text>السلام مهم.</text></form>
+        <translation type="">
+          <form lang="en"><text>Peace is important.</text></form>
+        </translation>
+      </example>
+    </sense>
+  </entry>
+
+  <entry id="e_nihao" dateCreated="2024-04-06T09:00:00Z" dateModified="2024-04-28T12:00:00Z">
+    <lexical-unit>
+      <form lang="zh"><text>你好</text></form>
+      <form lang="en"><text>hello</text></form>
+      <form lang="fr"><text>bonjour</text></form>
+    </lexical-unit>
+    <trait name="code" value="intj./zh"/>
+    <trait name="dialecte" value="mandarin"/>
+    <sense id="s_nihao_1" order="1">
+      <gloss lang="en"><text>hello</text></gloss>
+      <definition>
+        <form lang="fr"><text>salutation (chinois)</text></form>
+        <form lang="en"><text>greeting (Chinese)</text></form>
+      </definition>
+      <example>
+        <form lang="zh"><text>你好！</text></form>
+        <translation type="">
+          <form lang="en"><text>Hello!</text></form>
+        </translation>
+      </example>
+    </sense>
+  </entry>
+
+  <entry id="e_konnichiwa" dateCreated="2024-04-06T09:00:00Z" dateModified="2024-04-28T12:00:00Z">
+    <lexical-unit>
+      <form lang="ja"><text>こんにちは</text></form>
+      <form lang="en"><text>hello</text></form>
+      <form lang="fr"><text>bonjour</text></form>
+    </lexical-unit>
+    <trait name="code" value="intj./ja"/>
+    <trait name="dialecte" value="standard"/>
+    <sense id="s_konnichiwa_1" order="1">
+      <gloss lang="en"><text>hello</text></gloss>
+      <definition>
+        <form lang="fr"><text>salutation (japonais)</text></form>
+        <form lang="en"><text>greeting (Japanese)</text></form>
+      </definition>
+      <example>
+        <form lang="ja"><text>こんにちは！</text></form>
+        <translation type="">
+          <form lang="en"><text>Hello!</text></form>
+        </translation>
+      </example>
+    </sense>
+  </entry>
+
   <entry id="e_bleu" dateCreated="2024-04-05T08:00:00Z" dateModified="2024-04-28T12:00:00Z">
     <lexical-unit>
       <form lang="fr"><text>bleu</text></form>

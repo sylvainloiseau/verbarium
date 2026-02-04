@@ -158,7 +158,6 @@
       <HBox alignment="CENTER_LEFT" spacing="10" styleClass="section-header">
         <Label text="Exemples" styleClass="section-header-title"/>
         <HBox HBox.hgrow="ALWAYS"/>
-        <Button text="+ Exemple" styleClass="note-button"/>
       </HBox>
 
       <TableView fx:id="examplesTable" prefHeight="200" styleClass="sub-table">
@@ -168,6 +167,10 @@
           <TableColumn fx:id="exGlossColumn" text="Gloss" prefWidth="160"/>
         </columns>
       </TableView>
+
+      <HBox alignment="CENTER_RIGHT">
+        <Button text="+ Exemple" styleClass="note-button"/>
+      </HBox>
     </VBox>
   </right>
 

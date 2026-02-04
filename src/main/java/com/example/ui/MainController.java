@@ -298,16 +298,19 @@ public final class MainController {
     private EntryRow toRow(LiftEntry e) {
         String id = e.getId().orElse("");
 
-        // Entrée + Langue: prefer fr, else first form.
+        // Entrée: prefer fr, else first form.
         MultiText forms = e.getForms();
         Form preferred = forms.getForm("fr").orElseGet(() -> forms.getForms().stream().findFirst().orElse(Form.EMPTY_FORM));
         String entry = preferred == Form.EMPTY_FORM ? "" : preferred.toString();
-        String lang = preferred == Form.EMPTY_FORM ? "" : preferred.getLang();
 
         // Code + Métalangue (dialecte): from traits
         Map<String, List<LiftTrait>> traitsByName = e.getTraits().stream().collect(Collectors.groupingBy(LiftTrait::getName));
         String code = traitsByName.getOrDefault("code", List.of()).stream().findFirst().map(LiftTrait::getValue).orElse("");
         String metaLang = traitsByName.getOrDefault("dialecte", List.of()).stream().findFirst().map(LiftTrait::getValue).orElse("");
+
+        // Langue: derive from code suffix (e.g. n./fr), fallback to preferred form lang.
+        String langCode = extractLangCodeFromCodeTrait(code).orElseGet(() -> preferred == Form.EMPTY_FORM ? "" : preferred.getLang());
+        String lang = displayLang(langCode);
 
         // Pronunciation: first pronunciation form (prefer fr)
         String pron = e.getPronunciations().stream()
@@ -323,7 +326,7 @@ public final class MainController {
                 .orElse("");
 
         String content = firstSense
-                .map(s -> joinForms(s.getGloss(), List.of("en", "fr", "es", "de", "tpi", "tww")))
+                .map(s -> joinForms(s.getGloss(), List.of("en", "fr", "es", "de", "it", "pt", "ru", "ar", "zh", "ja", "tpi")))
                 .orElse("");
 
         return new EntryRow(id, entry, code, pron, lang, defs, content, metaLang);
@@ -360,7 +363,7 @@ public final class MainController {
         // Formes tab: all lexical-unit forms
         ObservableList<FormRow> formRows = FXCollections.observableArrayList();
         for (Form f : forms.getForms()) {
-            formRows.add(new FormRow(f.getLang(), f.toString()));
+            formRows.add(new FormRow(displayLang(f.getLang()), f.toString()));
         }
         formsTable.setItems(formRows);
 
@@ -368,11 +371,11 @@ public final class MainController {
         ObservableList<SenseValueRow> senseRows = FXCollections.observableArrayList();
         for (LiftSense s : entry.getSenses()) {
             for (Form f : s.getDefinition().getForms()) {
-                senseRows.add(new SenseValueRow(f.getLang(), f.toString()));
+                senseRows.add(new SenseValueRow(displayLang(f.getLang()), f.toString()));
             }
             for (Form f : s.getGloss().getForms()) {
                 // also show glosses if present
-                senseRows.add(new SenseValueRow(f.getLang(), f.toString()));
+                senseRows.add(new SenseValueRow(displayLang(f.getLang()), f.toString()));
             }
         }
         sensesTable.setItems(senseRows);
@@ -394,6 +397,36 @@ public final class MainController {
             }
         }
         examplesTable.setItems(exampleRows);
+    }
+
+    private static Optional<String> extractLangCodeFromCodeTrait(String code) {
+        if (code == null) return Optional.empty();
+        int idx = code.lastIndexOf('/');
+        if (idx < 0 || idx == code.length() - 1) return Optional.empty();
+        String lang = code.substring(idx + 1).trim();
+        return lang.isEmpty() ? Optional.empty() : Optional.of(lang);
+    }
+
+    private static String displayLang(String code) {
+        if (code == null) return "";
+        String normalized = code.trim();
+        if (normalized.isEmpty()) return "";
+        // keep base language if tags like fr-FR / pt_BR
+        String base = normalized.split("[-_]", 2)[0].toLowerCase(Locale.ROOT);
+        return switch (base) {
+            case "fr" -> "Français";
+            case "en" -> "Anglais";
+            case "es" -> "Espagnol";
+            case "de" -> "Allemand";
+            case "it" -> "Italien";
+            case "pt" -> "Portugais";
+            case "ru" -> "Russe";
+            case "ar" -> "Arabe";
+            case "zh" -> "Chinois";
+            case "ja" -> "Japonais";
+            case "tpi" -> "Tok Pisin";
+            default -> normalized;
+        };
     }
 }
 
