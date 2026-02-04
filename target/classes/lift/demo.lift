@@ -1,0 +1,261 @@
+<lift producer="multilingual-dictionary-editor" version="0.13">
+  <!--
+    Démonstration LIFT (données factices) pour l'application JavaFX.
+    Object languages: fr, en, es, de, tpi, tww
+    Meta languages (definitions): fr, en
+  -->
+
+  <entry id="e_chat" dateCreated="2024-04-01T10:00:00Z" dateModified="2024-04-28T12:00:00Z">
+    <lexical-unit>
+      <form lang="fr"><text>chat</text></form>
+      <form lang="en"><text>cat</text></form>
+      <form lang="es"><text>gato</text></form>
+    </lexical-unit>
+    <trait name="code" value="n./fr"/>
+    <trait name="dialecte" value="standard"/>
+    <pronunciation>
+      <form lang="fr"><text>/ʃa/</text></form>
+    </pronunciation>
+    <sense id="s_chat_1" order="1">
+      <grammatical-info value="Noun"/>
+      <gloss lang="en"><text>cat</text></gloss>
+      <gloss lang="es"><text>gato</text></gloss>
+      <definition>
+        <form lang="fr"><text>mammifère carnivore domestique</text></form>
+        <form lang="en"><text>domestic carnivorous mammal</text></form>
+      </definition>
+      <example>
+        <form lang="fr"><text>Le chat dort sur le canapé.</text></form>
+        <translation type="">
+          <form lang="en"><text>The cat is sleeping on the couch.</text></form>
+        </translation>
+      </example>
+    </sense>
+  </entry>
+
+  <entry id="e_chien" dateCreated="2024-04-01T10:00:00Z" dateModified="2024-04-28T12:00:00Z">
+    <lexical-unit>
+      <form lang="fr"><text>chien</text></form>
+      <form lang="en"><text>dog</text></form>
+      <form lang="es"><text>perro</text></form>
+    </lexical-unit>
+    <trait name="code" value="n./fr"/>
+    <trait name="dialecte" value="standard"/>
+    <pronunciation>
+      <form lang="fr"><text>/ʃjɛ̃/</text></form>
+    </pronunciation>
+    <sense id="s_chien_1" order="1">
+      <grammatical-info value="Noun"/>
+      <gloss lang="en"><text>dog</text></gloss>
+      <gloss lang="es"><text>perro</text></gloss>
+      <definition>
+        <form lang="fr"><text>animal domestique de la famille des canidés</text></form>
+        <form lang="en"><text>domesticated canid</text></form>
+      </definition>
+      <example>
+        <form lang="fr"><text>Un chien aboie dans la rue.</text></form>
+        <translation type="">
+          <form lang="en"><text>A dog is barking in the street.</text></form>
+        </translation>
+      </example>
+    </sense>
+  </entry>
+
+  <entry id="e_blanc" dateCreated="2024-04-02T09:00:00Z" dateModified="2024-04-28T12:00:00Z">
+    <lexical-unit>
+      <form lang="fr"><text>blanc</text></form>
+      <form lang="en"><text>white</text></form>
+      <form lang="de"><text>weiß</text></form>
+      <form lang="es"><text>blanco</text></form>
+    </lexical-unit>
+    <trait name="code" value="adj./fr"/>
+    <trait name="dialecte" value="dialecte A"/>
+    <pronunciation>
+      <form lang="fr"><text>/blɑ̃/</text></form>
+    </pronunciation>
+    <sense id="s_blanc_1" order="1">
+      <grammatical-info value="Adjective"/>
+      <gloss lang="en"><text>white</text></gloss>
+      <gloss lang="de"><text>weiß</text></gloss>
+      <gloss lang="es"><text>blanco</text></gloss>
+      <definition>
+        <form lang="fr"><text>de la couleur du lait, de la neige</text></form>
+        <form lang="en"><text>having the color of milk or snow</text></form>
+      </definition>
+      <example>
+        <form lang="fr"><text>Une page blanche.</text></form>
+        <translation type="">
+          <form lang="en"><text>A blank page.</text></form>
+        </translation>
+      </example>
+    </sense>
+    <sense id="s_blanc_2" order="2">
+      <grammatical-info value="Adjective"/>
+      <gloss lang="en"><text>blank</text></gloss>
+      <definition>
+        <form lang="fr"><text>sans contenu, vide</text></form>
+        <form lang="en"><text>empty, without content</text></form>
+      </definition>
+    </sense>
+  </entry>
+
+  <entry id="e_maison" dateCreated="2024-04-02T09:00:00Z" dateModified="2024-04-28T12:00:00Z">
+    <lexical-unit>
+      <form lang="fr"><text>maison</text></form>
+      <form lang="en"><text>house</text></form>
+      <form lang="es"><text>casa</text></form>
+    </lexical-unit>
+    <trait name="code" value="n./fr"/>
+    <trait name="dialecte" value="dialecte B"/>
+    <pronunciation>
+      <form lang="fr"><text>/mɛzɔ̃/</text></form>
+    </pronunciation>
+    <sense id="s_maison_1" order="1">
+      <grammatical-info value="Noun"/>
+      <gloss lang="en"><text>house</text></gloss>
+      <gloss lang="es"><text>casa</text></gloss>
+      <definition>
+        <form lang="fr"><text>bâtiment servant d’habitation</text></form>
+        <form lang="en"><text>building for human habitation</text></form>
+      </definition>
+      <example>
+        <form lang="fr"><text>La maison est au bout de la rue.</text></form>
+        <translation type="">
+          <form lang="en"><text>The house is at the end of the street.</text></form>
+        </translation>
+      </example>
+    </sense>
+  </entry>
+
+  <entry id="e_ouragan" dateCreated="2024-04-03T08:00:00Z" dateModified="2024-04-28T12:00:00Z">
+    <lexical-unit>
+      <form lang="fr"><text>ouragan</text></form>
+      <form lang="en"><text>hurricane</text></form>
+      <form lang="es"><text>huracán</text></form>
+    </lexical-unit>
+    <trait name="code" value="n./fr"/>
+    <trait name="dialecte" value="côtier"/>
+    <pronunciation>
+      <form lang="fr"><text>/uʁaɡɑ̃/</text></form>
+    </pronunciation>
+    <sense id="s_ouragan_1" order="1">
+      <grammatical-info value="Noun"/>
+      <gloss lang="en"><text>hurricane</text></gloss>
+      <gloss lang="es"><text>huracán</text></gloss>
+      <definition>
+        <form lang="fr"><text>tempête tropicale très violente</text></form>
+        <form lang="en"><text>very violent tropical storm</text></form>
+      </definition>
+      <example>
+        <form lang="fr"><text>Un ouragan approche.</text></form>
+        <translation type="">
+          <form lang="en"><text>A hurricane is approaching.</text></form>
+        </translation>
+      </example>
+      <example>
+        <form lang="fr"><text>L’ouragan a détruit des maisons.</text></form>
+        <translation type="">
+          <form lang="en"><text>The hurricane destroyed houses.</text></form>
+        </translation>
+      </example>
+    </sense>
+  </entry>
+
+  <!-- Exemples multilingues (Tok Pisin / tww) -->
+  <entry id="e_wanem" dateCreated="2024-04-04T08:00:00Z" dateModified="2024-04-28T12:00:00Z">
+    <lexical-unit>
+      <form lang="tpi"><text>wanem</text></form>
+      <form lang="tww"><text>nala</text></form>
+    </lexical-unit>
+    <trait name="code" value="pro./tpi"/>
+    <trait name="dialecte" value="tpi-standard"/>
+    <sense id="s_wanem_1" order="1">
+      <grammatical-info value="Interrogative pro-form"/>
+      <gloss lang="en"><text>what</text></gloss>
+      <definition>
+        <form lang="fr"><text>mot interrogatif (quoi)</text></form>
+        <form lang="en"><text>interrogative (what)</text></form>
+      </definition>
+      <example>
+        <form lang="tpi"><text>Wanem nem bilong yu?</text></form>
+        <translation type="">
+          <form lang="en"><text>What is your name?</text></form>
+        </translation>
+      </example>
+    </sense>
+  </entry>
+
+  <!-- Série d'entrées supplémentaires (pour un dataset plus massif) -->
+  <entry id="e_bleu" dateCreated="2024-04-05T08:00:00Z" dateModified="2024-04-28T12:00:00Z">
+    <lexical-unit>
+      <form lang="fr"><text>bleu</text></form>
+      <form lang="en"><text>blue</text></form>
+      <form lang="es"><text>azul</text></form>
+    </lexical-unit>
+    <trait name="code" value="adj./fr"/>
+    <trait name="dialecte" value="standard"/>
+    <pronunciation>
+      <form lang="fr"><text>/blø/</text></form>
+    </pronunciation>
+    <sense id="s_bleu_1" order="1">
+      <gloss lang="en"><text>blue</text></gloss>
+      <gloss lang="es"><text>azul</text></gloss>
+      <definition>
+        <form lang="fr"><text>couleur du ciel par temps clair</text></form>
+        <form lang="en"><text>color of the clear sky</text></form>
+      </definition>
+    </sense>
+  </entry>
+
+  <entry id="e_soleil" dateCreated="2024-04-05T08:00:00Z" dateModified="2024-04-28T12:00:00Z">
+    <lexical-unit>
+      <form lang="fr"><text>soleil</text></form>
+      <form lang="en"><text>sun</text></form>
+      <form lang="es"><text>sol</text></form>
+      <form lang="de"><text>Sonne</text></form>
+    </lexical-unit>
+    <trait name="code" value="n./fr"/>
+    <trait name="dialecte" value="standard"/>
+    <pronunciation>
+      <form lang="fr"><text>/sɔlɛj/</text></form>
+    </pronunciation>
+    <sense id="s_soleil_1" order="1">
+      <gloss lang="en"><text>sun</text></gloss>
+      <definition>
+        <form lang="fr"><text>étoile au centre du système solaire</text></form>
+        <form lang="en"><text>star at the center of the solar system</text></form>
+      </definition>
+      <example>
+        <form lang="fr"><text>Le soleil se lève.</text></form>
+        <translation type="">
+          <form lang="en"><text>The sun rises.</text></form>
+        </translation>
+      </example>
+    </sense>
+  </entry>
+
+  <entry id="e_bonjour" dateCreated="2024-04-06T08:00:00Z" dateModified="2024-04-28T12:00:00Z">
+    <lexical-unit>
+      <form lang="fr"><text>bonjour</text></form>
+      <form lang="en"><text>hello</text></form>
+      <form lang="es"><text>hola</text></form>
+    </lexical-unit>
+    <trait name="code" value="intj./fr"/>
+    <trait name="dialecte" value="standard"/>
+    <sense id="s_bonjour_1" order="1">
+      <gloss lang="en"><text>hello</text></gloss>
+      <definition>
+        <form lang="fr"><text>salutation</text></form>
+        <form lang="en"><text>greeting</text></form>
+      </definition>
+      <example>
+        <form lang="fr"><text>Bonjour ! Comment ça va ?</text></form>
+        <translation type="">
+          <form lang="en"><text>Hello! How are you?</text></form>
+        </translation>
+      </example>
+    </sense>
+  </entry>
+
+</lift>
+
