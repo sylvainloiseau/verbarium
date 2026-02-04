@@ -2,6 +2,7 @@ com\example\ui\model\ExampleRow.class
 com\example\MainApp.class
 com\example\ui\model\SenseValueRow.class
 com\example\ui\model\SenseRow.class
+com\example\core\LiftOpenException.class
 com\example\ui\model\FormRow.class
 com\example\data\LiftRepository.class
 com\example\core\DictionaryService.class
