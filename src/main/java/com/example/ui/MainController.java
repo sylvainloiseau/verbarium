@@ -31,6 +31,7 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.Region;
 import javafx.geometry.Insets;
 import javafx.stage.FileChooser;
 
@@ -546,14 +547,18 @@ public final class MainController {
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Modifier l’entrée");
         dialog.initOwner(entryTable.getScene().getWindow());
+        dialog.setResizable(true);
 
         ButtonType saveType = new ButtonType("Enregistrer", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(saveType, ButtonType.CANCEL);
+        dialog.getDialogPane().setPrefSize(640, 420);
+        dialog.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
 
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
         grid.setPadding(new Insets(16));
+        grid.setPrefWidth(600);
 
         // Current values
         String currentCode = entry.getTraits().stream()
