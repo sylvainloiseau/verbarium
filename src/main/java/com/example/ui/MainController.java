@@ -1,11 +1,12 @@
 package com.example.ui;
 
+import com.example.core.DictionaryService;
+import com.example.core.LiftOpenException;
 import com.example.ui.model.ExampleRow;
 import com.example.ui.model.EntryRow;
 import com.example.ui.model.FormRow;
 import com.example.ui.model.SenseValueRow;
 import fr.cnrs.lacito.liftapi.LiftDictionary;
-import fr.cnrs.lacito.liftapi.LiftDocumentLoadingException;
 import fr.cnrs.lacito.liftapi.model.Form;
 import fr.cnrs.lacito.liftapi.model.LiftEntry;
 import fr.cnrs.lacito.liftapi.model.LiftExample;
@@ -17,16 +18,19 @@ import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
 import javafx.fxml.FXML;
+import javafx.scene.control.Alert;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.stage.FileChooser;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -38,8 +42,11 @@ import java.util.stream.Collectors;
 
 public final class MainController {
 
+    private final DictionaryService dictionaryService = new DictionaryService();
     private final Map<String, LiftEntry> entryById = new HashMap<>();
-    private FilteredList<EntryRow> filteredRows;
+    private final ObservableList<EntryRow> baseRows = FXCollections.observableArrayList();
+    private final FilteredList<EntryRow> filteredRows = new FilteredList<>(baseRows, r -> true);
+    private final SortedList<EntryRow> sortedRows = new SortedList<>(filteredRows);
 
     @FXML
     private TableView<EntryRow> entryTable;
@@ -136,11 +143,6 @@ public final class MainController {
         exPhraseColumn.setCellValueFactory(new PropertyValueFactory<>("fr"));
         exGlossColumn.setCellValueFactory(new PropertyValueFactory<>("gloss"));
 
-        LiftDictionary dictionary = loadDemoDictionary();
-        if (dictionary != null) {
-            dictionary.getLiftDictionaryComponents().getAllEntries().forEach(e -> e.getId().ifPresent(id -> entryById.put(id, e)));
-        }
-
         filterByCombo.setItems(FXCollections.observableArrayList(
                 "Tous",
                 "Entrée",
@@ -152,29 +154,8 @@ public final class MainController {
                 "Contenu linguistique"
         ));
         filterByCombo.getSelectionModel().selectFirst();
-
-        ObservableList<EntryRow> baseRows = FXCollections.observableArrayList();
-        if (dictionary != null) {
-            baseRows.addAll(dictionary.getLiftDictionaryComponents().getAllEntries().stream()
-                    .map(this::toRow)
-                    .toList());
-        }
-
-        filteredRows = new FilteredList<>(baseRows, r -> true);
-        SortedList<EntryRow> sortedRows = new SortedList<>(filteredRows);
         entryTable.setItems(sortedRows);
-
-        List<String> objectLangs = baseRows.stream()
-                .map(EntryRow::getLang)
-                .filter(s -> s != null && !s.isBlank())
-                .distinct()
-                .sorted()
-                .toList();
-        ObservableList<String> langItems = FXCollections.observableArrayList();
-        langItems.add("Toutes");
-        langItems.addAll(objectLangs);
-        languageFilterCombo.setItems(langItems);
-        languageFilterCombo.getSelectionModel().selectFirst();
+        refreshLanguageFilter();
 
         sortByCombo.setItems(FXCollections.observableArrayList(
                 "Entrée",
@@ -218,6 +199,9 @@ public final class MainController {
         sortByCombo.valueProperty().addListener((obs, o, n) -> applySort(sortedRows));
         applyFilters();
         applySort(sortedRows);
+
+        // Default: load embedded demo file on startup.
+        setDictionary(loadDemoDictionary());
     }
 
     private void applyFilters() {
@@ -276,8 +260,82 @@ public final class MainController {
     private void updateCountLabel() {
         if (tableCountLabel == null || entryTable == null) return;
         int shown = entryTable.getItems() == null ? 0 : entryTable.getItems().size();
-        int total = filteredRows == null ? shown : filteredRows.getSource().size();
+        int total = baseRows.size();
         tableCountLabel.setText(shown + " entrées affichées sur " + total);
+    }
+
+    @FXML
+    private void onImportLift() {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Importer un fichier LIFT (.lift)");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Fichier LIFT (*.lift)", "*.lift"));
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Tous les fichiers (*.*)", "*.*"));
+
+        File selected = chooser.showOpenDialog(entryTable.getScene().getWindow());
+        if (selected == null) return;
+
+        try {
+            LiftDictionary dictionary = dictionaryService.loadFromFile(selected);
+            setDictionary(dictionary);
+        } catch (LiftOpenException e) {
+            showError("Import LIFT", e.getMessage());
+        } catch (IOException e) {
+            showError("Import LIFT", "Erreur d’accès au fichier: " + e.getMessage());
+        }
+    }
+
+    private void setDictionary(LiftDictionary dictionary) {
+        entryById.clear();
+        baseRows.clear();
+
+        if (dictionary == null) {
+            refreshLanguageFilter();
+            applyFilters();
+            updateCountLabel();
+            return;
+        }
+
+        dictionary.getLiftDictionaryComponents().getAllEntries()
+                .forEach(e -> e.getId().ifPresent(id -> entryById.put(id, e)));
+
+        baseRows.addAll(dictionary.getLiftDictionaryComponents().getAllEntries().stream()
+                .map(this::toRow)
+                .toList());
+
+        refreshLanguageFilter();
+        applyFilters();
+        applySort(sortedRows);
+        updateCountLabel();
+
+        if (!entryTable.getItems().isEmpty()) {
+            entryTable.getSelectionModel().selectFirst();
+        }
+    }
+
+    private void refreshLanguageFilter() {
+        List<String> langs = baseRows.stream()
+                .map(EntryRow::getLang)
+                .filter(s -> s != null && !s.isBlank())
+                .distinct()
+                .sorted()
+                .toList();
+
+        ObservableList<String> items = FXCollections.observableArrayList();
+        items.add("Toutes");
+        items.addAll(langs);
+        languageFilterCombo.setItems(items);
+
+        if (languageFilterCombo.getSelectionModel().isEmpty()) {
+            languageFilterCombo.getSelectionModel().selectFirst();
+        }
+    }
+
+    private void showError(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 
     private LiftDictionary loadDemoDictionary() {

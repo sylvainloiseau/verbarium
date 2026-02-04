@@ -12,6 +12,11 @@
   -fx-font-size: 15px;
 }
 
+/* Dropdown (ContextMenu) items should be readable */
+.top-menu .context-menu .label {
+  -fx-text-fill: black;
+}
+
 .left-nav {
   -fx-background-color: #4c6f76;
   -fx-min-width: 220px;

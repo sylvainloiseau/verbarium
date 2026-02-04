@@ -168,6 +168,9 @@
     </lexical-unit>
     <trait name="code" value="pro./tpi"/>
     <trait name="dialecte" value="tpi-standard"/>
+    <pronunciation>
+      <form lang="tpi"><text>/ˈwa.nɛm/</text></form>
+    </pronunciation>
     <sense id="s_wanem_1" order="1">
       <grammatical-info value="Interrogative pro-form"/>
       <gloss lang="en"><text>what</text></gloss>
@@ -193,6 +196,9 @@
     </lexical-unit>
     <trait name="code" value="intj./it"/>
     <trait name="dialecte" value="standard"/>
+    <pronunciation>
+      <form lang="it"><text>/ˈt͡ʃa.o/</text></form>
+    </pronunciation>
     <sense id="s_ciao_1" order="1">
       <gloss lang="en"><text>hi</text></gloss>
       <definition>
@@ -216,6 +222,9 @@
     </lexical-unit>
     <trait name="code" value="intj./pt"/>
     <trait name="dialecte" value="pt-BR"/>
+    <pronunciation>
+      <form lang="pt"><text>/oˈla/</text></form>
+    </pronunciation>
     <sense id="s_ola_1" order="1">
       <gloss lang="en"><text>hello</text></gloss>
       <definition>
@@ -239,6 +248,9 @@
     </lexical-unit>
     <trait name="code" value="intj./ru"/>
     <trait name="dialecte" value="standard"/>
+    <pronunciation>
+      <form lang="ru"><text>/prʲɪˈvʲet/</text></form>
+    </pronunciation>
     <sense id="s_privet_1" order="1">
       <gloss lang="en"><text>hi</text></gloss>
       <definition>
@@ -262,6 +274,9 @@
     </lexical-unit>
     <trait name="code" value="n./ar"/>
     <trait name="dialecte" value="ar-MA"/>
+    <pronunciation>
+      <form lang="ar"><text>/saˈlaːm/</text></form>
+    </pronunciation>
     <sense id="s_salam_1" order="1">
       <gloss lang="en"><text>peace</text></gloss>
       <definition>
@@ -285,6 +300,9 @@
     </lexical-unit>
     <trait name="code" value="intj./zh"/>
     <trait name="dialecte" value="mandarin"/>
+    <pronunciation>
+      <form lang="zh"><text>nǐhǎo</text></form>
+    </pronunciation>
     <sense id="s_nihao_1" order="1">
       <gloss lang="en"><text>hello</text></gloss>
       <definition>
@@ -308,6 +326,9 @@
     </lexical-unit>
     <trait name="code" value="intj./ja"/>
     <trait name="dialecte" value="standard"/>
+    <pronunciation>
+      <form lang="ja"><text>kon’nichiwa</text></form>
+    </pronunciation>
     <sense id="s_konnichiwa_1" order="1">
       <gloss lang="en"><text>hello</text></gloss>
       <definition>
@@ -379,6 +400,9 @@
     </lexical-unit>
     <trait name="code" value="intj./fr"/>
     <trait name="dialecte" value="standard"/>
+    <pronunciation>
+      <form lang="fr"><text>/bɔ̃.ʒuʁ/</text></form>
+    </pronunciation>
     <sense id="s_bonjour_1" order="1">
       <gloss lang="en"><text>hello</text></gloss>
       <definition>
@@ -389,6 +413,89 @@
         <form lang="fr"><text>Bonjour ! Comment ça va ?</text></form>
         <translation type="">
           <form lang="en"><text>Hello! How are you?</text></form>
+        </translation>
+      </example>
+    </sense>
+  </entry>
+
+  <!-- Ajouts pour enrichir le dataset -->
+  <entry id="e_merci" dateCreated="2024-04-07T08:00:00Z" dateModified="2024-04-28T12:00:00Z">
+    <lexical-unit>
+      <form lang="fr"><text>merci</text></form>
+      <form lang="en"><text>thank you</text></form>
+      <form lang="es"><text>gracias</text></form>
+      <form lang="de"><text>danke</text></form>
+    </lexical-unit>
+    <trait name="code" value="intj./fr"/>
+    <trait name="dialecte" value="standard"/>
+    <pronunciation>
+      <form lang="fr"><text>/mɛʁ.si/</text></form>
+    </pronunciation>
+    <sense id="s_merci_1" order="1">
+      <gloss lang="en"><text>thanks</text></gloss>
+      <definition>
+        <form lang="fr"><text>expression de gratitude</text></form>
+        <form lang="en"><text>expression of gratitude</text></form>
+      </definition>
+      <example>
+        <form lang="fr"><text>Merci pour ton aide.</text></form>
+        <translation type="">
+          <form lang="en"><text>Thanks for your help.</text></form>
+        </translation>
+      </example>
+    </sense>
+  </entry>
+
+  <entry id="e_eau" dateCreated="2024-04-07T08:00:00Z" dateModified="2024-04-28T12:00:00Z">
+    <lexical-unit>
+      <form lang="fr"><text>eau</text></form>
+      <form lang="en"><text>water</text></form>
+      <form lang="es"><text>agua</text></form>
+      <form lang="it"><text>acqua</text></form>
+      <form lang="pt"><text>água</text></form>
+    </lexical-unit>
+    <trait name="code" value="n./fr"/>
+    <trait name="dialecte" value="standard"/>
+    <pronunciation>
+      <form lang="fr"><text>/o/</text></form>
+    </pronunciation>
+    <sense id="s_eau_1" order="1">
+      <gloss lang="en"><text>water</text></gloss>
+      <definition>
+        <form lang="fr"><text>liquide transparent, essentiel à la vie</text></form>
+        <form lang="en"><text>transparent liquid essential to life</text></form>
+      </definition>
+      <example>
+        <form lang="fr"><text>Je bois de l’eau.</text></form>
+        <translation type="">
+          <form lang="en"><text>I drink water.</text></form>
+        </translation>
+      </example>
+    </sense>
+  </entry>
+
+  <entry id="e_pain" dateCreated="2024-04-07T08:00:00Z" dateModified="2024-04-28T12:00:00Z">
+    <lexical-unit>
+      <form lang="fr"><text>pain</text></form>
+      <form lang="en"><text>bread</text></form>
+      <form lang="es"><text>pan</text></form>
+      <form lang="de"><text>Brot</text></form>
+    </lexical-unit>
+    <trait name="code" value="n./fr"/>
+    <trait name="dialecte" value="standard"/>
+    <pronunciation>
+      <form lang="fr"><text>/pɛ̃/</text></form>
+    </pronunciation>
+    <sense id="s_pain_1" order="1">
+      <gloss lang="en"><text>bread</text></gloss>
+      <definition>
+        <form lang="fr"><text>aliment à base de farine et d’eau, cuit au four</text></form>
+        <form lang="en"><text>baked food made from flour and water</text></form>
+      </definition>
+      <example>
+        <form lang="fr"><text>Du pain frais.</text></form>
+        <translation type="">
+          <form lang="en"><text>Fresh bread.</text></form>
         </translation>
       </example>
     </sense>
