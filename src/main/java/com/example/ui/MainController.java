@@ -3,6 +3,7 @@ package com.example.ui;
 import com.example.ui.model.EntryRow;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.cell.CheckBoxTableCell;
@@ -32,6 +33,12 @@ public final class MainController {
     private TableColumn<EntryRow, Boolean> fieldsColumn;
 
     @FXML
+    private ComboBox<String> languageFilterCombo;
+
+    @FXML
+    private ComboBox<String> sortByCombo;
+
+    @FXML
     private void initialize() {
         idColumn.setCellValueFactory(new PropertyValueFactory<>("id"));
         entryColumn.setCellValueFactory(new PropertyValueFactory<>("entry"));
@@ -41,6 +48,28 @@ public final class MainController {
 
         fieldsColumn.setCellValueFactory(new PropertyValueFactory<>("hasFields"));
         fieldsColumn.setCellFactory(CheckBoxTableCell.forTableColumn(fieldsColumn));
+
+        languageFilterCombo.setItems(FXCollections.observableArrayList(
+                "Toutes",
+                "Français",
+                "EN",
+                "ES",
+                "ESP",
+                "tpi",
+                "tww"
+        ));
+        languageFilterCombo.getSelectionModel().selectFirst();
+
+        sortByCombo.setItems(FXCollections.observableArrayList(
+                "ID",
+                "Entrée",
+                "Catégorie",
+                "Langue",
+                "Définitions",
+                "Trait",
+                "Date de modification"
+        ));
+        sortByCombo.getSelectionModel().selectFirst();
 
         entryTable.setItems(FXCollections.observableArrayList(
                 new EntryRow("01", "chien", "Nom", "Français", "animal", true),
