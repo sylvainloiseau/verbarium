@@ -15,12 +15,17 @@
 .left-nav {
   -fx-background-color: #4c6f76;
   -fx-min-width: 220px;
+  -fx-alignment: TOP_LEFT;
 }
 
 .section-title {
   -fx-text-fill: white;
   -fx-font-size: 22px;
   -fx-font-weight: bold;
+  -fx-alignment: CENTER_LEFT;
+  -fx-max-width: infinity;
+  /* Aligne le texte avec les boutons (même marge gauche). */
+  -fx-padding: 10px 10px 2px 10px;
 }
 
 .nav-button {
@@ -132,6 +137,20 @@
 }
 
 .note-button:hover {
+  -fx-background-color: #43646a;
+}
+
+.example-add-button {
+  -fx-background-color: #4c6f76;
+  -fx-text-fill: white;
+  -fx-font-size: 13px;
+  -fx-background-radius: 6px;
+  /* Moins épais que le bouton Note */
+  -fx-padding: 7px 12px 7px 12px;
+  -fx-max-width: infinity;
+}
+
+.example-add-button:hover {
   -fx-background-color: #43646a;
 }
 

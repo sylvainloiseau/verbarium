@@ -169,7 +169,7 @@
       </TableView>
 
       <HBox alignment="CENTER_RIGHT">
-        <Button text="+ Exemple" styleClass="note-button"/>
+        <Button text="+ Exemple" styleClass="example-add-button" maxWidth="1.7976931348623157E308" HBox.hgrow="ALWAYS"/>
       </HBox>
     </VBox>
   </right>
