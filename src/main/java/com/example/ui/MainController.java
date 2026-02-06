@@ -16,6 +16,7 @@ import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
 import javafx.fxml.FXML;
+import javafx.beans.binding.Bindings;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
@@ -230,7 +231,11 @@ public final class MainController {
         // Code trait
         TableColumn<LiftEntry, String> codeCol = new TableColumn<>("Code");
         codeCol.setPrefWidth(140);
-        codeCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(getTraitValue(cd.getValue(), "code")));
+        codeCol.setCellValueFactory(cd -> {
+            LiftEntry e = cd.getValue();
+            if (e == null) return new ReadOnlyStringWrapper("");
+            return Bindings.createStringBinding(() -> getTraitValue(e, "code"), e.traitsProperty());
+        });
 
         // Determine object languages used in lexical-unit/forms across the whole dictionary
         var formLangs = dictionary.getLiftDictionaryComponents().getAllEntries().stream()
@@ -246,11 +251,11 @@ public final class MainController {
         for (String lang : formLangs) {
             TableColumn<LiftEntry, String> langCol = new TableColumn<>(lang);
             langCol.setPrefWidth(160);
-            langCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(
-                    cd.getValue() == null
-                            ? ""
-                            : cd.getValue().getForms().getForm(lang).map(Form::toString).orElse("")
-            ));
+            langCol.setCellValueFactory(cd -> {
+                LiftEntry e = cd.getValue();
+                if (e == null) return new ReadOnlyStringWrapper("");
+                return e.getForms().formTextProperty(lang);
+            });
             formGroup.getColumns().add(langCol);
         }
 
@@ -268,15 +273,18 @@ public final class MainController {
         for (String lang : pronLangs) {
             TableColumn<LiftEntry, String> pCol = new TableColumn<>(lang);
             pCol.setPrefWidth(160);
-            pCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(
-                    cd.getValue() == null
-                            ? ""
-                            : cd.getValue().getPronunciations().stream()
-                            .findFirst()
-                            .flatMap(p -> p.getProunciation().getForm(lang))
-                            .map(Form::toString)
-                            .orElse("")
-            ));
+            pCol.setCellValueFactory(cd -> {
+                LiftEntry e = cd.getValue();
+                if (e == null) return new ReadOnlyStringWrapper("");
+                // Bind to first pronunciation if present; if pronunciations list changes, binding updates
+                return Bindings.createStringBinding(() -> e.getPronunciations().stream()
+                                .findFirst()
+                                .flatMap(p -> p.getProunciation().getForm(lang))
+                                .map(Form::toString)
+                                .orElse(""),
+                        e.pronunciationsProperty()
+                );
+            });
             pronGroup.getColumns().add(pCol);
         }
 
@@ -392,9 +400,11 @@ public final class MainController {
         for (String lang : langs) {
             TableColumn<LiftSense, String> c = new TableColumn<>(lang);
             c.setPrefWidth(180);
-            c.setCellValueFactory(cd -> new ReadOnlyStringWrapper(
-                    cd.getValue() == null ? "" : cd.getValue().getDefinition().getForm(lang).map(Form::toString).orElse("")
-            ));
+            c.setCellValueFactory(cd -> {
+                LiftSense s = cd.getValue();
+                if (s == null) return new ReadOnlyStringWrapper("");
+                return s.getDefinition().formTextProperty(lang);
+            });
             defGroup.getColumns().add(c);
         }
 
@@ -402,9 +412,11 @@ public final class MainController {
         for (String lang : langs) {
             TableColumn<LiftSense, String> c = new TableColumn<>(lang);
             c.setPrefWidth(180);
-            c.setCellValueFactory(cd -> new ReadOnlyStringWrapper(
-                    cd.getValue() == null ? "" : cd.getValue().getGloss().getForm(lang).map(Form::toString).orElse("")
-            ));
+            c.setCellValueFactory(cd -> {
+                LiftSense s = cd.getValue();
+                if (s == null) return new ReadOnlyStringWrapper("");
+                return s.getGloss().formTextProperty(lang);
+            });
             glossGroup.getColumns().add(c);
         }
 
@@ -440,9 +452,11 @@ public final class MainController {
         for (String lang : exLangs) {
             TableColumn<LiftExample, String> c = new TableColumn<>(lang);
             c.setPrefWidth(220);
-            c.setCellValueFactory(cd -> new ReadOnlyStringWrapper(
-                    cd.getValue() == null ? "" : cd.getValue().getExample().getForm(lang).map(Form::toString).orElse("")
-            ));
+            c.setCellValueFactory(cd -> {
+                LiftExample ex = cd.getValue();
+                if (ex == null) return new ReadOnlyStringWrapper("");
+                return ex.getExample().formTextProperty(lang);
+            });
             exGroup.getColumns().add(c);
         }
 
