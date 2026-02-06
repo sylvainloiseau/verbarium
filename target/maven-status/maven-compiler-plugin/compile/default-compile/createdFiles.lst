@@ -6,5 +6,4 @@ com\example\core\LiftOpenException.class
 com\example\ui\model\FormRow.class
 com\example\data\LiftRepository.class
 com\example\core\DictionaryService.class
-com\example\ui\model\EntryRow.class
 com\example\ui\MainController.class

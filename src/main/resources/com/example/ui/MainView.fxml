@@ -32,6 +32,7 @@
         <Menu text="Fichier">
           <items>
             <MenuItem text="Importer…" onAction="#onImportLift"/>
+            <MenuItem text="Enregistrer" onAction="#onSave"/>
           </items>
         </Menu>
         <Menu text="Édition"/>
@@ -81,13 +82,6 @@
           <TextField fx:id="searchField" promptText="Rechercher..." styleClass="search-input" HBox.hgrow="ALWAYS"/>
           <Button text="+ Note" styleClass="note-button"/>
         </HBox>
-        <HBox spacing="14" alignment="CENTER_RIGHT">
-          <Label text="Langue:" styleClass="search-label"/>
-          <ComboBox fx:id="languageFilterCombo" prefWidth="180" />
-          <Label text="Trier par:" styleClass="search-label"/>
-          <ComboBox fx:id="sortByCombo" prefWidth="180" />
-          <ComboBox fx:id="filterByCombo" promptText="Filtrer par" prefWidth="180" />
-        </HBox>
       </VBox>
 
       <HBox alignment="CENTER_LEFT" styleClass="section-header">
@@ -95,15 +89,6 @@
       </HBox>
 
       <TableView fx:id="entryTable" styleClass="entry-table" VBox.vgrow="ALWAYS">
-        <columns>
-          <TableColumn fx:id="entryColumn" text="Entrée" prefWidth="220"/>
-          <TableColumn fx:id="codeColumn" text="Code" prefWidth="120"/>
-          <TableColumn fx:id="pronColumn" text="Prononciation" prefWidth="150"/>
-          <TableColumn fx:id="langColumn" text="Langue" prefWidth="120"/>
-          <TableColumn fx:id="defColumn" text="Définitions" prefWidth="200"/>
-          <TableColumn fx:id="contentColumn" text="Contenu linguistique" prefWidth="260"/>
-          <TableColumn fx:id="metaLangColumn" text="Métalangue" prefWidth="140"/>
-        </columns>
       </TableView>
 
       <HBox alignment="CENTER_LEFT" spacing="10" styleClass="table-footer">
@@ -142,9 +127,6 @@
 
         <Label text="Prononciation" GridPane.rowIndex="1" GridPane.columnIndex="0" styleClass="form-label"/>
         <TextField fx:id="pronEditField" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
-
-        <Label text="Dialecte" GridPane.rowIndex="2" GridPane.columnIndex="0" styleClass="form-label"/>
-        <TextField fx:id="dialectEditField" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
       </GridPane>
 
       <TabPane fx:id="editTabs" tabClosingPolicy="UNAVAILABLE" styleClass="edit-tabs">

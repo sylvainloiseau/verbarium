@@ -3,7 +3,6 @@ package com.example.ui;
 import com.example.core.DictionaryService;
 import com.example.core.LiftOpenException;
 import com.example.ui.model.ExampleRow;
-import com.example.ui.model.EntryRow;
 import com.example.ui.model.FormRow;
 import com.example.ui.model.SenseValueRow;
 import fr.cnrs.lacito.liftapi.LiftDictionary;
@@ -23,13 +22,13 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
-import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Region;
 import javafx.geometry.Insets;
@@ -53,45 +52,15 @@ public final class MainController {
     private final DictionaryService dictionaryService = new DictionaryService();
     private LiftDictionary currentDictionary;
     private final Map<String, LiftEntry> entryById = new HashMap<>();
-    private final ObservableList<EntryRow> baseRows = FXCollections.observableArrayList();
-    private final FilteredList<EntryRow> filteredRows = new FilteredList<>(baseRows, r -> true);
-    private final SortedList<EntryRow> sortedRows = new SortedList<>(filteredRows);
+    private final ObservableList<LiftEntry> baseEntries = FXCollections.observableArrayList();
+    private final FilteredList<LiftEntry> filteredEntries = new FilteredList<>(baseEntries, e -> true);
+    private final SortedList<LiftEntry> sortedEntries = new SortedList<>(filteredEntries);
 
     @FXML
-    private TableView<EntryRow> entryTable;
+    private TableView<LiftEntry> entryTable;
 
     @FXML
     private TextField searchField;
-
-    @FXML
-    private TableColumn<EntryRow, String> entryColumn;
-
-    @FXML
-    private TableColumn<EntryRow, String> codeColumn;
-
-    @FXML
-    private TableColumn<EntryRow, String> pronColumn;
-
-    @FXML
-    private TableColumn<EntryRow, String> langColumn;
-
-    @FXML
-    private TableColumn<EntryRow, String> defColumn;
-
-    @FXML
-    private TableColumn<EntryRow, String> contentColumn;
-
-    @FXML
-    private TableColumn<EntryRow, String> metaLangColumn;
-
-    @FXML
-    private ComboBox<String> filterByCombo;
-
-    @FXML
-    private ComboBox<String> languageFilterCombo;
-
-    @FXML
-    private ComboBox<String> sortByCombo;
 
     @FXML
     private Label tableCountLabel;
@@ -107,9 +76,6 @@ public final class MainController {
 
     @FXML
     private TextField pronEditField;
-
-    @FXML
-    private TextField dialectEditField;
 
     @FXML
     private TableView<FormRow> formsTable;
@@ -143,14 +109,6 @@ public final class MainController {
 
     @FXML
     private void initialize() {
-        entryColumn.setCellValueFactory(new PropertyValueFactory<>("entry"));
-        codeColumn.setCellValueFactory(new PropertyValueFactory<>("code"));
-        pronColumn.setCellValueFactory(new PropertyValueFactory<>("pron"));
-        langColumn.setCellValueFactory(new PropertyValueFactory<>("lang"));
-        defColumn.setCellValueFactory(new PropertyValueFactory<>("def"));
-        contentColumn.setCellValueFactory(new PropertyValueFactory<>("content"));
-        metaLangColumn.setCellValueFactory(new PropertyValueFactory<>("metaLang"));
-
         formLangColumn.setCellValueFactory(new PropertyValueFactory<>("lang"));
         formValueColumn.setCellValueFactory(new PropertyValueFactory<>("value"));
 
@@ -161,35 +119,13 @@ public final class MainController {
         exPhraseColumn.setCellValueFactory(new PropertyValueFactory<>("fr"));
         exGlossColumn.setCellValueFactory(new PropertyValueFactory<>("gloss"));
 
-        filterByCombo.setItems(FXCollections.observableArrayList(
-                "Tous",
-                "Entrée",
-                "Code",
-                "Prononciation",
-                "Langue",
-                "Définitions",
-                "Métalangue",
-                "Contenu linguistique"
-        ));
-        filterByCombo.getSelectionModel().selectFirst();
-        entryTable.setItems(sortedRows);
-        refreshLanguageFilter();
-
-        sortByCombo.setItems(FXCollections.observableArrayList(
-                "Entrée",
-                "Code",
-                "Prononciation",
-                "Langue",
-                "Définitions",
-                "Métalangue"
-        ));
-        sortByCombo.getSelectionModel().selectFirst();
+        entryTable.setItems(sortedEntries);
 
         updateCountLabel();
-        filteredRows.addListener((javafx.collections.ListChangeListener<? super EntryRow>) c -> updateCountLabel());
+        filteredEntries.addListener((javafx.collections.ListChangeListener<? super LiftEntry>) c -> updateCountLabel());
 
         entryTable.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> {
-            if (newV == null || newV.getId() == null) {
+            if (newV == null || newV.getId().isEmpty()) {
                 editEntryTitle.setText("(sélectionne une entrée)");
                 editEntryCode.setText("");
                 formsTable.setItems(FXCollections.observableArrayList());
@@ -198,73 +134,29 @@ public final class MainController {
                 return;
             }
 
-            LiftEntry selected = entryById.get(newV.getId());
-            if (selected == null) {
-                editEntryTitle.setText(newV.getEntry());
-                editEntryCode.setText(newV.getCode());
-                formsTable.setItems(FXCollections.observableArrayList());
-                sensesTable.setItems(FXCollections.observableArrayList());
-                examplesTable.setItems(FXCollections.observableArrayList());
-                return;
-            }
-            populateEditor(selected);
+            populateEditor(newV);
         });
 
         // Filters
         searchField.textProperty().addListener((obs, o, n) -> applyFilters());
-        languageFilterCombo.valueProperty().addListener((obs, o, n) -> applyFilters());
-        filterByCombo.valueProperty().addListener((obs, o, n) -> applyFilters());
-        sortByCombo.valueProperty().addListener((obs, o, n) -> applySort(sortedRows));
         applyFilters();
-        applySort(sortedRows);
 
         // Default: load embedded demo file on startup.
         setDictionary(loadDemoDictionary());
     }
 
     private void applyFilters() {
-        if (filteredRows == null) return;
+        if (filteredEntries == null) return;
         final String q = Optional.ofNullable(searchField.getText()).orElse("").trim().toLowerCase(Locale.ROOT);
-        final String lang = Optional.ofNullable(languageFilterCombo.getValue()).orElse("Toutes");
-        final String filterBy = Optional.ofNullable(filterByCombo.getValue()).orElse("Tous");
 
-        filteredRows.setPredicate(row -> {
-            if (row == null) return false;
-            if (!"Toutes".equals(lang) && (row.getLang() == null || !lang.equals(row.getLang()))) return false;
+        filteredEntries.setPredicate(entry -> {
+            if (entry == null) return false;
             if (q.isEmpty()) return true;
 
-            return switch (filterBy) {
-                case "Entrée" -> contains(row.getEntry(), q);
-                case "Code" -> contains(row.getCode(), q);
-                case "Prononciation" -> contains(row.getPron(), q);
-                case "Langue" -> contains(row.getLang(), q);
-                case "Définitions" -> contains(row.getDef(), q);
-                case "Métalangue" -> contains(row.getMetaLang(), q);
-                case "Contenu linguistique" -> contains(row.getContent(), q);
-                default -> contains(row.getEntry(), q)
-                        || contains(row.getCode(), q)
-                        || contains(row.getPron(), q)
-                        || contains(row.getLang(), q)
-                        || contains(row.getDef(), q)
-                        || contains(row.getMetaLang(), q)
-                        || contains(row.getContent(), q);
-            };
+            String haystack = buildSearchText(entry);
+            return contains(haystack, q);
         });
         updateCountLabel();
-    }
-
-    private void applySort(SortedList<EntryRow> sortedRows) {
-        if (sortedRows == null) return;
-        final String sortBy = Optional.ofNullable(sortByCombo.getValue()).orElse("Entrée");
-        Comparator<EntryRow> cmp = switch (sortBy) {
-            case "Code" -> Comparator.comparing(r -> safe(r.getCode()));
-            case "Prononciation" -> Comparator.comparing(r -> safe(r.getPron()));
-            case "Langue" -> Comparator.comparing(r -> safe(r.getLang()));
-            case "Définitions" -> Comparator.comparing(r -> safe(r.getDef()));
-            case "Métalangue" -> Comparator.comparing(r -> safe(r.getMetaLang()));
-            default -> Comparator.comparing(r -> safe(r.getEntry()));
-        };
-        sortedRows.setComparator(cmp);
     }
 
     private static boolean contains(String value, String q) {
@@ -278,7 +170,7 @@ public final class MainController {
     private void updateCountLabel() {
         if (tableCountLabel == null || entryTable == null) return;
         int shown = entryTable.getItems() == null ? 0 : entryTable.getItems().size();
-        int total = baseRows.size();
+        int total = baseEntries.size();
         tableCountLabel.setText(shown + " entrées affichées sur " + total);
     }
 
@@ -302,13 +194,25 @@ public final class MainController {
         }
     }
 
+    @FXML
+    private void onSave() {
+        if (currentDictionary == null) {
+            showError("Enregistrer", "Aucun dictionnaire chargé.");
+            return;
+        }
+        try {
+            currentDictionary.save();
+        } catch (Exception e) {
+            showError("Enregistrer", "Impossible d'enregistrer le fichier LIFT: " + e.getMessage());
+        }
+    }
+
     private void setDictionary(LiftDictionary dictionary) {
         this.currentDictionary = dictionary;
         entryById.clear();
-        baseRows.clear();
+        baseEntries.clear();
 
         if (dictionary == null) {
-            refreshLanguageFilter();
             applyFilters();
             updateCountLabel();
             return;
@@ -317,13 +221,11 @@ public final class MainController {
         dictionary.getLiftDictionaryComponents().getAllEntries()
                 .forEach(e -> e.getId().ifPresent(id -> entryById.put(id, e)));
 
-        baseRows.addAll(dictionary.getLiftDictionaryComponents().getAllEntries().stream()
-                .map(this::toRow)
-                .toList());
+        baseEntries.addAll(dictionary.getLiftDictionaryComponents().getAllEntries());
 
-        refreshLanguageFilter();
+        configureEntryTableColumns(dictionary);
+
         applyFilters();
-        applySort(sortedRows);
         updateCountLabel();
 
         if (!entryTable.getItems().isEmpty()) {
@@ -331,22 +233,83 @@ public final class MainController {
         }
     }
 
-    private void refreshLanguageFilter() {
-        List<String> langs = baseRows.stream()
-                .map(EntryRow::getLang)
+    private void configureEntryTableColumns(LiftDictionary dictionary) {
+        if (entryTable == null) return;
+        entryTable.getColumns().clear();
+
+        // Code trait
+        TableColumn<LiftEntry, String> codeCol = new TableColumn<>("Code");
+        codeCol.setPrefWidth(140);
+        codeCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(getTraitValue(cd.getValue(), "code")));
+
+        // Determine object languages used in lexical-unit/forms across the whole dictionary
+        var langs = dictionary.getLiftDictionaryComponents().getAllEntries().stream()
+                .flatMap(e -> e.getForms().getLangs().stream())
                 .filter(s -> s != null && !s.isBlank())
                 .distinct()
                 .sorted()
                 .toList();
 
-        ObservableList<String> items = FXCollections.observableArrayList();
-        items.add("Toutes");
-        items.addAll(langs);
-        languageFilterCombo.setItems(items);
-
-        if (languageFilterCombo.getSelectionModel().isEmpty()) {
-            languageFilterCombo.getSelectionModel().selectFirst();
+        // Grouped columns for forms (one column per language)
+        TableColumn<LiftEntry, String> formGroup = new TableColumn<>("Form");
+        formGroup.setPrefWidth(Math.max(220, langs.size() * 160));
+        for (String lang : langs) {
+            TableColumn<LiftEntry, String> langCol = new TableColumn<>(lang);
+            langCol.setPrefWidth(160);
+            langCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(
+                    cd.getValue() == null
+                            ? ""
+                            : cd.getValue().getForms().getForm(lang).map(Form::toString).orElse("")
+            ));
+            formGroup.getColumns().add(langCol);
         }
+
+        // Pronunciation (best-effort): first pronunciation, shown in its available language form(s)
+        TableColumn<LiftEntry, String> pronGroup = new TableColumn<>("Pron");
+        pronGroup.setPrefWidth(Math.max(160, langs.size() * 160));
+        for (String lang : langs) {
+            TableColumn<LiftEntry, String> pCol = new TableColumn<>(lang);
+            pCol.setPrefWidth(160);
+            pCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(
+                    cd.getValue() == null
+                            ? ""
+                            : cd.getValue().getPronunciations().stream()
+                            .findFirst()
+                            .flatMap(p -> p.getProunciation().getForm(lang))
+                            .or(() -> cd.getValue().getPronunciations().stream()
+                                    .findFirst()
+                                    .flatMap(p -> p.getProunciation().getForms().stream().findFirst()))
+                            .map(Form::toString)
+                            .orElse("")
+            ));
+            pronGroup.getColumns().add(pCol);
+        }
+
+        entryTable.getColumns().addAll(codeCol, formGroup, pronGroup);
+    }
+
+    private static String getTraitValue(LiftEntry entry, String traitName) {
+        if (entry == null || traitName == null) return "";
+        return entry.getTraits().stream()
+                .filter(t -> traitName.equals(t.getName()))
+                .findFirst()
+                .map(LiftTrait::getValue)
+                .orElse("");
+    }
+
+    private static String buildSearchText(LiftEntry entry) {
+        if (entry == null) return "";
+        StringBuilder sb = new StringBuilder();
+        appendSep(sb, getTraitValue(entry, "code"));
+        for (Form f : entry.getForms().getForms()) appendSep(sb, f.toString());
+        for (LiftPronunciation p : entry.getPronunciations()) {
+            for (Form f : p.getProunciation().getForms()) appendSep(sb, f.toString());
+        }
+        for (LiftSense s : entry.getSenses()) {
+            for (Form f : s.getDefinition().getForms()) appendSep(sb, f.toString());
+            for (Form f : s.getGloss().getForms()) appendSep(sb, f.toString());
+        }
+        return sb.toString();
     }
 
     private void showError(String title, String message) {
@@ -372,58 +335,6 @@ public final class MainController {
         }
     }
 
-    private EntryRow toRow(LiftEntry e) {
-        String id = e.getId().orElse("");
-
-        // Entrée: prefer fr, else first form.
-        MultiText forms = e.getForms();
-        Form preferred = forms.getForm("fr").orElseGet(() -> forms.getForms().stream().findFirst().orElse(Form.EMPTY_FORM));
-        String entry = preferred == Form.EMPTY_FORM ? "" : preferred.toString();
-
-        // Code + Métalangue (dialecte): from traits
-        Map<String, List<LiftTrait>> traitsByName = e.getTraits().stream().collect(Collectors.groupingBy(LiftTrait::getName));
-        String code = traitsByName.getOrDefault("code", List.of()).stream().findFirst().map(LiftTrait::getValue).orElse("");
-        String metaLang = traitsByName.getOrDefault("dialecte", List.of()).stream().findFirst().map(LiftTrait::getValue).orElse("");
-
-        // Langue: derive from code suffix (e.g. n./fr), fallback to preferred form lang.
-        String langCode = extractLangCodeFromCodeTrait(code).orElseGet(() -> preferred == Form.EMPTY_FORM ? "" : preferred.getLang());
-        String lang = displayLang(langCode);
-
-        // Pronunciation: first pronunciation form (prefer fr)
-        String pron = e.getPronunciations().stream()
-                .findFirst()
-                .flatMap(p -> p.getMainMultiText().getForm("fr").or(() -> p.getMainMultiText().getForms().stream().findFirst()))
-                .map(Form::toString)
-                .orElse("");
-
-        // Definitions + content: from first sense
-        Optional<LiftSense> firstSense = e.getSenses().stream().findFirst();
-        String defs = firstSense
-                .map(s -> joinForms(s.getDefinition(), List.of("fr", "en")))
-                .orElse("");
-
-        String content = firstSense
-                .map(s -> joinForms(s.getGloss(), List.of("en", "fr", "es", "de", "it", "pt", "ru", "ar", "zh", "ja", "tpi")))
-                .orElse("");
-
-        return new EntryRow(id, entry, code, pron, lang, defs, content, metaLang);
-    }
-
-    private static String joinForms(MultiText mt, List<String> preferredLangOrder) {
-        if (mt == null || mt.isEmpty()) return "";
-        StringBuilder sb = new StringBuilder();
-        for (String l : preferredLangOrder) {
-            mt.getForm(l).ifPresent(f -> appendSep(sb, f.toString()));
-        }
-        // Append remaining langs
-        for (Form f : mt.getForms()) {
-            if (!preferredLangOrder.contains(f.getLang())) {
-                appendSep(sb, f.toString());
-            }
-        }
-        return sb.toString();
-    }
-
     private static void appendSep(StringBuilder sb, String part) {
         if (part == null || part.isBlank()) return;
         if (!sb.isEmpty()) sb.append("; ");
@@ -433,14 +344,12 @@ public final class MainController {
     private void populateEditor(LiftEntry entry) {
         // Header
         MultiText forms = entry.getForms();
-        Form preferred = forms.getForm("fr").orElseGet(() -> forms.getForms().stream().findFirst().orElse(Form.EMPTY_FORM));
+        Form preferred = forms.getForms().stream().findFirst().orElse(Form.EMPTY_FORM);
         editEntryTitle.setText(preferred == Form.EMPTY_FORM ? "(sans forme)" : preferred.toString());
         String code = entry.getTraits().stream().filter(t -> "code".equals(t.getName())).findFirst().map(LiftTrait::getValue).orElse("");
-        String dialecte = entry.getTraits().stream().filter(t -> "dialecte".equals(t.getName())).findFirst().map(LiftTrait::getValue).orElse("");
         editEntryCode.setText(code);
 
         codeEditField.setText(code);
-        dialectEditField.setText(dialecte);
 
         // Pronunciation: display first available pronunciation form
         String pron = entry.getPronunciations().stream()
@@ -453,7 +362,7 @@ public final class MainController {
         // Formes tab: all lexical-unit forms
         ObservableList<FormRow> formRows = FXCollections.observableArrayList();
         for (Form f : forms.getForms()) {
-            formRows.add(new FormRow(displayLang(f.getLang()), f.toString()));
+            formRows.add(new FormRow(f.getLang(), f.toString()));
         }
         formsTable.setItems(formRows);
 
@@ -461,11 +370,11 @@ public final class MainController {
         ObservableList<SenseValueRow> senseRows = FXCollections.observableArrayList();
         for (LiftSense s : entry.getSenses()) {
             for (Form f : s.getDefinition().getForms()) {
-                senseRows.add(new SenseValueRow(displayLang(f.getLang()), f.toString()));
+                senseRows.add(new SenseValueRow(f.getLang(), f.toString()));
             }
             for (Form f : s.getGloss().getForms()) {
                 // also show glosses if present
-                senseRows.add(new SenseValueRow(displayLang(f.getLang()), f.toString()));
+                senseRows.add(new SenseValueRow(f.getLang(), f.toString()));
             }
         }
         sensesTable.setItems(senseRows);
@@ -491,19 +400,13 @@ public final class MainController {
 
     @FXML
     private void onModifyEntry() {
-        EntryRow selectedRow = entryTable.getSelectionModel().getSelectedItem();
-        if (selectedRow == null || selectedRow.getId() == null) {
+        LiftEntry entry = entryTable.getSelectionModel().getSelectedItem();
+        if (entry == null || entry.getId().isEmpty()) {
             showError("Modification", "Aucune entrée sélectionnée.");
             return;
         }
         if (currentDictionary == null) {
             showError("Modification", "Aucun dictionnaire chargé.");
-            return;
-        }
-
-        LiftEntry entry = entryById.get(selectedRow.getId());
-        if (entry == null) {
-            showError("Modification", "Entrée introuvable dans le dictionnaire en mémoire.");
             return;
         }
 
@@ -516,27 +419,11 @@ public final class MainController {
         boolean saved = showEditEntryDialog(factory, entry);
         if (!saved) return;
 
-        // Persist changes
-        try {
-            currentDictionary.save(); // overwrite file it was read from
-        } catch (Exception e) {
-            showError("Modification", "Impossible d'enregistrer le fichier LIFT: " + e.getMessage());
-            return;
-        }
+        // Persist changes (explicit save action)
+        onSave();
 
-        // Refresh only the modified row (keeps filters/sort and selection)
-        String keepId = selectedRow.getId();
-        EntryRow updatedRow = toRow(entry);
-        for (int i = 0; i < baseRows.size(); i++) {
-            if (keepId.equals(baseRows.get(i).getId())) {
-                baseRows.set(i, updatedRow);
-                break;
-            }
-        }
-        refreshLanguageFilter();
+        // Refresh view
         applyFilters();
-        applySort(sortedRows);
-        selectRowById(keepId);
         entryTable.refresh();
         populateEditor(entry);
     }
@@ -566,38 +453,30 @@ public final class MainController {
                 .findFirst()
                 .map(LiftTrait::getValue)
                 .orElse("");
-        String currentDialecte = entry.getTraits().stream()
-                .filter(t -> "dialecte".equals(t.getName()))
-                .findFirst()
-                .map(LiftTrait::getValue)
-                .orElse("");
         String currentPron = entry.getPronunciations().stream()
                 .findFirst()
                 .flatMap(p -> p.getProunciation().getForms().stream().findFirst())
                 .map(Form::toString)
                 .orElse("");
         MultiText forms = entry.getForms();
-        Form preferred = forms.getForm("fr").orElseGet(() -> forms.getForms().stream().findFirst().orElse(Form.EMPTY_FORM));
+        Form preferred = forms.getForms().stream().findFirst().orElse(Form.EMPTY_FORM);
         String derivedLangCode = extractLangCodeFromCodeTrait(currentCode)
                 .orElseGet(() -> preferred == Form.EMPTY_FORM ? "" : preferred.getLang());
 
         // Inputs
         TextField codeField = new TextField(currentCode);
         TextField pronField = new TextField(currentPron);
-        TextField dialectField = new TextField(currentDialecte);
         TextField langCodeField = new TextField(derivedLangCode);
 
-        Label langNamePreview = new Label(displayLang(derivedLangCode));
+        Label langNamePreview = new Label(derivedLangCode);
         langNamePreview.getStyleClass().add("muted");
-        langCodeField.textProperty().addListener((obs, o, n) -> langNamePreview.setText(displayLang(safeTrim(n))));
+        langCodeField.textProperty().addListener((obs, o, n) -> langNamePreview.setText(safeTrim(n)));
 
         int r = 0;
         grid.add(new Label("Code"), 0, r);
         grid.add(codeField, 1, r++);
         grid.add(new Label("Prononciation"), 0, r);
         grid.add(pronField, 1, r++);
-        grid.add(new Label("Dialecte"), 0, r);
-        grid.add(dialectField, 1, r++);
         grid.add(new Label("Langue (code)"), 0, r);
         grid.add(langCodeField, 1, r++);
         grid.add(new Label("Langue (nom)"), 0, r);
@@ -611,13 +490,11 @@ public final class MainController {
         }
 
         String newCode = safeTrim(codeField.getText());
-        String newDialect = safeTrim(dialectField.getText());
         String newPronValue = safeTrim(pronField.getText());
         String newLangCode = safeTrim(langCodeField.getText());
 
         // Apply changes
         replaceTrait(factory, entry, "code", newCode);
-        replaceTrait(factory, entry, "dialecte", newDialect);
 
         // Change preferred form language when requested (best-effort)
         if (!newLangCode.isBlank()) {
@@ -718,17 +595,6 @@ public final class MainController {
         mt.add(new Form(langCode, pronunciationValue));
     }
 
-    private void selectRowById(String id) {
-        if (id == null) return;
-        for (EntryRow row : entryTable.getItems()) {
-            if (id.equals(row.getId())) {
-                entryTable.getSelectionModel().select(row);
-                entryTable.scrollTo(row);
-                return;
-            }
-        }
-    }
-
     private static Optional<String> extractLangCodeFromCodeTrait(String code) {
         if (code == null) return Optional.empty();
         int idx = code.lastIndexOf('/');
@@ -737,26 +603,6 @@ public final class MainController {
         return lang.isEmpty() ? Optional.empty() : Optional.of(lang);
     }
 
-    private static String displayLang(String code) {
-        if (code == null) return "";
-        String normalized = code.trim();
-        if (normalized.isEmpty()) return "";
-        // keep base language if tags like fr-FR / pt_BR
-        String base = normalized.split("[-_]", 2)[0].toLowerCase(Locale.ROOT);
-        return switch (base) {
-            case "fr" -> "Français";
-            case "en" -> "Anglais";
-            case "es" -> "Espagnol";
-            case "de" -> "Allemand";
-            case "it" -> "Italien";
-            case "pt" -> "Portugais";
-            case "ru" -> "Russe";
-            case "ar" -> "Arabe";
-            case "zh" -> "Chinois";
-            case "ja" -> "Japonais";
-            case "tpi" -> "Tok Pisin";
-            default -> normalized;
-        };
-    }
+    // Intentionally no language-name mapping/hardcoding.
 }
 
