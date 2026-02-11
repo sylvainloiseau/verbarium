@@ -1,6 +1,8 @@
 com\example\data\LiftRepository.class
 com\example\MainApp.class
+com\example\ui\controls\MultiTextEditor.class
 com\example\ui\model\SenseRow.class
 com\example\core\LiftOpenException.class
+com\example\ui\controls\MultiTextEditor$Row.class
 com\example\core\DictionaryService.class
 com\example\ui\MainController.class

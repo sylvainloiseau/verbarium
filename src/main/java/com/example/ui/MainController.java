@@ -25,11 +25,11 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
-import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Region;
 import javafx.geometry.Insets;
+import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 
 import java.io.File;
@@ -73,13 +73,7 @@ public final class MainController {
     private TextField pronEditField;
 
     @FXML
-    private TableView<Form> formsTable;
-
-    @FXML
-    private TableColumn<Form, String> formLangColumn;
-
-    @FXML
-    private TableColumn<Form, String> formValueColumn;
+    private VBox formsEditorContainer;
 
     @FXML
     private TableView<LiftSense> sensesTable;
@@ -102,12 +96,11 @@ public final class MainController {
     @FXML
     private TableColumn<LiftExample, String> exGlossColumn;
 
+    private final com.example.ui.controls.MultiTextEditor formsEditor = new com.example.ui.controls.MultiTextEditor();
+
     @FXML
     private void initialize() {
         // Right panel tables: bound to lift-api objects directly (no row adapters).
-        formLangColumn.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue() == null ? "" : safeTrim(cd.getValue().getLang())));
-        formValueColumn.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue() == null ? "" : cd.getValue().toString()));
-
         // Senses table columns are configured dynamically per entry (language columns).
         // Keep fx:id columns unused for now; we still configure the TableView in populateEditor.
 
@@ -123,7 +116,7 @@ public final class MainController {
             if (newV == null || newV.getId().isEmpty()) {
                 editEntryTitle.setText("(sélectionne une entrée)");
                 editEntryCode.setText("");
-                formsTable.setItems(FXCollections.observableArrayList());
+                if (formsEditorContainer != null) formsEditorContainer.getChildren().clear();
                 sensesTable.setItems(FXCollections.observableArrayList());
                 examplesTable.setItems(FXCollections.observableArrayList());
                 return;
@@ -362,8 +355,14 @@ public final class MainController {
                 .orElse("");
         pronEditField.setText(pron);
 
-        // Formes tab: all lexical-unit forms (direct Form objects)
-        formsTable.setItems(FXCollections.observableArrayList(forms.getForms()));
+        // Formes tab: MultiText editor (programmatic)
+        if (formsEditorContainer != null) {
+            if (!formsEditorContainer.getChildren().contains(formsEditor)) {
+                formsEditorContainer.getChildren().setAll(formsEditor);
+            }
+        }
+        formsEditor.setMultiText(forms);
+        formsEditor.setAvailableLanguages(getObjectLanguages());
 
         // Sens tab: one row per sense; dynamic columns per language for definition + gloss.
         configureSensesTableColumns(entry);
@@ -378,6 +377,26 @@ public final class MainController {
         }
         configureExamplesTableColumns(entry);
         examplesTable.setItems(exampleRows);
+    }
+
+    private List<String> getObjectLanguages() {
+        if (currentDictionary == null) return List.of();
+        var comps = currentDictionary.getLiftDictionaryComponents();
+        if (comps instanceof LiftFactory lf) {
+            return lf.getAllObjectLanguagesMultiText().stream()
+                    .flatMap(mt -> mt.getLangs().stream())
+                    .filter(s -> s != null && !s.isBlank())
+                    .distinct()
+                    .sorted()
+                    .toList();
+        }
+        // fallback: derive from entries
+        return currentDictionary.getLiftDictionaryComponents().getAllEntries().stream()
+                .flatMap(e -> e.getForms().getLangs().stream())
+                .filter(s -> s != null && !s.isBlank())
+                .distinct()
+                .sorted()
+                .toList();
     }
 
     private void configureSensesTableColumns(LiftEntry entry) {

@@ -134,12 +134,7 @@
           <Tab text="Formes">
             <content>
               <VBox spacing="10" styleClass="tab-content">
-                <TableView fx:id="formsTable" prefHeight="160" styleClass="sub-table">
-                  <columns>
-                    <TableColumn fx:id="formLangColumn" text="Langue" prefWidth="120"/>
-                    <TableColumn fx:id="formValueColumn" text="Forme" prefWidth="200"/>
-                  </columns>
-                </TableView>
+                <VBox fx:id="formsEditorContainer" spacing="10"/>
               </VBox>
             </content>
           </Tab>
