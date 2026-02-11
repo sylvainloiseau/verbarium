@@ -176,7 +176,7 @@ public final class MainController {
                 return Bindings.createStringBinding(() -> e.getPronunciations().stream()
                         .findFirst()
                         .flatMap(p -> p.getProunciation().getForm(lang))
-                        .map(Form::toString)
+                        .map(Form::toPlainText)
                         .orElse(""), e.pronunciationsProperty());
             });
             pronGroup.getColumns().add(pCol);
@@ -192,7 +192,7 @@ public final class MainController {
 
         // Header
         Form preferred = entry.getForms().getForms().stream().findFirst().orElse(Form.EMPTY_FORM);
-        editEntryTitle.setText(preferred == Form.EMPTY_FORM ? "(sans forme)" : preferred.toString());
+        editEntryTitle.setText(preferred == Form.EMPTY_FORM ? "(sans forme)" : preferred.toPlainText());
         String code = getTraitValue(entry, "code");
         editEntryCode.setText(code);
 
@@ -396,7 +396,7 @@ public final class MainController {
         grid.add(new Label("Formes"), 0, r++);
         Map<String, TextField> formFields = new HashMap<>();
         for (String lang : entry.getForms().getLangs().stream().sorted().toList()) {
-            TextField tf = new TextField(entry.getForms().getForm(lang).map(Form::toString).orElse(""));
+            TextField tf = new TextField(entry.getForms().getForm(lang).map(Form::toPlainText).orElse(""));
             formFields.put(lang, tf);
             grid.add(new Label(lang), 0, r);
             grid.add(tf, 1, r++);
@@ -408,7 +408,7 @@ public final class MainController {
         LiftPronunciation firstPron = entry.getPronunciations().stream().findFirst().orElse(null);
         List<String> pronLangs = firstPron == null ? List.of() : firstPron.getProunciation().getLangs().stream().sorted().toList();
         for (String lang : pronLangs) {
-            TextField tf = new TextField(firstPron.getProunciation().getForm(lang).map(Form::toString).orElse(""));
+            TextField tf = new TextField(firstPron.getProunciation().getForm(lang).map(Form::toPlainText).orElse(""));
             pronFields.put(lang, tf);
             grid.add(new Label(lang), 0, r);
             grid.add(tf, 1, r++);
@@ -454,13 +454,13 @@ public final class MainController {
         if (entry == null) return "";
         StringBuilder sb = new StringBuilder();
         appendSep(sb, getTraitValue(entry, "code"));
-        for (Form f : entry.getForms().getForms()) appendSep(sb, f.toString());
+        for (Form f : entry.getForms().getForms()) appendSep(sb, f.toPlainText());
         for (LiftPronunciation p : entry.getPronunciations()) {
-            for (Form f : p.getProunciation().getForms()) appendSep(sb, f.toString());
+            for (Form f : p.getProunciation().getForms()) appendSep(sb, f.toPlainText());
         }
         for (LiftSense s : entry.getSenses()) {
-            for (Form f : s.getDefinition().getForms()) appendSep(sb, f.toString());
-            for (Form f : s.getGloss().getForms()) appendSep(sb, f.toString());
+            for (Form f : s.getDefinition().getForms()) appendSep(sb, f.toPlainText());
+            for (Form f : s.getGloss().getForms()) appendSep(sb, f.toPlainText());
         }
         return sb.toString();
     }
