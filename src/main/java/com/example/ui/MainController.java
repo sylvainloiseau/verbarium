@@ -20,12 +20,18 @@ import javafx.scene.layout.VBox;
 import javafx.geometry.Insets;
 import javafx.stage.FileChooser;
 
+import javafx.application.Platform;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public final class MainController {
 
@@ -42,6 +48,7 @@ public final class MainController {
     @FXML private Label editEntryCode;
     @FXML private VBox rightContent;
     @FXML private VBox editorContainer;
+    @FXML private Menu recentMenu;
 
     @FXML
     private void initialize() {
@@ -111,6 +118,169 @@ public final class MainController {
         if (currentDictionary == null) { showError("Enregistrer", "Aucun dictionnaire chargé."); return; }
         try { currentDictionary.save(); }
         catch (Exception e) { showError("Enregistrer", "Impossible d'enregistrer: " + e.getMessage()); }
+    }
+
+    @FXML
+    private void onNewDictionary() {
+        setDictionary(null);
+        editEntryTitle.setText("(sélectionne une entrée)");
+        editEntryCode.setText("");
+        editorContainer.getChildren().clear();
+    }
+
+    @FXML
+    private void onSaveAs() {
+        if (currentDictionary == null) { showError("Enregistrer sous", "Aucun dictionnaire chargé."); return; }
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Enregistrer sous…");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Fichier LIFT (*.lift)", "*.lift"));
+        File selected = chooser.showSaveDialog(entryTable.getScene().getWindow());
+        if (selected == null) return;
+        try { currentDictionary.save(selected); }
+        catch (Exception e) { showError("Enregistrer sous", "Impossible d'enregistrer: " + e.getMessage()); }
+    }
+
+    @FXML
+    private void onPreferences() {
+        showInfo("Paramètres", "La fenêtre de paramètres sera disponible dans une prochaine version.");
+    }
+
+    @FXML
+    private void onQuit() {
+        Platform.exit();
+    }
+
+    /* ─── Édition ─── */
+
+    @FXML
+    private void onCopy() {
+        copySelectedEntryToClipboard();
+    }
+
+    @FXML
+    private void onPaste() {
+        showInfo("Coller", "Le collage d'entrées sera disponible dans une prochaine version.");
+    }
+
+    @FXML
+    private void onCut() {
+        copySelectedEntryToClipboard();
+    }
+
+    private void copySelectedEntryToClipboard() {
+        LiftEntry entry = entryTable.getSelectionModel().getSelectedItem();
+        if (entry == null) return;
+        StringBuilder sb = new StringBuilder();
+        sb.append(entry.getId().orElse(""));
+        for (Form f : entry.getForms().getForms()) {
+            sb.append("\t").append(f.toPlainText());
+        }
+        Clipboard clipboard = Clipboard.getSystemClipboard();
+        ClipboardContent content = new ClipboardContent();
+        content.putString(sb.toString());
+        clipboard.setContent(content);
+    }
+
+    /* ─── Vue ─── */
+
+    @FXML private void onViewEntries() { showInfo("Vue", "Affichage des entrées (vue actuelle)."); }
+    @FXML private void onViewSenses() { showViewList("Sens", () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllSenses().stream().map(s -> s.getId().orElse("?") + " – " + s.getGloss().getForms().stream().findFirst().map(Form::toPlainText).orElse("")).toList()); }
+    @FXML private void onViewExamples() { showViewList("Exemples", () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllExamples().stream().map(ex -> ex.getExample().getForms().stream().findFirst().map(Form::toPlainText).orElse("(vide)")).toList()); }
+    @FXML private void onViewNotes() { showViewList("Notes", () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllEntries().stream().flatMap(e -> e.getNotes().values().stream()).map(n -> n.getType().orElse("?") + " – " + n.getText().getForms().stream().findFirst().map(Form::toPlainText).orElse("")).toList()); }
+    @FXML private void onViewVariants() { showViewList("Variantes", () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllVariants().stream().map(v -> v.getRefId().orElse("?") + " – " + v.getForms().getForms().stream().findFirst().map(Form::toPlainText).orElse("")).toList()); }
+    @FXML private void onViewEtymologies() { showViewList("Étymologies", () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllEntries().stream().flatMap(e -> e.getEtymologies().stream()).map(et -> et.getType() + " ← " + et.getSource()).toList()); }
+
+    @FXML private void onViewObjectLangs() { showViewList("Langues objet", this::getObjectLanguages); }
+    @FXML private void onViewMetaLangs() { showViewList("Méta-langues", this::getMetaLanguages); }
+    @FXML private void onViewTraits() { showViewList("Types de trait", () -> currentDictionary == null ? List.of() : currentDictionary.getTraitName().stream().sorted().toList()); }
+    @FXML private void onViewAnnotations() { showViewList("Types d'annotation", () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllAnnotations().stream().map(LiftAnnotation::getName).distinct().sorted().toList()); }
+    @FXML private void onViewFields() { showViewList("Types de field", () -> currentDictionary == null ? List.of() : currentDictionary.getFieldType().stream().sorted().toList()); }
+
+    /* ─── Configuration des champs ─── */
+
+    @FXML private void onConfigNoteTypes() { showConfigList("Types de notes", () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllEntries().stream().flatMap(e -> e.getNotes().values().stream()).map(n -> n.getType().orElse("(sans type)")).distinct().sorted().toList()); }
+    @FXML private void onConfigTranslationTypes() { showConfigList("Types de traductions", () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllExamples().stream().flatMap(ex -> ex.getTranslations().keySet().stream()).distinct().sorted().toList()); }
+    @FXML private void onConfigLanguages() { showConfigList("Langues", this::getAllLanguages); }
+    @FXML private void onConfigTraitTypes() { showConfigList("Types de trait", () -> currentDictionary == null ? List.of() : currentDictionary.getTraitName().stream().sorted().toList()); }
+    @FXML private void onConfigAnnotationTypes() { showConfigList("Types d'annotation", () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllAnnotations().stream().map(LiftAnnotation::getName).distinct().sorted().toList()); }
+    @FXML private void onConfigFieldTypes() { showConfigList("Types de field", () -> currentDictionary == null ? List.of() : currentDictionary.getFieldType().stream().sorted().toList()); }
+
+    /* ─── Outil ─── */
+
+    @FXML
+    private void onValidateDictionary() {
+        if (currentDictionary == null) { showError("Validation", "Aucun dictionnaire chargé."); return; }
+        int entries = currentDictionary.getLiftDictionaryComponents().getAllEntries().size();
+        int senses = currentDictionary.getLiftDictionaryComponents().getAllSenses().size();
+        int examples = currentDictionary.getLiftDictionaryComponents().getAllExamples().size();
+        showInfo("Validation du dictionnaire",
+                "Le dictionnaire contient :\n" +
+                "  • " + entries + " entrées\n" +
+                "  • " + senses + " sens\n" +
+                "  • " + examples + " exemples\n" +
+                "  • Langues objet : " + String.join(", ", getObjectLanguages()) + "\n" +
+                "  • Méta-langues : " + String.join(", ", getMetaLanguages()));
+    }
+
+    @FXML
+    private void onExportCsv() {
+        if (currentDictionary == null) { showError("Export CSV", "Aucun dictionnaire chargé."); return; }
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Exporter en CSV");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV (*.csv)", "*.csv"));
+        File selected = chooser.showSaveDialog(entryTable.getScene().getWindow());
+        if (selected == null) return;
+        try (PrintWriter pw = new PrintWriter(selected, "UTF-8")) {
+            List<String> objLangs = getObjectLanguages();
+            pw.print("id");
+            for (String l : objLangs) pw.print("\tform[" + l + "]");
+            pw.println();
+            for (LiftEntry e : currentDictionary.getLiftDictionaryComponents().getAllEntries()) {
+                pw.print(e.getId().orElse(""));
+                for (String l : objLangs) pw.print("\t" + e.getForms().getForm(l).map(Form::toPlainText).orElse(""));
+                pw.println();
+            }
+            showInfo("Export CSV", "Export réussi vers " + selected.getAbsolutePath());
+        } catch (Exception e) {
+            showError("Export CSV", "Impossible d'exporter: " + e.getMessage());
+        }
+    }
+
+    /* ─── Helpers pour dialogues Vue / Config ─── */
+
+    @FunctionalInterface
+    private interface ListSupplier { List<String> get(); }
+
+    private void showViewList(String title, ListSupplier supplier) {
+        List<String> items = supplier.get();
+        Alert dlg = new Alert(Alert.AlertType.INFORMATION);
+        dlg.setTitle("Vue – " + title);
+        dlg.setHeaderText(title + " (" + items.size() + ")");
+        ListView<String> listView = new ListView<>(FXCollections.observableArrayList(items));
+        listView.setPrefHeight(300);
+        dlg.getDialogPane().setContent(listView);
+        dlg.setResizable(true);
+        dlg.showAndWait();
+    }
+
+    private void showConfigList(String title, ListSupplier supplier) {
+        List<String> items = supplier.get();
+        Alert dlg = new Alert(Alert.AlertType.INFORMATION);
+        dlg.setTitle("Configuration – " + title);
+        dlg.setHeaderText(title + " (" + items.size() + " valeurs trouvées dans le dictionnaire)");
+        ListView<String> listView = new ListView<>(FXCollections.observableArrayList(items));
+        listView.setPrefHeight(300);
+        dlg.getDialogPane().setContent(listView);
+        dlg.setResizable(true);
+        dlg.showAndWait();
+    }
+
+    private void showInfo(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 
     /* ─── Dictionary / Entry table ─── */

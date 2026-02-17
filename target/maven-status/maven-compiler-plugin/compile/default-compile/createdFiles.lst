@@ -1,5 +1,6 @@
 com\example\ui\controls\FieldEditor.class
 com\example\ui\controls\TraitEditor.class
+com\example\ui\MainController$ListSupplier.class
 com\example\ui\controls\EtymologyEditor.class
 com\example\ui\controls\SenseEditor.class
 com\example\ui\controls\NotableEditor.class

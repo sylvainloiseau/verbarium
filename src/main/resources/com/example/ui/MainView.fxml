@@ -7,6 +7,7 @@
 <?import javafx.scene.control.MenuBar?>
 <?import javafx.scene.control.MenuItem?>
 <?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.SeparatorMenuItem?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
@@ -20,17 +21,79 @@
   <top>
     <MenuBar BorderPane.alignment="CENTER" styleClass="top-menu">
       <menus>
-        <Menu text="Article"/>
+        <!-- ─── Fichier ─── -->
         <Menu text="Fichier">
           <items>
-            <MenuItem text="Importer…" onAction="#onImportLift"/>
+            <MenuItem text="Nouveau" onAction="#onNewDictionary"/>
+            <MenuItem text="Ouvrir…" onAction="#onImportLift"/>
+            <Menu fx:id="recentMenu" text="Ouvrir récent"/>
+            <SeparatorMenuItem/>
             <MenuItem text="Enregistrer" onAction="#onSave"/>
+            <MenuItem text="Enregistrer sous…" onAction="#onSaveAs"/>
+            <SeparatorMenuItem/>
+            <MenuItem text="Paramètres" onAction="#onPreferences"/>
+            <SeparatorMenuItem/>
+            <MenuItem text="Quitter" onAction="#onQuit"/>
           </items>
         </Menu>
-        <Menu text="Édition"/>
-        <Menu text="Vue"/>
-        <Menu text="Configuration du dictionnaire"/>
-        <Menu text="Outil"/>
+
+        <!-- ─── Édition ─── -->
+        <Menu text="Édition">
+          <items>
+            <MenuItem text="Copier" onAction="#onCopy"/>
+            <MenuItem text="Coller" onAction="#onPaste"/>
+            <MenuItem text="Couper" onAction="#onCut"/>
+          </items>
+        </Menu>
+
+        <!-- ─── Vue ─── -->
+        <Menu text="Vue">
+          <items>
+            <Menu text="Objets">
+              <items>
+                <MenuItem text="Entrées" onAction="#onViewEntries"/>
+                <MenuItem text="Sens" onAction="#onViewSenses"/>
+                <MenuItem text="Exemples" onAction="#onViewExamples"/>
+                <MenuItem text="Notes" onAction="#onViewNotes"/>
+                <MenuItem text="Variantes" onAction="#onViewVariants"/>
+                <MenuItem text="Étymologies" onAction="#onViewEtymologies"/>
+              </items>
+            </Menu>
+            <Menu text="Langues">
+              <items>
+                <MenuItem text="Langues objet" onAction="#onViewObjectLangs"/>
+                <MenuItem text="Méta-langues" onAction="#onViewMetaLangs"/>
+              </items>
+            </Menu>
+            <Menu text="Navigateur de catégories">
+              <items>
+                <MenuItem text="Trait" onAction="#onViewTraits"/>
+                <MenuItem text="Annotation" onAction="#onViewAnnotations"/>
+                <MenuItem text="Field" onAction="#onViewFields"/>
+              </items>
+            </Menu>
+          </items>
+        </Menu>
+
+        <!-- ─── Configuration des champs ─── -->
+        <Menu text="Configuration des champs">
+          <items>
+            <MenuItem text="Types de notes" onAction="#onConfigNoteTypes"/>
+            <MenuItem text="Types de traductions" onAction="#onConfigTranslationTypes"/>
+            <MenuItem text="Langues" onAction="#onConfigLanguages"/>
+            <MenuItem text="Types de trait" onAction="#onConfigTraitTypes"/>
+            <MenuItem text="Types d'annotation" onAction="#onConfigAnnotationTypes"/>
+            <MenuItem text="Types de field" onAction="#onConfigFieldTypes"/>
+          </items>
+        </Menu>
+
+        <!-- ─── Outil ─── -->
+        <Menu text="Outil">
+          <items>
+            <MenuItem text="Valider le dictionnaire" onAction="#onValidateDictionary"/>
+            <MenuItem text="Exporter en CSV" onAction="#onExportCsv"/>
+          </items>
+        </Menu>
       </menus>
     </MenuBar>
   </top>
