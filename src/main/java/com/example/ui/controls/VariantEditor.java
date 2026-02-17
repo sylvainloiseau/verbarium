@@ -59,32 +59,37 @@ public final class VariantEditor extends VBox {
         getChildren().addAll(grid, formsPane, pronPane, relPane, extPane);
     }
 
-    public void setVariant(LiftVariant v, Collection<String> langs) {
+    /**
+     * @param v          the variant
+     * @param objLangs   object-languages for variant forms and pronunciations
+     * @param metaLangs  meta-languages for relations (usage) and inherited properties
+     */
+    public void setVariant(LiftVariant v, Collection<String> objLangs, Collection<String> metaLangs) {
         pronunciationsBox.getChildren().clear();
         relationsBox.getChildren().clear();
 
         if (v == null) {
             refIdField.setText("");
             formsEditor.setMultiText(null);
-            extensibleEditor.setModel(null, langs);
+            extensibleEditor.setModel(null, metaLangs);
             return;
         }
         refIdField.setText(v.getRefId().orElse(""));
-        formsEditor.setAvailableLanguages(langs);
+        formsEditor.setAvailableLanguages(objLangs);
         formsEditor.setMultiText(v.getForms());
 
         for (LiftPronunciation p : v.getPronunciations()) {
             PronunciationEditor pe = new PronunciationEditor();
-            pe.setPronunciation(p, langs);
+            pe.setPronunciation(p, objLangs);
             pronunciationsBox.getChildren().add(pe);
         }
 
         for (LiftRelation r : v.getRelations()) {
             RelationEditor re = new RelationEditor();
-            re.setRelation(r, langs);
+            re.setRelation(r, metaLangs);
             relationsBox.getChildren().add(re);
         }
 
-        extensibleEditor.setModel(v, langs);
+        extensibleEditor.setModel(v, metaLangs);
     }
 }

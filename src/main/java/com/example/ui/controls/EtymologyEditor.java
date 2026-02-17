@@ -59,21 +59,26 @@ public final class EtymologyEditor extends VBox {
         getChildren().addAll(grid, formsPane, glossesPane, extPane);
     }
 
-    public void setEtymology(LiftEtymology ety, Collection<String> langs) {
+    /**
+     * @param ety        the etymology
+     * @param objLangs   object-languages for etymology forms
+     * @param metaLangs  meta-languages for glosses and inherited properties
+     */
+    public void setEtymology(LiftEtymology ety, Collection<String> objLangs, Collection<String> metaLangs) {
         if (ety == null) {
             typeField.setText("");
             sourceField.setText("");
             formsEditor.setMultiText(null);
             glossesEditor.setMultiText(null);
-            extensibleEditor.setModel(null, langs);
+            extensibleEditor.setModel(null, metaLangs);
             return;
         }
         typeField.setText(ety.getType() != null ? ety.getType() : "");
         sourceField.setText(ety.getSource() != null ? ety.getSource() : "");
-        formsEditor.setAvailableLanguages(langs);
+        formsEditor.setAvailableLanguages(objLangs);
         formsEditor.setMultiText(ety.getForms());
-        glossesEditor.setAvailableLanguages(langs);
+        glossesEditor.setAvailableLanguages(metaLangs);
         glossesEditor.setMultiText(ety.getGloss());
-        extensibleEditor.setModel(ety, langs);
+        extensibleEditor.setModel(ety, metaLangs);
     }
 }

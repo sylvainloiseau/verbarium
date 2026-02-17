@@ -188,7 +188,11 @@ public final class MainController {
     /* ─── Right panel: exhaustive entry editor ─── */
 
     private void populateEditor(LiftEntry entry) {
-        List<String> langs = getObjectLanguages();
+        List<String> objLangs = getObjectLanguages();
+        List<String> metaLangs = getMetaLanguages();
+        List<String> allLangs = getAllLanguages();
+        // For backward compatibility, keep a local alias
+        List<String> langs = objLangs;
 
         // Header
         Form preferred = entry.getForms().getForms().stream().findFirst().orElse(Form.EMPTY_FORM);
@@ -224,71 +228,71 @@ public final class MainController {
             return mte;
         }, true);
 
-        // 4. Citations — MultiTextEditor
+        // 4. Citations — méta-langues (descriptif)
         if (!entry.getCitations().isEmpty()) {
             addSection(editorContainer, "Citations", () -> {
                 MultiTextEditor mte = new MultiTextEditor();
-                mte.setAvailableLanguages(langs);
+                mte.setAvailableLanguages(metaLangs);
                 mte.setMultiText(entry.getCitations());
                 return mte;
             }, false);
         }
 
-        // 5. Prononciations
+        // 5. Prononciations — langues-objet
         addListSection(editorContainer, "Prononciations", entry.getPronunciations(), p -> {
             PronunciationEditor pe = new PronunciationEditor();
-            pe.setPronunciation(p, langs);
+            pe.setPronunciation(p, objLangs);
             return pe;
         }, true);
 
-        // 6. Sens
+        // 6. Sens — méta-langues pour définition/gloss, objet pour exemples
         addListSection(editorContainer, "Sens", entry.getSenses(), s -> {
             SenseEditor se = new SenseEditor();
-            se.setSense(s, langs);
+            se.setSense(s, metaLangs, objLangs);
             return se;
         }, true);
 
-        // 7. Variantes
+        // 7. Variantes — langues-objet pour formes
         addListSection(editorContainer, "Variantes", entry.getVariants(), v -> {
             VariantEditor ve = new VariantEditor();
-            ve.setVariant(v, langs);
+            ve.setVariant(v, objLangs, metaLangs);
             return ve;
         }, false);
 
-        // 8. Relations
+        // 8. Relations — méta-langues pour usage
         addListSection(editorContainer, "Relations", entry.getRelations(), r -> {
             RelationEditor re = new RelationEditor();
-            re.setRelation(r, langs);
+            re.setRelation(r, metaLangs);
             return re;
         }, false);
 
-        // 9. Étymologies
+        // 9. Étymologies — langues-objet pour formes, méta-langues pour glosses
         addListSection(editorContainer, "Étymologies", entry.getEtymologies(), e -> {
             EtymologyEditor ee = new EtymologyEditor();
-            ee.setEtymology(e, langs);
+            ee.setEtymology(e, objLangs, metaLangs);
             return ee;
         }, false);
 
-        // 10. Notes (entry-level, via AbstractNotable)
+        // 10. Notes (entry-level, via AbstractNotable) — méta-langues
         if (!entry.getNotes().isEmpty()) {
             addListSection(editorContainer, "Notes", new ArrayList<>(entry.getNotes().values()), n -> {
                 NoteEditor ne = new NoteEditor();
-                ne.setNote(n, langs);
+                ne.setNote(n, metaLangs);
                 return ne;
             }, false);
         }
 
-        // 11. Annotations (entry-level, via AbstractExtensibleWithoutField)
+        // 11. Annotations (entry-level) — méta-langues
         addListSection(editorContainer, "Annotations", entry.getAnnotations(), a -> {
             AnnotationEditor ae = new AnnotationEditor();
-            ae.setAnnotation(a, langs);
+            ae.setAnnotation(a, metaLangs);
             return ae;
         }, false);
 
-        // 12. Champs / Fields (entry-level, via AbstractExtensibleWithField)
+        // 12. Champs / Fields (entry-level) — méta-langues
         addListSection(editorContainer, "Champs (Field)", entry.getFields(), f -> {
             FieldEditor fe = new FieldEditor();
-            fe.setField(f, langs);
+            fe.setField(f, metaLangs);
             return fe;
         }, false);
 
@@ -467,17 +471,24 @@ public final class MainController {
 
     private List<String> getObjectLanguages() {
         if (currentDictionary == null) return List.of();
-        var comps = currentDictionary.getLiftDictionaryComponents();
-        if (comps instanceof LiftFactory lf) {
-            return lf.getAllObjectLanguagesMultiText().stream()
-                    .flatMap(mt -> mt.getLangs().stream())
-                    .filter(s -> s != null && !s.isBlank())
-                    .distinct().sorted().toList();
-        }
-        return currentDictionary.getLiftDictionaryComponents().getAllEntries().stream()
-                .flatMap(e -> e.getForms().getLangs().stream())
+        return currentDictionary.getObjectLanguagesOfAllText().stream()
                 .filter(s -> s != null && !s.isBlank())
-                .distinct().sorted().toList();
+                .sorted().toList();
+    }
+
+    private List<String> getMetaLanguages() {
+        if (currentDictionary == null) return List.of();
+        return currentDictionary.getMetaLanguagesOfAllText().stream()
+                .filter(s -> s != null && !s.isBlank())
+                .sorted().toList();
+    }
+
+    private List<String> getAllLanguages() {
+        if (currentDictionary == null) return List.of();
+        Set<String> all = new HashSet<>();
+        all.addAll(currentDictionary.getObjectLanguagesOfAllText());
+        all.addAll(currentDictionary.getMetaLanguagesOfAllText());
+        return all.stream().filter(s -> s != null && !s.isBlank()).sorted().toList();
     }
 
     private static void replaceTrait(LiftFactory factory, LiftEntry target, String name, String value) {

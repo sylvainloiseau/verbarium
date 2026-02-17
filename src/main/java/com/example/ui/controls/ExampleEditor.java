@@ -55,27 +55,32 @@ public final class ExampleEditor extends VBox {
         getChildren().addAll(grid, exPane, trPane, extPane);
     }
 
-    public void setExample(LiftExample ex, Collection<String> langs) {
+    /**
+     * @param ex        the example
+     * @param objLangs  object-languages for the example text
+     * @param metaLangs meta-languages for translations, notes, etc.
+     */
+    public void setExample(LiftExample ex, Collection<String> objLangs, Collection<String> metaLangs) {
         translationsBox.getChildren().clear();
 
         if (ex == null) {
             sourceField.setText("");
             exampleTextEditor.setMultiText(null);
-            notableEditor.setModel(null, langs);
+            notableEditor.setModel(null, metaLangs);
             return;
         }
         sourceField.setText(ex.getSource().orElse(""));
-        exampleTextEditor.setAvailableLanguages(langs);
+        exampleTextEditor.setAvailableLanguages(objLangs);
         exampleTextEditor.setMultiText(ex.getExample());
 
-        // Translations: one MultiTextEditor per translation type
+        // Translations: one MultiTextEditor per translation type — meta-languages
         for (Map.Entry<String, MultiText> kv : ex.getTranslations().entrySet()) {
             String type = kv.getKey();
             MultiText mt = kv.getValue();
 
             String label = type.isBlank() ? "Traduction (par défaut)" : "Traduction [" + type + "]";
             MultiTextEditor mte = new MultiTextEditor();
-            mte.setAvailableLanguages(langs);
+            mte.setAvailableLanguages(metaLangs);
             mte.setMultiText(mt);
 
             TitledPane tp = new TitledPane(label, mte);
@@ -84,6 +89,6 @@ public final class ExampleEditor extends VBox {
             translationsBox.getChildren().add(tp);
         }
 
-        notableEditor.setModel(ex, langs);
+        notableEditor.setModel(ex, metaLangs);
     }
 }

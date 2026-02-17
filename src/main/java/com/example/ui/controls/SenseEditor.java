@@ -27,6 +27,7 @@ public final class SenseEditor extends VBox {
     private final MultiTextEditor glossEditor = new MultiTextEditor();
     private final VBox examplesBox = new VBox(6);
     private final VBox relationsBox = new VBox(6);
+    private final VBox reversalsBox = new VBox(6);
     private final VBox subSensesBox = new VBox(6);
     private final NotableEditor notableEditor = new NotableEditor();
 
@@ -65,6 +66,10 @@ public final class SenseEditor extends VBox {
         relPane.setExpanded(false);
         relPane.setAnimated(false);
 
+        TitledPane revPane = new TitledPane("Reversals", reversalsBox);
+        revPane.setExpanded(false);
+        revPane.setAnimated(false);
+
         TitledPane subPane = new TitledPane("Sous-sens", subSensesBox);
         subPane.setExpanded(false);
         subPane.setAnimated(false);
@@ -73,12 +78,19 @@ public final class SenseEditor extends VBox {
         extPane.setExpanded(false);
         extPane.setAnimated(false);
 
-        getChildren().addAll(grid, defPane, glossPane, exPane, relPane, subPane, extPane);
+        getChildren().addAll(grid, defPane, glossPane, exPane, relPane, revPane, subPane, extPane);
     }
 
-    public void setSense(LiftSense sense, Collection<String> langs) {
+    /**
+     * Populate with proper separation of meta-languages vs object-languages.
+     * @param sense       the sense to display
+     * @param metaLangs   meta-languages for definition, gloss, relations, notes, annotations, reversal
+     * @param objLangs    object-languages for examples
+     */
+    public void setSense(LiftSense sense, Collection<String> metaLangs, Collection<String> objLangs) {
         examplesBox.getChildren().clear();
         relationsBox.getChildren().clear();
+        reversalsBox.getChildren().clear();
         subSensesBox.getChildren().clear();
 
         if (sense == null) {
@@ -86,39 +98,46 @@ public final class SenseEditor extends VBox {
             grammaticalInfoField.setText("");
             definitionEditor.setMultiText(null);
             glossEditor.setMultiText(null);
-            notableEditor.setModel(null, langs);
+            notableEditor.setModel(null, metaLangs);
             return;
         }
         idField.setText(sense.getId().orElse(""));
         grammaticalInfoField.setText(sense.getGrammaticalInfo().map(GrammaticalInfo::getValue).orElse(""));
 
-        definitionEditor.setAvailableLanguages(langs);
+        definitionEditor.setAvailableLanguages(metaLangs);
         definitionEditor.setMultiText(sense.getDefinition());
 
-        glossEditor.setAvailableLanguages(langs);
+        glossEditor.setAvailableLanguages(metaLangs);
         glossEditor.setMultiText(sense.getGloss());
 
-        // Examples
+        // Examples — object-languages for example text, meta-languages for translations
         for (LiftExample ex : sense.getExamples()) {
             ExampleEditor ee = new ExampleEditor();
-            ee.setExample(ex, langs);
+            ee.setExample(ex, objLangs, metaLangs);
             examplesBox.getChildren().add(ee);
         }
 
-        // Relations
+        // Relations — meta-languages for usage
         for (LiftRelation rel : sense.getRelations()) {
             RelationEditor re = new RelationEditor();
-            re.setRelation(rel, langs);
+            re.setRelation(rel, metaLangs);
             relationsBox.getChildren().add(re);
+        }
+
+        // Reversals — meta-languages
+        for (LiftReversal rev : sense.getReversals()) {
+            ReversalEditor rve = new ReversalEditor();
+            rve.setReversal(rev, metaLangs);
+            reversalsBox.getChildren().add(rve);
         }
 
         // Sub-senses (recursive)
         for (LiftSense sub : sense.getSubSenses()) {
             SenseEditor se = new SenseEditor();
-            se.setSense(sub, langs);
+            se.setSense(sub, metaLangs, objLangs);
             subSensesBox.getChildren().add(se);
         }
 
-        notableEditor.setModel(sense, langs);
+        notableEditor.setModel(sense, metaLangs);
     }
 }
