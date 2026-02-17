@@ -2,11 +2,13 @@ com\example\ui\controls\FieldEditor.class
 com\example\ui\controls\TraitEditor.class
 com\example\ui\MainController$ListSupplier.class
 com\example\ui\controls\EtymologyEditor.class
+com\example\ui\MainController$QuickEntryRow.class
 com\example\ui\controls\SenseEditor.class
 com\example\ui\controls\NotableEditor.class
 com\example\ui\controls\ReversalEditor.class
 com\example\ui\controls\NoteEditor.class
 com\example\ui\controls\MultiTextEditor$Row.class
+com\example\ui\MainController$MultiTextField.class
 com\example\ui\controls\VariantEditor.class
 com\example\core\DictionaryService.class
 com\example\ui\controls\AnnotationEditor.class
@@ -17,6 +19,7 @@ com\example\ui\MainController.class
 com\example\ui\MainController$NodeFactory.class
 com\example\MainApp.class
 com\example\ui\controls\MultiTextEditor.class
+com\example\ui\MainController$1.class
 com\example\ui\model\SenseRow.class
 com\example\core\LiftOpenException.class
 com\example\ui\controls\ExtensibleWithoutFieldEditor.class

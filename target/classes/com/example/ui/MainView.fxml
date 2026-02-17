@@ -8,9 +8,12 @@
 <?import javafx.scene.control.MenuItem?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.SeparatorMenuItem?>
+<?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.TreeView?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
 <BorderPane xmlns="http://javafx.com/javafx"
@@ -21,7 +24,6 @@
   <top>
     <MenuBar BorderPane.alignment="CENTER" styleClass="top-menu">
       <menus>
-        <!-- ─── Fichier ─── -->
         <Menu text="Fichier">
           <items>
             <MenuItem text="Nouveau" onAction="#onNewDictionary"/>
@@ -36,8 +38,6 @@
             <MenuItem text="Quitter" onAction="#onQuit"/>
           </items>
         </Menu>
-
-        <!-- ─── Édition ─── -->
         <Menu text="Édition">
           <items>
             <MenuItem text="Copier" onAction="#onCopy"/>
@@ -45,8 +45,6 @@
             <MenuItem text="Couper" onAction="#onCut"/>
           </items>
         </Menu>
-
-        <!-- ─── Vue ─── -->
         <Menu text="Vue">
           <items>
             <Menu text="Objets">
@@ -74,8 +72,6 @@
             </Menu>
           </items>
         </Menu>
-
-        <!-- ─── Configuration des champs ─── -->
         <Menu text="Configuration des champs">
           <items>
             <MenuItem text="Types de notes" onAction="#onConfigNoteTypes"/>
@@ -86,8 +82,6 @@
             <MenuItem text="Types de field" onAction="#onConfigFieldTypes"/>
           </items>
         </Menu>
-
-        <!-- ─── Outil ─── -->
         <Menu text="Outil">
           <items>
             <MenuItem text="Valider le dictionnaire" onAction="#onValidateDictionary"/>
@@ -98,90 +92,59 @@
     </MenuBar>
   </top>
 
+  <!-- Left: TreeView navigation (5.7.2) -->
   <left>
-    <VBox spacing="14.0" BorderPane.alignment="CENTER" styleClass="left-nav">
+    <VBox spacing="6" BorderPane.alignment="CENTER" styleClass="left-nav" prefWidth="200">
       <padding>
-        <Insets top="18" right="14" bottom="18" left="14"/>
+        <Insets top="10" right="6" bottom="10" left="6"/>
       </padding>
-
       <Label text="Navigation" styleClass="section-title"/>
-
-      <Button text="Entrées" maxWidth="1.7976931348623157E308" styleClass="nav-button"/>
-      <Button text="Sens" maxWidth="1.7976931348623157E308" styleClass="nav-button"/>
-      <Button text="Exemples" maxWidth="1.7976931348623157E308" styleClass="nav-button"/>
-      <Button text="Notes" maxWidth="1.7976931348623157E308" styleClass="nav-button"/>
-      <Button text="Variantes" maxWidth="1.7976931348623157E308" styleClass="nav-button"/>
-      <Button text="Étymologies" maxWidth="1.7976931348623157E308" styleClass="nav-button"/>
-
-      <Label text="Navigation par facettes" styleClass="section-title"/>
-      <Button text="Langues objet" maxWidth="1.7976931348623157E308" styleClass="nav-button"/>
-      <Button text="Méta-langues" maxWidth="1.7976931348623157E308" styleClass="nav-button"/>
-      <Button text="Tags" maxWidth="1.7976931348623157E308" styleClass="nav-button"/>
-      <Button text="Annotations" maxWidth="1.7976931348623157E308" styleClass="nav-button"/>
-      <Button text="Type de notes" maxWidth="1.7976931348623157E308" styleClass="nav-button"/>
+      <TreeView fx:id="navTree" VBox.vgrow="ALWAYS" styleClass="nav-tree"/>
     </VBox>
   </left>
 
+  <!-- Center + Right: SplitPane (5.8: table left, form right) -->
   <center>
-    <VBox spacing="12.0" BorderPane.alignment="CENTER" styleClass="center">
-      <padding>
-        <Insets top="18" right="18" bottom="18" left="18"/>
-      </padding>
-
-      <HBox alignment="CENTER_LEFT" spacing="16">
-        <Label text="Tableau Principal" styleClass="panel-title"/>
-      </HBox>
-
-      <VBox spacing="10" styleClass="search-bar">
-        <HBox spacing="12" alignment="CENTER_LEFT" styleClass="center-toolbar">
-          <TextField fx:id="searchField" promptText="Rechercher..." styleClass="search-input" HBox.hgrow="ALWAYS"/>
-          <Button text="+ Note" styleClass="note-button"/>
+    <SplitPane fx:id="mainSplit" dividerPositions="0.6" BorderPane.alignment="CENTER">
+      <!-- Center: dynamic table area -->
+      <VBox spacing="8" styleClass="center">
+        <padding>
+          <Insets top="10" right="10" bottom="10" left="10"/>
+        </padding>
+        <HBox alignment="CENTER_LEFT" spacing="12">
+          <Label fx:id="viewTitle" text="Entrées" styleClass="panel-title"/>
+          <HBox HBox.hgrow="ALWAYS"/>
+          <Label fx:id="tableCountLabel" text="" styleClass="table-footer-text"/>
         </HBox>
+        <HBox spacing="8" alignment="CENTER_LEFT">
+          <TextField fx:id="searchField" promptText="Rechercher / Filtrer…" styleClass="search-input" HBox.hgrow="ALWAYS"/>
+          <Button fx:id="addButton" text="+ Nouveau" onAction="#onCreateNewObject" styleClass="note-button"/>
+        </HBox>
+        <!-- Dynamic table container -->
+        <StackPane fx:id="tableContainer" VBox.vgrow="ALWAYS"/>
       </VBox>
 
-      <HBox alignment="CENTER_LEFT" styleClass="section-header">
-        <Label text="Entrées" styleClass="section-header-title"/>
-      </HBox>
-
-      <javafx.scene.control.TableView fx:id="entryTable" styleClass="entry-table" VBox.vgrow="ALWAYS"/>
-
-      <HBox alignment="CENTER_LEFT" spacing="10" styleClass="table-footer">
-        <Label fx:id="tableCountLabel" text="0 entrées affichées sur 0" styleClass="table-footer-text"/>
-        <HBox HBox.hgrow="ALWAYS"/>
-        <Button text="◀" styleClass="page-button"/>
-        <Button text="1" styleClass="page-button"/>
-        <Button text="2" styleClass="page-button"/>
-        <Button text="3" styleClass="page-button"/>
-        <Button text="▶" styleClass="page-button"/>
-      </HBox>
-    </VBox>
+      <!-- Right: detail / editor panel -->
+      <ScrollPane fitToWidth="true" styleClass="right-panel">
+        <content>
+          <VBox fx:id="rightContent" spacing="10">
+            <padding>
+              <Insets top="10" right="10" bottom="10" left="10"/>
+            </padding>
+            <Label text="Formulaire d'édition" styleClass="panel-title"/>
+            <HBox spacing="8" alignment="CENTER_LEFT" styleClass="edit-header">
+              <Label fx:id="editEntryTitle" text="(sélectionne un élément)" styleClass="edit-entry-title"/>
+              <Label fx:id="editEntryCode" text="" styleClass="edit-entry-code"/>
+            </HBox>
+            <VBox fx:id="editorContainer" spacing="8"/>
+            <HBox alignment="CENTER_RIGHT">
+              <Button text="Modifier l'entrée" onAction="#onModifyEntry" styleClass="example-add-button"
+                      maxWidth="1.7976931348623157E308" HBox.hgrow="ALWAYS"/>
+            </HBox>
+          </VBox>
+        </content>
+      </ScrollPane>
+    </SplitPane>
   </center>
-
-  <right>
-    <ScrollPane fitToWidth="true" BorderPane.alignment="CENTER" styleClass="right-panel" prefWidth="420">
-      <content>
-        <VBox fx:id="rightContent" spacing="12.0">
-          <padding>
-            <Insets top="14" right="14" bottom="14" left="14"/>
-          </padding>
-
-          <Label text="Formulaire d'édition" styleClass="panel-title"/>
-
-          <HBox spacing="10" alignment="CENTER_LEFT" styleClass="edit-header">
-            <Label fx:id="editEntryTitle" text="(sélectionne une entrée)" styleClass="edit-entry-title"/>
-            <Label fx:id="editEntryCode" text="" styleClass="edit-entry-code"/>
-          </HBox>
-
-          <!-- Dynamic content is built programmatically by MainController.populateEditor() -->
-          <VBox fx:id="editorContainer" spacing="10"/>
-
-          <HBox alignment="CENTER_RIGHT">
-            <Button text="Modifier l'entrée" onAction="#onModifyEntry" styleClass="example-add-button"
-                    maxWidth="1.7976931348623157E308" HBox.hgrow="ALWAYS"/>
-          </HBox>
-        </VBox>
-      </content>
-    </ScrollPane>
-  </right>
 
 </BorderPane>

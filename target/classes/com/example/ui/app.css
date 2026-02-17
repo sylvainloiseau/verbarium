@@ -3,84 +3,84 @@
   -fx-background-color: #f4f6f7;
 }
 
+/* ─── Top menu bar ─── */
 .top-menu {
   -fx-background-color: #4c6f76;
 }
-
 .top-menu .label {
   -fx-text-fill: white;
   -fx-font-size: 15px;
 }
-
-/* Dropdown (ContextMenu) items should be readable */
 .top-menu .context-menu .label {
   -fx-text-fill: black;
 }
 
+/* ─── Left navigation panel ─── */
 .left-nav {
   -fx-background-color: #4c6f76;
-  -fx-min-width: 220px;
-  -fx-alignment: TOP_LEFT;
+  -fx-min-width: 200px;
 }
 
 .section-title {
   -fx-text-fill: white;
-  -fx-font-size: 22px;
+  -fx-font-size: 20px;
   -fx-font-weight: bold;
   -fx-alignment: CENTER_LEFT;
   -fx-max-width: infinity;
-  /* Aligne le texte avec les boutons (même marge gauche). */
-  -fx-padding: 10px 10px 2px 10px;
+  -fx-padding: 8 10 4 10;
 }
 
-.nav-button {
+/* TreeView in left panel */
+.nav-tree {
+  -fx-background-color: #4c6f76;
+  -fx-border-color: transparent;
+}
+.nav-tree .tree-cell {
   -fx-background-color: transparent;
   -fx-text-fill: white;
-  -fx-font-size: 16px;
-  -fx-alignment: CENTER_LEFT;
-  -fx-padding: 8px 10px 8px 10px;
+  -fx-font-size: 14px;
+  -fx-padding: 4 6 4 6;
 }
-
-.nav-button:hover {
+.nav-tree .tree-cell:selected {
+  -fx-background-color: rgba(255, 255, 255, 0.22);
+  -fx-text-fill: white;
+}
+.nav-tree .tree-cell:hover {
   -fx-background-color: rgba(255, 255, 255, 0.12);
 }
-
-.right-panel {
-  -fx-background-color: #eef2f3;
-  -fx-min-width: 240px;
-  -fx-pref-width: 300px;
+.nav-tree .tree-disclosure-node .arrow {
+  -fx-background-color: white;
+}
+.nav-tree > .virtual-flow > .scroll-bar,
+.nav-tree > .virtual-flow > .scroll-bar .thumb {
+  -fx-background-color: #4c6f76;
 }
 
+/* ─── Center panel ─── */
 .panel-title {
-  -fx-font-size: 26px;
+  -fx-font-size: 22px;
   -fx-text-fill: #4c6f76;
   -fx-font-weight: bold;
 }
 
-.center-toolbar {
-  -fx-padding: 0 0 6px 0;
-}
-
-.primary-button {
-  -fx-background-color: #2f7eea;
-  -fx-text-fill: white;
+.search-input {
   -fx-font-size: 14px;
-  -fx-background-radius: 18px;
-  -fx-padding: 8px 14px 8px 14px;
+  -fx-background-radius: 6;
+  -fx-border-radius: 6;
+  -fx-border-color: rgba(0, 0, 0, 0.12);
+  -fx-padding: 8 12 8 12;
 }
 
-.primary-button:hover {
-  -fx-background-color: #2a72d1;
+.note-button {
+  -fx-background-color: #4c6f76;
+  -fx-text-fill: white;
+  -fx-font-size: 13px;
+  -fx-background-radius: 6;
+  -fx-padding: 8 12 8 12;
+  -fx-min-width: 100;
 }
-
-.section-header {
-  -fx-padding: 6px 0 0 0;
-}
-
-.section-header-title {
-  -fx-font-size: 18px;
-  -fx-text-fill: #324a50;
-  -fx-font-weight: bold;
+.note-button:hover {
+  -fx-background-color: #43646a;
 }
 
 .table-footer-text {
@@ -88,98 +88,67 @@
   -fx-font-size: 13px;
 }
 
-.page-button {
-  -fx-background-color: transparent;
-  -fx-border-color: rgba(0,0,0,0.15);
-  -fx-border-radius: 4px;
-  -fx-background-radius: 4px;
-  -fx-padding: 4px 10px 4px 10px;
+/* ─── Table views ─── */
+.table-view .column-header-background {
+  -fx-background-color: white;
+}
+.table-view .column-header .label {
+  -fx-text-fill: #4c6f76;
+  -fx-font-size: 13px;
+  -fx-font-weight: bold;
+}
+.table-view .table-row-cell:selected {
+  -fx-background-color: #d3e8eb;
+}
+.table-view .table-row-cell:selected .text {
+  -fx-fill: #2a3a3e;
+}
+
+/* ─── Right panel ─── */
+.right-panel {
+  -fx-background-color: #eef2f3;
+  -fx-min-width: 260;
+  -fx-pref-width: 320;
 }
 
 .edit-entry-title {
-  -fx-font-size: 20px;
+  -fx-font-size: 18px;
   -fx-font-weight: bold;
   -fx-text-fill: #324a50;
 }
-
 .edit-entry-code {
-  -fx-font-size: 14px;
-  -fx-text-fill: #66767a;
-}
-
-.edit-grid {
-  -fx-padding: 4px 0 4px 0;
-}
-
-.form-label {
-  -fx-text-fill: #324a50;
   -fx-font-size: 13px;
-}
-
-.edit-tabs .tab-header-area .tab-header-background {
-  -fx-background-color: transparent;
-}
-
-.tab-content {
-  -fx-padding: 6px 0 0 0;
-}
-
-.bullet {
-  -fx-font-size: 16px;
-  -fx-text-fill: #4c6f76;
-}
-
-.search-bar {
-  -fx-background-color: transparent;
-}
-
-.search-input {
-  -fx-font-size: 16px;
-  -fx-background-radius: 6px;
-  -fx-border-radius: 6px;
-  -fx-border-color: rgba(0, 0, 0, 0.12);
-  -fx-padding: 10px 12px 10px 12px;
-}
-
-.note-button {
-  -fx-background-color: #4c6f76;
-  -fx-text-fill: white;
-  -fx-font-size: 14px;
-  -fx-background-radius: 6px;
-  -fx-padding: 10px 12px 10px 12px;
-  -fx-min-width: 88px;
-}
-
-.note-button:hover {
-  -fx-background-color: #43646a;
+  -fx-text-fill: #66767a;
 }
 
 .example-add-button {
   -fx-background-color: #4c6f76;
   -fx-text-fill: white;
   -fx-font-size: 13px;
-  -fx-background-radius: 6px;
-  /* Moins épais que le bouton Note */
-  -fx-padding: 7px 12px 7px 12px;
+  -fx-background-radius: 6;
+  -fx-padding: 7 12 7 12;
   -fx-max-width: infinity;
 }
-
 .example-add-button:hover {
   -fx-background-color: #43646a;
 }
 
-.search-label {
-  -fx-text-fill: #4c6f76;
-  -fx-font-size: 16px;
-}
-
-.entry-table .column-header-background {
-  -fx-background-color: white;
-}
-
-.entry-table .column-header .label {
-  -fx-text-fill: #4c6f76;
+/* ─── Misc ─── */
+.primary-button {
+  -fx-background-color: #2f7eea;
+  -fx-text-fill: white;
   -fx-font-size: 14px;
-  -fx-font-weight: bold;
+  -fx-background-radius: 18;
+  -fx-padding: 8 14 8 14;
 }
-
+.primary-button:hover {
+  -fx-background-color: #2a72d1;
+}
+.form-label {
+  -fx-text-fill: #324a50;
+  -fx-font-size: 13px;
+}
+.bullet {
+  -fx-font-size: 16px;
+  -fx-text-fill: #4c6f76;
+}
