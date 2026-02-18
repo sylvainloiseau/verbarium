@@ -598,11 +598,31 @@ public final class MainController {
             c.setEditable(true);
             quickEntryTable.getColumns().add(c);
         }
+        List<String> knownGramCodes = currentDictionary.getLiftDictionaryComponents().getAllSenses().stream()
+            .map(s -> s.getGrammaticalInfo().map(GrammaticalInfo::getValue).orElse(null))
+            .filter(Objects::nonNull).distinct().sorted().toList();
+        ObservableList<String> gramItems = FXCollections.observableArrayList(knownGramCodes);
+
         TableColumn<QuickEntryRow, String> giCol = new TableColumn<>("Code gram.");
         giCol.setCellValueFactory(cd -> cd.getValue().gramInfoProperty());
-        giCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn());
-        giCol.setOnEditCommit(ev -> ev.getRowValue().gramInfoProperty().set(ev.getNewValue()));
-        giCol.setPrefWidth(120);
+        giCol.setCellFactory(tc -> {
+            ComboBox<String> combo = new ComboBox<>(gramItems);
+            combo.setEditable(true);
+            TableCell<QuickEntryRow, String> cell = new TableCell<>() {
+                @Override protected void updateItem(String item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty) { setGraphic(null); }
+                    else { combo.setValue(item); setGraphic(combo); }
+                }
+            };
+            combo.valueProperty().addListener((obs, o, n) -> {
+                if (cell.getTableRow() != null && cell.getTableRow().getItem() != null) {
+                    cell.getTableRow().getItem().gramInfoProperty().set(n != null ? n : "");
+                }
+            });
+            return cell;
+        });
+        giCol.setPrefWidth(140);
         giCol.setEditable(true);
         quickEntryTable.getColumns().add(giCol);
 
