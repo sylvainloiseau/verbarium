@@ -12,6 +12,7 @@ com\example\ui\MainController$MultiTextField.class
 com\example\ui\controls\VariantEditor.class
 com\example\core\DictionaryService.class
 com\example\ui\controls\AnnotationEditor.class
+com\example\ui\MainController$CategoryRow.class
 com\example\ui\controls\ExtensibleWithFieldEditor.class
 com\example\ui\controls\PronunciationEditor.class
 com\example\ui\controls\RelationEditor.class

@@ -48,6 +48,10 @@ public final class MainController {
     private static final String NAV_TRAITS      = "Trait";
     private static final String NAV_ANNOTATIONS = "Annotation";
     private static final String NAV_FIELDS      = "Field";
+    private static final String NAV_GRAM_INFO   = "Grammatical info";
+    private static final String NAV_POS         = "POS";
+    private static final String NAV_TRANS_TYPES = "Translation types";
+    private static final String NAV_NOTE_TYPES  = "Note types";
     private static final String NAV_QUICK_ENTRY = "Saisie rapide";
 
     /* ─── State ─── */
@@ -127,7 +131,12 @@ public final class MainController {
 
         TreeItem<String> cats = new TreeItem<>("Nav. de catégories");
         cats.setExpanded(true);
-        cats.getChildren().addAll(new TreeItem<>(NAV_TRAITS), new TreeItem<>(NAV_ANNOTATIONS), new TreeItem<>(NAV_FIELDS));
+        cats.getChildren().addAll(
+            new TreeItem<>(NAV_GRAM_INFO), new TreeItem<>(NAV_POS),
+            new TreeItem<>(NAV_TRAITS), new TreeItem<>(NAV_ANNOTATIONS),
+            new TreeItem<>(NAV_TRANS_TYPES), new TreeItem<>(NAV_NOTE_TYPES),
+            new TreeItem<>(NAV_FIELDS)
+        );
 
         TreeItem<String> quick = new TreeItem<>(NAV_QUICK_ENTRY);
 
@@ -179,6 +188,10 @@ public final class MainController {
             case NAV_TRAITS      -> showTraitView();
             case NAV_ANNOTATIONS -> showAnnotationView();
             case NAV_FIELDS      -> showFieldView();
+            case NAV_GRAM_INFO   -> showGramInfoView();
+            case NAV_POS         -> showPosView();
+            case NAV_TRANS_TYPES -> showTranslationTypesView();
+            case NAV_NOTE_TYPES  -> showNoteTypesView();
             case NAV_QUICK_ENTRY -> showQuickEntryView();
             default -> showEntryView();
         }
@@ -197,9 +210,32 @@ public final class MainController {
 
     private void showEntryView() {
         addButton.setText("+ Nouvelle entrée");
-        tableContainer.getChildren().setAll(entryTable);
+        // Entry table uses its own FilteredList; wrap with column filters too
+        HBox filterRow = buildEntryFilterRow();
+        VBox wrapper = new VBox(filterRow, entryTable);
+        VBox.setVgrow(entryTable, Priority.ALWAYS);
+        tableContainer.getChildren().setAll(wrapper);
         applyCurrentFilter();
         updateCountLabel(filteredEntries.size(), baseEntries.size());
+    }
+
+    private final List<TextField> entryColumnFilters = new ArrayList<>();
+
+    private HBox buildEntryFilterRow() {
+        entryColumnFilters.clear();
+        HBox row = new HBox(2);
+        row.setPadding(new Insets(2, 0, 2, 0));
+        row.setStyle("-fx-background-color: #eef2f3;");
+        for (TableColumn<LiftEntry, ?> col : collectLeafColumns(entryTable)) {
+            TextField tf = new TextField();
+            tf.setPromptText("Filtrer…");
+            tf.setPrefWidth(col.getPrefWidth());
+            tf.setStyle("-fx-font-size: 11px; -fx-padding: 2 4 2 4;");
+            tf.textProperty().addListener((obs, o, n) -> applyCurrentFilter());
+            entryColumnFilters.add(tf);
+            row.getChildren().add(tf);
+        }
+        return row;
     }
 
     private void configureEntryTableColumns() {
@@ -224,11 +260,19 @@ public final class MainController {
             formGroup.getColumns().add(c);
         }
 
+        TableColumn<LiftEntry, String> morphCol = new TableColumn<>("morph-type");
+        morphCol.setPrefWidth(110);
+        morphCol.setCellValueFactory(cd -> {
+            LiftEntry e = cd.getValue();
+            return e == null ? new ReadOnlyStringWrapper("") :
+                Bindings.createStringBinding(() -> getTraitValue(e, "morph-type"), e.traitsProperty());
+        });
+
         TableColumn<LiftEntry, String> dateCol = new TableColumn<>("Date création");
         dateCol.setPrefWidth(130);
         dateCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue() == null ? "" : cd.getValue().getDateCreated().orElse("")));
 
-        entryTable.getColumns().addAll(codeCol, formGroup, dateCol);
+        entryTable.getColumns().addAll(codeCol, formGroup, morphCol, dateCol);
     }
 
     /* ════════════════════ SENSE VIEW ════════════════════ */
@@ -252,7 +296,7 @@ public final class MainController {
         senseTable.getColumns().addAll(idCol, giCol, glossGroup, defGroup);
         senseTable.getItems().addAll(currentDictionary.getLiftDictionaryComponents().getAllSenses());
         senseTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> { if (n != null) populateSenseEditor(n); });
-        tableContainer.getChildren().setAll(senseTable);
+        tableContainer.getChildren().setAll(wrapTableWithFilters(senseTable));
         updateCountLabel(senseTable.getItems().size(), senseTable.getItems().size());
     }
 
@@ -272,7 +316,7 @@ public final class MainController {
         exampleTable.getColumns().addAll(srcCol, exGroup);
         exampleTable.getItems().addAll(currentDictionary.getLiftDictionaryComponents().getAllExamples());
         exampleTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> { if (n != null) populateExampleEditor(n); });
-        tableContainer.getChildren().setAll(exampleTable);
+        tableContainer.getChildren().setAll(wrapTableWithFilters(exampleTable));
         updateCountLabel(exampleTable.getItems().size(), exampleTable.getItems().size());
     }
 
@@ -288,7 +332,7 @@ public final class MainController {
         noteTable.getColumns().addAll(typeCol, textGroup);
         noteTable.getItems().addAll(currentDictionary.getLiftDictionaryComponents().getAllNotes());
         noteTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> { if (n != null) populateNoteEditor(n); });
-        tableContainer.getChildren().setAll(noteTable);
+        tableContainer.getChildren().setAll(wrapTableWithFilters(noteTable));
         updateCountLabel(noteTable.getItems().size(), noteTable.getItems().size());
     }
 
@@ -305,7 +349,7 @@ public final class MainController {
         variantTable.getColumns().addAll(refCol, formGroup);
         variantTable.getItems().addAll(currentDictionary.getLiftDictionaryComponents().getAllVariants());
         variantTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> { if (n != null) populateVariantEditor(n); });
-        tableContainer.getChildren().setAll(variantTable);
+        tableContainer.getChildren().setAll(wrapTableWithFilters(variantTable));
         updateCountLabel(variantTable.getItems().size(), variantTable.getItems().size());
     }
 
@@ -320,7 +364,7 @@ public final class MainController {
         );
         currentDictionary.getLiftDictionaryComponents().getAllEntries().stream()
             .flatMap(e -> e.getEtymologies().stream()).forEach(etyTable.getItems()::add);
-        tableContainer.getChildren().setAll(etyTable);
+        tableContainer.getChildren().setAll(wrapTableWithFilters(etyTable));
         updateCountLabel(etyTable.getItems().size(), etyTable.getItems().size());
     }
 
@@ -373,7 +417,7 @@ public final class MainController {
 
         langFieldTable.getColumns().addAll(parentTypeCol, parentIdCol, langGroup);
         langFieldTable.getItems().addAll(rows);
-        tableContainer.getChildren().setAll(langFieldTable);
+        tableContainer.getChildren().setAll(wrapTableWithFilters(langFieldTable));
         updateCountLabel(rows.size(), rows.size());
     }
 
@@ -408,10 +452,10 @@ public final class MainController {
         traitTable.getColumns().addAll(parentCol, nameCol, valCol, freqCol);
         traitTable.getItems().addAll(allTraits);
 
-        // Faceted filter panel above table
         VBox facetPanel = buildFacetPanel(allTraits);
-        VBox wrapper = new VBox(6, facetPanel, traitTable);
-        VBox.setVgrow(traitTable, Priority.ALWAYS);
+        VBox filteredTable = wrapTableWithFilters(traitTable);
+        VBox wrapper = new VBox(6, facetPanel, filteredTable);
+        VBox.setVgrow(filteredTable, Priority.ALWAYS);
         tableContainer.getChildren().setAll(wrapper);
         updateCountLabel(allTraits.size(), allTraits.size());
     }
@@ -478,8 +522,10 @@ public final class MainController {
         Button clearBtn = new Button("Tout afficher");
         clearBtn.setOnAction(e -> { annotationTable.getItems().setAll(all); updateCountLabel(all.size(), all.size()); });
         facets.getChildren().add(clearBtn);
-        VBox wrapper = new VBox(6, new VBox(4, new Label("Filtres par facette"), facets), annotationTable);
-        VBox.setVgrow(annotationTable, Priority.ALWAYS);
+        VBox facetPanel = new VBox(4, new Label("Filtres par facette"), facets);
+        VBox filteredTable = wrapTableWithFilters(annotationTable);
+        VBox wrapper = new VBox(6, facetPanel, filteredTable);
+        VBox.setVgrow(filteredTable, Priority.ALWAYS);
         tableContainer.getChildren().setAll(wrapper);
         updateCountLabel(all.size(), all.size());
     }
@@ -495,7 +541,7 @@ public final class MainController {
             col("Texte", f -> f.getText().getForms().stream().findFirst().map(Form::toPlainText).orElse(""))
         );
         fieldTable.getItems().addAll(currentDictionary.getLiftDictionaryComponents().getAllFields());
-        tableContainer.getChildren().setAll(fieldTable);
+        tableContainer.getChildren().setAll(wrapTableWithFilters(fieldTable));
         updateCountLabel(fieldTable.getItems().size(), fieldTable.getItems().size());
     }
 
@@ -746,10 +792,19 @@ public final class MainController {
     private void applyCurrentFilter() {
         String q = Optional.ofNullable(searchField.getText()).orElse("").trim().toLowerCase(Locale.ROOT);
         if (currentView.equals(NAV_ENTRIES)) {
+            List<TableColumn<LiftEntry, ?>> leaves = collectLeafColumns(entryTable);
             filteredEntries.setPredicate(entry -> {
                 if (entry == null) return false;
-                if (q.isEmpty()) return true;
-                return buildSearchText(entry).toLowerCase(Locale.ROOT).contains(q);
+                if (!q.isEmpty() && !buildSearchText(entry).toLowerCase(Locale.ROOT).contains(q)) return false;
+                // Per-column filters
+                for (int i = 0; i < entryColumnFilters.size() && i < leaves.size(); i++) {
+                    String ft = entryColumnFilters.get(i).getText();
+                    if (ft == null || ft.isBlank()) continue;
+                    Object val = leaves.get(i).getCellObservableValue(entry) != null ? leaves.get(i).getCellObservableValue(entry).getValue() : null;
+                    String cellText = val != null ? val.toString() : "";
+                    if (!cellText.toLowerCase(Locale.ROOT).contains(ft.toLowerCase(Locale.ROOT))) return false;
+                }
+                return true;
             });
             updateCountLabel(filteredEntries.size(), baseEntries.size());
         }
@@ -825,6 +880,10 @@ public final class MainController {
     @FXML private void onViewTraits() { switchView(NAV_TRAITS); }
     @FXML private void onViewAnnotations() { switchView(NAV_ANNOTATIONS); }
     @FXML private void onViewFields() { switchView(NAV_FIELDS); }
+    @FXML private void onViewGramInfo() { switchView(NAV_GRAM_INFO); }
+    @FXML private void onViewPos() { switchView(NAV_POS); }
+    @FXML private void onViewTransTypes() { switchView(NAV_TRANS_TYPES); }
+    @FXML private void onViewNoteTypes() { switchView(NAV_NOTE_TYPES); }
 
     /* ─── Configuration menu ─── */
     @FXML private void onConfigNoteTypes() { showConfigDialog("Types de notes", () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllNotes().stream().map(n -> n.getType().orElse("?")).distinct().sorted().toList()); }
@@ -864,6 +923,133 @@ public final class MainController {
         LiftEntry entry = entryTable.getSelectionModel().getSelectedItem();
         if (entry == null) { showError("Modification", "Aucune entrée sélectionnée."); return; }
         populateEntryEditor(entry);
+    }
+
+    /* ════════════════════ GRAMMATICAL INFO VIEW ════════════════════ */
+
+    private void showGramInfoView() {
+        if (currentDictionary == null) { tableContainer.getChildren().setAll(new Label("Aucun dictionnaire")); return; }
+        Map<String, Long> counts = new LinkedHashMap<>();
+        for (LiftSense s : currentDictionary.getLiftDictionaryComponents().getAllSenses()) {
+            s.getGrammaticalInfo().ifPresent(gi -> counts.merge(gi.getValue(), 1L, Long::sum));
+        }
+        showCategoryTable("Grammatical Info", "Valeur", counts);
+    }
+
+    /* ════════════════════ POS VIEW ════════════════════ */
+
+    private void showPosView() {
+        if (currentDictionary == null) { tableContainer.getChildren().setAll(new Label("Aucun dictionnaire")); return; }
+        Map<String, Long> counts = new LinkedHashMap<>();
+        for (LiftTrait t : currentDictionary.getLiftDictionaryComponents().getAllTraits()) {
+            if ("from-part-of-speech".equals(t.getName()) || "POS".equalsIgnoreCase(t.getName())) {
+                counts.merge(t.getValue(), 1L, Long::sum);
+            }
+        }
+        // Also count grammatical-info values as POS
+        for (LiftSense s : currentDictionary.getLiftDictionaryComponents().getAllSenses()) {
+            s.getGrammaticalInfo().ifPresent(gi -> counts.merge(gi.getValue(), 1L, Long::sum));
+        }
+        showCategoryTable("POS", "Catégorie", counts);
+    }
+
+    /* ════════════════════ TRANSLATION TYPES VIEW ════════════════════ */
+
+    private void showTranslationTypesView() {
+        if (currentDictionary == null) { tableContainer.getChildren().setAll(new Label("Aucun dictionnaire")); return; }
+        Map<String, Long> counts = new LinkedHashMap<>();
+        for (LiftExample ex : currentDictionary.getLiftDictionaryComponents().getAllExamples()) {
+            for (String type : ex.getTranslations().keySet()) counts.merge(type, 1L, Long::sum);
+        }
+        showCategoryTable("Translation types", "Type", counts);
+    }
+
+    /* ════════════════════ NOTE TYPES VIEW ════════════════════ */
+
+    private void showNoteTypesView() {
+        if (currentDictionary == null) { tableContainer.getChildren().setAll(new Label("Aucun dictionnaire")); return; }
+        Map<String, Long> counts = new LinkedHashMap<>();
+        for (LiftNote n : currentDictionary.getLiftDictionaryComponents().getAllNotes()) {
+            counts.merge(n.getType().orElse("(sans type)"), 1L, Long::sum);
+        }
+        showCategoryTable("Note types", "Type", counts);
+    }
+
+    /** Shared helper: show a simple value + frequency table for category views. */
+    private record CategoryRow(String value, long frequency) {}
+
+    private void showCategoryTable(String title, String colLabel, Map<String, Long> counts) {
+        TableView<CategoryRow> table = new TableView<>();
+        TableColumn<CategoryRow, String> valCol = new TableColumn<>(colLabel);
+        valCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue().value()));
+        valCol.setPrefWidth(250);
+        TableColumn<CategoryRow, String> freqCol = new TableColumn<>("Fréquence");
+        freqCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(String.valueOf(cd.getValue().frequency())));
+        freqCol.setPrefWidth(100);
+        table.getColumns().addAll(valCol, freqCol);
+        counts.entrySet().stream().sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+            .forEach(e -> table.getItems().add(new CategoryRow(e.getKey(), e.getValue())));
+        VBox wrapper = wrapTableWithFilters(table);
+        tableContainer.getChildren().setAll(wrapper);
+        updateCountLabel(table.getItems().size(), table.getItems().size());
+    }
+
+    /* ════════════════════ COLUMN FILTERS (5.8) ════════════════════ */
+
+    /**
+     * Wraps a TableView in a VBox with a row of TextFields below the headers.
+     * Each TextField filters its column; only rows matching ALL column filters are shown.
+     */
+    @SuppressWarnings("unchecked")
+    private static <T> VBox wrapTableWithFilters(TableView<T> table) {
+        ObservableList<T> sourceItems = FXCollections.observableArrayList(table.getItems());
+        FilteredList<T> filtered = new FilteredList<>(sourceItems, t -> true);
+        table.setItems(filtered);
+
+        HBox filterRow = new HBox(2);
+        filterRow.setPadding(new Insets(2, 0, 2, 0));
+        filterRow.setStyle("-fx-background-color: #eef2f3;");
+        List<TextField> filterFields = new ArrayList<>();
+
+        for (TableColumn<T, ?> column : collectLeafColumns(table)) {
+            TextField tf = new TextField();
+            tf.setPromptText("Filtrer…");
+            tf.setPrefWidth(column.getPrefWidth());
+            tf.setStyle("-fx-font-size: 11px; -fx-padding: 2 4 2 4;");
+            filterFields.add(tf);
+            filterRow.getChildren().add(tf);
+
+            tf.textProperty().addListener((obs, o, n) -> {
+                filtered.setPredicate(row -> {
+                    for (int i = 0; i < filterFields.size(); i++) {
+                        String filterText = filterFields.get(i).getText();
+                        if (filterText == null || filterText.isBlank()) continue;
+                        List<TableColumn<T, ?>> leaves = collectLeafColumns(table);
+                        if (i >= leaves.size()) continue;
+                        TableColumn<T, ?> col = leaves.get(i);
+                        Object cellVal = col.getCellObservableValue(row) != null ? col.getCellObservableValue(row).getValue() : null;
+                        String cellText = cellVal != null ? cellVal.toString() : "";
+                        if (!cellText.toLowerCase(Locale.ROOT).contains(filterText.toLowerCase(Locale.ROOT))) return false;
+                    }
+                    return true;
+                });
+            });
+        }
+
+        VBox wrapper = new VBox(filterRow, table);
+        VBox.setVgrow(table, Priority.ALWAYS);
+        return wrapper;
+    }
+
+    /** Collect leaf (non-grouped) columns in display order. */
+    private static <T> List<TableColumn<T, ?>> collectLeafColumns(TableView<T> table) {
+        List<TableColumn<T, ?>> leaves = new ArrayList<>();
+        for (TableColumn<T, ?> c : table.getColumns()) collectLeaves(c, leaves);
+        return leaves;
+    }
+    private static <T> void collectLeaves(TableColumn<T, ?> col, List<TableColumn<T, ?>> leaves) {
+        if (col.getColumns().isEmpty()) { leaves.add(col); }
+        else { for (TableColumn<T, ?> child : col.getColumns()) collectLeaves(child, leaves); }
     }
 
     /* ────────────────── UTILITIES ────────────────── */

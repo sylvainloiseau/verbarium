@@ -65,8 +65,12 @@
             </Menu>
             <Menu text="Navigateur de catégories">
               <items>
+                <MenuItem text="Grammatical info" onAction="#onViewGramInfo"/>
+                <MenuItem text="POS" onAction="#onViewPos"/>
                 <MenuItem text="Trait" onAction="#onViewTraits"/>
                 <MenuItem text="Annotation" onAction="#onViewAnnotations"/>
+                <MenuItem text="Translation types" onAction="#onViewTransTypes"/>
+                <MenuItem text="Note types" onAction="#onViewNoteTypes"/>
                 <MenuItem text="Field" onAction="#onViewFields"/>
               </items>
             </Menu>
