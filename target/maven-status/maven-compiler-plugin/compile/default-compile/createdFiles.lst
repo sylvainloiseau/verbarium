@@ -26,4 +26,5 @@ com\example\core\LiftOpenException.class
 com\example\ui\controls\ExtensibleWithoutFieldEditor.class
 com\example\ui\MainController$ItemRenderer.class
 com\example\data\LiftRepository.class
+com\example\ui\MainController$ConfigRow.class
 com\example\ui\controls\ExampleEditor.class

@@ -23,6 +23,8 @@ import javafx.scene.input.ClipboardContent;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -429,7 +431,7 @@ public final class MainController {
         }
     }
 
-    /* ════════════════════ TRAIT VIEW (5.10 – faceted) ════════════════════ */
+    /* ════════════════════ TRAIT VIEW (5.10 – split: names top, values bottom) ════════════════════ */
 
     private void showTraitView() {
         traitTable.getItems().clear();
@@ -438,52 +440,59 @@ public final class MainController {
 
         List<LiftTrait> allTraits = currentDictionary.getLiftDictionaryComponents().getAllTraits();
 
-        // Frequency map: name -> {value -> count}
-        Map<String, Map<String, Long>> freqMap = allTraits.stream()
-            .collect(Collectors.groupingBy(LiftTrait::getName, Collectors.groupingBy(LiftTrait::getValue, Collectors.counting())));
+        // Top: name frequency table
+        Map<String, Long> nameCounts = allTraits.stream()
+            .collect(Collectors.groupingBy(LiftTrait::getName, Collectors.counting()));
+        TableView<CategoryRow> nameTable = new TableView<>();
+        nameTable.getColumns().addAll(
+            colCat("Nom", CategoryRow::value),
+            colCat("Fréquence", r -> String.valueOf(r.frequency()))
+        );
+        nameCounts.entrySet().stream().sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+            .forEach(e -> nameTable.getItems().add(new CategoryRow(e.getKey(), e.getValue())));
+        nameTable.setPrefHeight(180);
 
-        TableColumn<LiftTrait, String> parentCol = col("Parent", t -> describeParent(t.getParent()));
-        TableColumn<LiftTrait, String> nameCol = col("Name", LiftTrait::getName);
-        TableColumn<LiftTrait, String> valCol = col("Value", LiftTrait::getValue);
-        TableColumn<LiftTrait, String> freqCol = col("Fréquence", t -> {
-            long count = freqMap.getOrDefault(t.getName(), Map.of()).getOrDefault(t.getValue(), 0L);
-            return String.valueOf(count);
-        });
-        traitTable.getColumns().addAll(parentCol, nameCol, valCol, freqCol);
+        // Bottom: value table filtered by selected name
+        traitTable.getColumns().addAll(
+            col("Parent", (LiftTrait t) -> describeParent(t.getParent())),
+            col("Name", LiftTrait::getName),
+            col("Value", LiftTrait::getValue),
+            col("Fréquence", t -> {
+                long c = allTraits.stream().filter(x -> x.getName().equals(t.getName()) && x.getValue().equals(t.getValue())).count();
+                return String.valueOf(c);
+            })
+        );
         traitTable.getItems().addAll(allTraits);
 
-        VBox facetPanel = buildFacetPanel(allTraits);
-        VBox filteredTable = wrapTableWithFilters(traitTable);
-        VBox wrapper = new VBox(6, facetPanel, filteredTable);
-        VBox.setVgrow(filteredTable, Priority.ALWAYS);
-        tableContainer.getChildren().setAll(wrapper);
+        Label bottomLabel = new Label("Valeurs (toutes)");
+        nameTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
+            if (n == null) { traitTable.getItems().setAll(allTraits); bottomLabel.setText("Valeurs (toutes)"); }
+            else {
+                traitTable.getItems().setAll(allTraits.stream().filter(t -> n.value().equals(t.getName())).toList());
+                bottomLabel.setText("Valeurs de « " + n.value() + " »");
+            }
+            updateCountLabel(traitTable.getItems().size(), allTraits.size());
+        });
+
+        Button clearBtn = new Button("Tout afficher");
+        clearBtn.setOnAction(e -> {
+            nameTable.getSelectionModel().clearSelection();
+            traitTable.getItems().setAll(allTraits);
+            bottomLabel.setText("Valeurs (toutes)");
+            updateCountLabel(allTraits.size(), allTraits.size());
+        });
+
+        VBox topPane = new VBox(4, new Label("Noms de trait"), wrapTableWithFilters(nameTable));
+        VBox bottomPane = new VBox(4, new HBox(8, bottomLabel, clearBtn), wrapTableWithFilters(traitTable));
+        VBox.setVgrow(bottomPane, Priority.ALWAYS);
+        SplitPane split = new SplitPane(topPane, bottomPane);
+        split.setOrientation(javafx.geometry.Orientation.VERTICAL);
+        split.setDividerPositions(0.35);
+        tableContainer.getChildren().setAll(split);
         updateCountLabel(allTraits.size(), allTraits.size());
     }
 
-    private VBox buildFacetPanel(List<LiftTrait> allTraits) {
-        Set<String> names = allTraits.stream().map(LiftTrait::getName).collect(Collectors.toCollection(TreeSet::new));
-        HBox facets = new HBox(8);
-        facets.setPadding(new Insets(4));
-        for (String name : names) {
-            Set<String> values = allTraits.stream().filter(t -> name.equals(t.getName())).map(LiftTrait::getValue).collect(Collectors.toCollection(TreeSet::new));
-            ComboBox<String> cb = new ComboBox<>(FXCollections.observableArrayList(values));
-            cb.setPromptText(name);
-            cb.setPrefWidth(140);
-            cb.setOnAction(e -> {
-                String sel = cb.getValue();
-                if (sel == null || sel.isBlank()) { traitTable.getItems().setAll(allTraits); }
-                else { traitTable.getItems().setAll(allTraits.stream().filter(t -> name.equals(t.getName()) && sel.equals(t.getValue())).toList()); }
-                updateCountLabel(traitTable.getItems().size(), allTraits.size());
-            });
-            facets.getChildren().addAll(new Label(name + ":"), cb);
-        }
-        Button clearBtn = new Button("Tout afficher");
-        clearBtn.setOnAction(e -> { traitTable.getItems().setAll(allTraits); updateCountLabel(allTraits.size(), allTraits.size()); });
-        facets.getChildren().add(clearBtn);
-        return new VBox(4, new Label("Filtres par facette"), facets);
-    }
-
-    /* ════════════════════ ANNOTATION VIEW (5.10 – with frequency) ════════════════════ */
+    /* ════════════════════ ANNOTATION VIEW (5.10 – split: names top, values bottom) ════════════════════ */
 
     private void showAnnotationView() {
         annotationTable.getItems().clear();
@@ -491,42 +500,58 @@ public final class MainController {
         if (currentDictionary == null) { tableContainer.getChildren().setAll(annotationTable); return; }
 
         List<LiftAnnotation> all = currentDictionary.getLiftDictionaryComponents().getAllAnnotations();
-        Map<String, Map<String, Long>> freqMap = all.stream()
-            .collect(Collectors.groupingBy(LiftAnnotation::getName, Collectors.groupingBy(a -> a.getValue().orElse(""), Collectors.counting())));
 
+        // Top: annotation name frequency
+        Map<String, Long> nameCounts = all.stream()
+            .collect(Collectors.groupingBy(LiftAnnotation::getName, Collectors.counting()));
+        TableView<CategoryRow> nameTable = new TableView<>();
+        nameTable.getColumns().addAll(
+            colCat("Nom", CategoryRow::value),
+            colCat("Fréquence", r -> String.valueOf(r.frequency()))
+        );
+        nameCounts.entrySet().stream().sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+            .forEach(e -> nameTable.getItems().add(new CategoryRow(e.getKey(), e.getValue())));
+        nameTable.setPrefHeight(180);
+
+        // Bottom: annotation detail table
         annotationTable.getColumns().addAll(
             col("Parent", (LiftAnnotation a) -> describeParent(a.getParent())),
             col("Name", LiftAnnotation::getName),
             col("Value", a -> a.getValue().orElse("")),
             col("Who", a -> a.getWho().orElse("")),
             col("When", a -> a.getWhen().orElse("")),
-            col("Fréquence", a -> String.valueOf(freqMap.getOrDefault(a.getName(), Map.of()).getOrDefault(a.getValue().orElse(""), 0L)))
+            col("Fréquence", a -> {
+                long c = all.stream().filter(x -> x.getName().equals(a.getName()) && x.getValue().orElse("").equals(a.getValue().orElse(""))).count();
+                return String.valueOf(c);
+            })
         );
         annotationTable.getItems().addAll(all);
 
-        // Faceted filter for annotations
-        Set<String> names = all.stream().map(LiftAnnotation::getName).collect(Collectors.toCollection(TreeSet::new));
-        HBox facets = new HBox(8);
-        facets.setPadding(new Insets(4));
-        for (String name : names) {
-            Set<String> values = all.stream().filter(a -> name.equals(a.getName())).map(a -> a.getValue().orElse("")).collect(Collectors.toCollection(TreeSet::new));
-            ComboBox<String> cb = new ComboBox<>(FXCollections.observableArrayList(values));
-            cb.setPromptText(name); cb.setPrefWidth(130);
-            cb.setOnAction(e -> {
-                String sel = cb.getValue();
-                annotationTable.getItems().setAll(sel == null || sel.isBlank() ? all : all.stream().filter(a -> name.equals(a.getName()) && sel.equals(a.getValue().orElse(""))).toList());
-                updateCountLabel(annotationTable.getItems().size(), all.size());
-            });
-            facets.getChildren().addAll(new Label(name + ":"), cb);
-        }
+        Label bottomLabel = new Label("Valeurs (toutes)");
+        nameTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
+            if (n == null) { annotationTable.getItems().setAll(all); bottomLabel.setText("Valeurs (toutes)"); }
+            else {
+                annotationTable.getItems().setAll(all.stream().filter(a -> n.value().equals(a.getName())).toList());
+                bottomLabel.setText("Valeurs de « " + n.value() + " »");
+            }
+            updateCountLabel(annotationTable.getItems().size(), all.size());
+        });
+
         Button clearBtn = new Button("Tout afficher");
-        clearBtn.setOnAction(e -> { annotationTable.getItems().setAll(all); updateCountLabel(all.size(), all.size()); });
-        facets.getChildren().add(clearBtn);
-        VBox facetPanel = new VBox(4, new Label("Filtres par facette"), facets);
-        VBox filteredTable = wrapTableWithFilters(annotationTable);
-        VBox wrapper = new VBox(6, facetPanel, filteredTable);
-        VBox.setVgrow(filteredTable, Priority.ALWAYS);
-        tableContainer.getChildren().setAll(wrapper);
+        clearBtn.setOnAction(e -> {
+            nameTable.getSelectionModel().clearSelection();
+            annotationTable.getItems().setAll(all);
+            bottomLabel.setText("Valeurs (toutes)");
+            updateCountLabel(all.size(), all.size());
+        });
+
+        VBox topPane = new VBox(4, new Label("Noms d'annotation"), wrapTableWithFilters(nameTable));
+        VBox bottomPane = new VBox(4, new HBox(8, bottomLabel, clearBtn), wrapTableWithFilters(annotationTable));
+        VBox.setVgrow(bottomPane, Priority.ALWAYS);
+        SplitPane split = new SplitPane(topPane, bottomPane);
+        split.setOrientation(javafx.geometry.Orientation.VERTICAL);
+        split.setDividerPositions(0.35);
+        tableContainer.getChildren().setAll(split);
         updateCountLabel(all.size(), all.size());
     }
 
@@ -679,8 +704,18 @@ public final class MainController {
         addSection(editorContainer, "Identifiant", () -> {
             GridPane g = new GridPane(); g.setHgap(8); g.setVgap(6);
             addReadOnlyRow(g, 0, "ID", entry.getId().orElse(""));
-            addReadOnlyRow(g, 1, "Date création", entry.getDateCreated().orElse(""));
-            addReadOnlyRow(g, 2, "Date modification", entry.getDateModified().orElse(""));
+
+            g.add(new Label("Date création"), 0, 1);
+            DatePicker dpCreated = buildDatePicker(entry.getDateCreated().orElse(""));
+            dpCreated.valueProperty().addListener((obs, o, n) -> entry.setDateCreated(n != null ? n.toString() : null));
+            GridPane.setHgrow(dpCreated, Priority.ALWAYS);
+            g.add(dpCreated, 1, 1);
+
+            g.add(new Label("Date modification"), 0, 2);
+            DatePicker dpModified = buildDatePicker(entry.getDateModified().orElse(""));
+            dpModified.valueProperty().addListener((obs, o, n) -> entry.setDateModified(n != null ? n.toString() : null));
+            GridPane.setHgrow(dpModified, Priority.ALWAYS);
+            g.add(dpModified, 1, 2);
             return g;
         }, true);
         addListSection(editorContainer, "Traits", entry.getTraits(), t -> {
@@ -1058,6 +1093,13 @@ public final class MainController {
     @FunctionalInterface private interface ItemRenderer<T> { javafx.scene.Node render(T item); }
     @FunctionalInterface private interface ListSupplier { List<String> get(); }
 
+    private static TableColumn<CategoryRow, String> colCat(String title, java.util.function.Function<CategoryRow, String> extractor) {
+        TableColumn<CategoryRow, String> c = new TableColumn<>(title);
+        c.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue() == null ? "" : extractor.apply(cd.getValue())));
+        c.setPrefWidth(title.equals("Fréquence") ? 100 : 250);
+        return c;
+    }
+
     private static <T> TableColumn<T, String> col(String title, java.util.function.Function<T, String> extractor) {
         TableColumn<T, String> c = new TableColumn<>(title);
         c.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue() == null ? "" : extractor.apply(cd.getValue())));
@@ -1082,6 +1124,19 @@ public final class MainController {
     }
 
     private void updateCountLabel(int shown, int total) { if (tableCountLabel != null) tableCountLabel.setText(shown + " / " + total); }
+
+    private static DatePicker buildDatePicker(String isoDate) {
+        DatePicker dp = new DatePicker();
+        dp.setEditable(true);
+        dp.setPromptText("yyyy-MM-dd");
+        if (isoDate != null && !isoDate.isBlank()) {
+            try {
+                String datePart = isoDate.length() > 10 ? isoDate.substring(0, 10) : isoDate;
+                dp.setValue(LocalDate.parse(datePart));
+            } catch (DateTimeParseException ignored) {}
+        }
+        return dp;
+    }
 
     private static String getTraitValue(LiftEntry e, String name) {
         return e == null ? "" : e.getTraits().stream().filter(t -> name.equals(t.getName())).findFirst().map(LiftTrait::getValue).orElse("");
@@ -1140,36 +1195,63 @@ public final class MainController {
     private void showError(String title, String msg) { Alert a = new Alert(Alert.AlertType.ERROR); a.setTitle(title); a.setHeaderText(null); a.setContentText(msg); a.showAndWait(); }
     private void showInfo(String title, String msg) { Alert a = new Alert(Alert.AlertType.INFORMATION); a.setTitle(title); a.setHeaderText(null); a.setContentText(msg); a.showAndWait(); }
 
+    private record ConfigRow(javafx.beans.property.StringProperty abbrev, javafx.beans.property.StringProperty description) {
+        ConfigRow(String a, String d) {
+            this(new javafx.beans.property.SimpleStringProperty(a), new javafx.beans.property.SimpleStringProperty(d));
+        }
+    }
+
     private void showConfigDialog(String title, ListSupplier supplier) {
         List<String> items = supplier.get();
         Dialog<Void> dlg = new Dialog<>();
         dlg.setTitle("Configuration – " + title);
         dlg.setHeaderText(title + " (" + items.size() + " valeurs)");
         dlg.setResizable(true);
-        dlg.getDialogPane().setPrefSize(500, 420);
+        dlg.getDialogPane().setPrefSize(600, 480);
         dlg.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
 
-        ObservableList<String> data = FXCollections.observableArrayList(items);
-        ListView<String> lv = new ListView<>(data);
-        lv.setPrefHeight(260);
+        TableView<ConfigRow> configTable = new TableView<>();
+        configTable.setEditable(true);
+        configTable.setPrefHeight(320);
 
-        TextField addField = new TextField();
-        addField.setPromptText("Nouvelle valeur…");
+        TableColumn<ConfigRow, String> abbrCol = new TableColumn<>("Abréviation");
+        abbrCol.setCellValueFactory(cd -> cd.getValue().abbrev());
+        abbrCol.setCellFactory(TextFieldTableCell.forTableColumn());
+        abbrCol.setOnEditCommit(e -> e.getRowValue().abbrev().set(e.getNewValue()));
+        abbrCol.setPrefWidth(180);
+
+        TableColumn<ConfigRow, String> descCol = new TableColumn<>("Description");
+        descCol.setCellValueFactory(cd -> cd.getValue().description());
+        descCol.setCellFactory(TextFieldTableCell.forTableColumn());
+        descCol.setOnEditCommit(e -> e.getRowValue().description().set(e.getNewValue()));
+        descCol.setPrefWidth(350);
+
+        configTable.getColumns().addAll(abbrCol, descCol);
+        for (String item : items) configTable.getItems().add(new ConfigRow(item, ""));
+
+        TextField addAbbrField = new TextField();
+        addAbbrField.setPromptText("Abréviation…");
+        TextField addDescField = new TextField();
+        addDescField.setPromptText("Description…");
         Button addBtn = new Button("Ajouter");
         addBtn.setOnAction(e -> {
-            String v = addField.getText().trim();
-            if (!v.isEmpty() && !data.contains(v)) { data.add(v); addField.clear(); }
+            String a = addAbbrField.getText().trim();
+            if (!a.isEmpty()) {
+                configTable.getItems().add(new ConfigRow(a, addDescField.getText().trim()));
+                addAbbrField.clear(); addDescField.clear();
+            }
         });
-        Button removeBtn = new Button("Supprimer sélection");
+        Button removeBtn = new Button("Supprimer");
         removeBtn.setOnAction(e -> {
-            String sel = lv.getSelectionModel().getSelectedItem();
-            if (sel != null) data.remove(sel);
+            ConfigRow sel = configTable.getSelectionModel().getSelectedItem();
+            if (sel != null) configTable.getItems().remove(sel);
         });
-        HBox controls = new HBox(8, addField, addBtn, removeBtn);
+        HBox controls = new HBox(8, addAbbrField, addDescField, addBtn, removeBtn);
         controls.setPadding(new Insets(6, 0, 0, 0));
-        HBox.setHgrow(addField, Priority.ALWAYS);
+        HBox.setHgrow(addAbbrField, Priority.ALWAYS);
+        HBox.setHgrow(addDescField, Priority.ALWAYS);
 
-        VBox content = new VBox(6, lv, controls);
+        VBox content = new VBox(6, configTable, controls);
         dlg.getDialogPane().setContent(content);
         dlg.showAndWait();
     }
