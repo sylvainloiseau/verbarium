@@ -619,6 +619,12 @@ public final class MainController {
         List<String> objLangs = getObjectLanguages();
         List<String> metaLangs = getMetaLanguages();
 
+        // Collect known dropdown values from the dictionary
+        List<String> traitNames = getKnownTraitNames();
+        Map<String, Set<String>> traitValues = getKnownTraitValues();
+        List<String> annotationNames = getKnownAnnotationNames();
+        List<String> fieldTypes = getKnownFieldTypes();
+
         Form preferred = entry.getForms().getForms().stream().findFirst().orElse(Form.EMPTY_FORM);
         editEntryTitle.setText(preferred == Form.EMPTY_FORM ? "(sans forme)" : preferred.toPlainText());
         editEntryCode.setText(getTraitValue(entry, "code"));
@@ -631,11 +637,12 @@ public final class MainController {
             addReadOnlyRow(g, 2, "Date modification", entry.getDateModified().orElse(""));
             return g;
         }, true);
-        addListSection(editorContainer, "Traits", entry.getTraits(), t -> { TraitEditor te = new TraitEditor(); te.setTrait(t, objLangs); return te; }, true);
+        addListSection(editorContainer, "Traits", entry.getTraits(), t -> {
+            TraitEditor te = new TraitEditor(); te.setTrait(t, objLangs, traitNames, traitValues); return te;
+        }, true);
         addSection(editorContainer, "Formes (lexical-unit)", () -> { MultiTextEditor m = new MultiTextEditor(); m.setAvailableLanguages(objLangs); m.setMultiText(entry.getForms()); return m; }, true);
         addListSection(editorContainer, "Prononciations", entry.getPronunciations(), p -> { PronunciationEditor pe = new PronunciationEditor(); pe.setPronunciation(p, objLangs); return pe; }, false);
 
-        // Link to senses instead of embedding them fully (5.8 spec)
         if (!entry.getSenses().isEmpty()) {
             addSection(editorContainer, "Sens (" + entry.getSenses().size() + ")", () -> {
                 VBox box = new VBox(4);
@@ -651,9 +658,13 @@ public final class MainController {
         addListSection(editorContainer, "Variantes", entry.getVariants(), v -> { VariantEditor ve = new VariantEditor(); ve.setVariant(v, objLangs, metaLangs); return ve; }, false);
         addListSection(editorContainer, "Relations", entry.getRelations(), r -> { RelationEditor re = new RelationEditor(); re.setRelation(r, metaLangs); return re; }, false);
         addListSection(editorContainer, "Étymologies", entry.getEtymologies(), et -> { EtymologyEditor ee = new EtymologyEditor(); ee.setEtymology(et, objLangs, metaLangs); return ee; }, false);
-        addListSection(editorContainer, "Annotations", entry.getAnnotations(), a -> { AnnotationEditor ae = new AnnotationEditor(); ae.setAnnotation(a, metaLangs); return ae; }, false);
+        addListSection(editorContainer, "Annotations", entry.getAnnotations(), a -> {
+            AnnotationEditor ae = new AnnotationEditor(); ae.setAnnotation(a, metaLangs, annotationNames); return ae;
+        }, false);
         addListSection(editorContainer, "Notes", new ArrayList<>(entry.getNotes().values()), n -> { NoteEditor ne = new NoteEditor(); ne.setNote(n, metaLangs); return ne; }, false);
-        addListSection(editorContainer, "Champs", entry.getFields(), f -> { FieldEditor fe = new FieldEditor(); fe.setField(f, metaLangs); return fe; }, false);
+        addListSection(editorContainer, "Champs", entry.getFields(), f -> {
+            FieldEditor fe = new FieldEditor(); fe.setField(f, metaLangs, fieldTypes); return fe;
+        }, false);
     }
 
     private void populateSenseEditor(LiftSense sense) {
@@ -917,6 +928,27 @@ public final class MainController {
         if (currentDictionary == null) return List.of();
         Set<String> all = new HashSet<>(); all.addAll(currentDictionary.getObjectLanguagesOfAllText()); all.addAll(currentDictionary.getMetaLanguagesOfAllText());
         return all.stream().filter(s -> s != null && !s.isBlank()).sorted().toList();
+    }
+
+    /* ─── Known dropdown values from dictionary ─── */
+
+    private List<String> getKnownTraitNames() {
+        return currentDictionary == null ? List.of() : currentDictionary.getTraitName().stream().sorted().toList();
+    }
+    private Map<String, Set<String>> getKnownTraitValues() {
+        if (currentDictionary == null) return Map.of();
+        Map<String, Set<String>> result = new HashMap<>();
+        for (LiftTrait t : currentDictionary.getLiftDictionaryComponents().getAllTraits()) {
+            result.computeIfAbsent(t.getName(), k -> new TreeSet<>()).add(t.getValue());
+        }
+        return result;
+    }
+    private List<String> getKnownAnnotationNames() {
+        return currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllAnnotations().stream()
+            .map(LiftAnnotation::getName).filter(Objects::nonNull).distinct().sorted().toList();
+    }
+    private List<String> getKnownFieldTypes() {
+        return currentDictionary == null ? List.of() : currentDictionary.getFieldType().stream().sorted().toList();
     }
 
     private void showError(String title, String msg) { Alert a = new Alert(Alert.AlertType.ERROR); a.setTitle(title); a.setHeaderText(null); a.setContentText(msg); a.showAndWait(); }

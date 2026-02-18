@@ -1,25 +1,24 @@
 package com.example.ui.controls;
 
 import fr.cnrs.lacito.liftapi.model.LiftAnnotation;
+import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
-import javafx.scene.control.Label;
-import javafx.scene.control.TextField;
-import javafx.scene.control.TitledPane;
+import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
-import java.util.Collection;
+import java.util.*;
 
 /**
- * Programmatic editor for a single {@link LiftAnnotation}.
- *
- * Displays: name (read-only), value, who, when + MultiTextEditor for its text.
+ * Editor for a single {@link LiftAnnotation}.
+ * Uses ComboBox for name (read-only, shows known annotation names)
+ * and an editable ComboBox for value.
  */
 public final class AnnotationEditor extends VBox {
 
-    private final TextField nameField = new TextField();
-    private final TextField valueField = new TextField();
+    private final ComboBox<String> nameCombo = new ComboBox<>();
+    private final ComboBox<String> valueCombo = new ComboBox<>();
     private final TextField whoField = new TextField();
     private final TextField whenField = new TextField();
     private final MultiTextEditor textEditor = new MultiTextEditor();
@@ -31,9 +30,14 @@ public final class AnnotationEditor extends VBox {
         setPadding(new Insets(4));
         setStyle("-fx-border-color: #ddd; -fx-border-radius: 4; -fx-background-color: #fafafa; -fx-background-radius: 4;");
 
-        nameField.setEditable(false);
-        nameField.setPromptText("nom");
-        valueField.setPromptText("valeur");
+        nameCombo.setEditable(false);
+        nameCombo.setMaxWidth(Double.MAX_VALUE);
+        nameCombo.setPromptText("nom de l'annotation");
+
+        valueCombo.setEditable(true);
+        valueCombo.setMaxWidth(Double.MAX_VALUE);
+        valueCombo.setPromptText("valeur");
+
         whoField.setPromptText("qui");
         whenField.setPromptText("quand");
 
@@ -42,15 +46,15 @@ public final class AnnotationEditor extends VBox {
         grid.setVgap(6);
         int r = 0;
         grid.add(new Label("Nom"), 0, r);
-        grid.add(nameField, 1, r++);
+        grid.add(nameCombo, 1, r++);
         grid.add(new Label("Valeur"), 0, r);
-        grid.add(valueField, 1, r++);
+        grid.add(valueCombo, 1, r++);
         grid.add(new Label("Qui"), 0, r);
         grid.add(whoField, 1, r++);
         grid.add(new Label("Quand"), 0, r);
         grid.add(whenField, 1, r++);
-        GridPane.setHgrow(nameField, Priority.ALWAYS);
-        GridPane.setHgrow(valueField, Priority.ALWAYS);
+        GridPane.setHgrow(nameCombo, Priority.ALWAYS);
+        GridPane.setHgrow(valueCombo, Priority.ALWAYS);
         GridPane.setHgrow(whoField, Priority.ALWAYS);
         GridPane.setHgrow(whenField, Priority.ALWAYS);
 
@@ -61,21 +65,40 @@ public final class AnnotationEditor extends VBox {
         getChildren().addAll(grid, textPane);
     }
 
-    public void setAnnotation(LiftAnnotation a, Collection<String> availableLangs) {
+    /**
+     * @param a                the annotation to edit
+     * @param availableLangs   languages for the MultiTextEditor
+     * @param annotationNames  all known annotation names in the dictionary
+     */
+    public void setAnnotation(LiftAnnotation a, Collection<String> availableLangs, Collection<String> annotationNames) {
+        if (annotation != null) {
+            valueCombo.getEditor().textProperty().unbindBidirectional(annotation.valueProperty());
+        }
         this.annotation = a;
         if (a == null) {
-            nameField.setText("");
-            valueField.setText("");
+            nameCombo.getItems().clear();
+            valueCombo.getItems().clear();
             whoField.setText("");
             whenField.setText("");
             textEditor.setMultiText(null);
             return;
         }
-        nameField.setText(a.getName() != null ? a.getName() : "");
-        valueField.setText(a.getValue().orElse(""));
+
+        nameCombo.setItems(FXCollections.observableArrayList(
+            annotationNames instanceof List ? (List<String>) annotationNames : new ArrayList<>(annotationNames)));
+        nameCombo.setValue(a.getName());
+
+        valueCombo.setValue(a.getValue().orElse(""));
+        valueCombo.getEditor().textProperty().bindBidirectional(a.valueProperty());
+
         whoField.setText(a.getWho().orElse(""));
         whenField.setText(a.getWhen().orElse(""));
-        textEditor.setMultiText(a.getText());
         textEditor.setAvailableLanguages(availableLangs);
+        textEditor.setMultiText(a.getText());
+    }
+
+    /** Backward-compatible overload. */
+    public void setAnnotation(LiftAnnotation a, Collection<String> availableLangs) {
+        setAnnotation(a, availableLangs, Set.of());
     }
 }
