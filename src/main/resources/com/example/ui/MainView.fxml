@@ -24,125 +24,120 @@
   <top>
     <MenuBar BorderPane.alignment="CENTER" styleClass="top-menu">
       <menus>
-        <Menu text="Fichier">
+        <Menu text="%menu.file">
           <items>
-            <MenuItem text="Nouveau" onAction="#onNewDictionary"/>
-            <MenuItem text="Ouvrir…" onAction="#onImportLift"/>
-            <Menu fx:id="recentMenu" text="Ouvrir récent"/>
+            <MenuItem text="%menu.file.new" onAction="#onNewDictionary"/>
+            <MenuItem text="%menu.file.open" onAction="#onImportLift"/>
+            <Menu fx:id="recentMenu" text="%menu.file.openRecent"/>
             <SeparatorMenuItem/>
-            <MenuItem text="Enregistrer" onAction="#onSave"/>
-            <MenuItem text="Enregistrer sous…" onAction="#onSaveAs"/>
+            <MenuItem text="%menu.file.save" onAction="#onSave"/>
+            <MenuItem text="%menu.file.saveAs" onAction="#onSaveAs"/>
             <SeparatorMenuItem/>
-            <MenuItem text="Paramètres" onAction="#onPreferences"/>
+            <MenuItem text="%menu.file.preferences" onAction="#onPreferences"/>
             <SeparatorMenuItem/>
-            <MenuItem text="Quitter" onAction="#onQuit"/>
+            <MenuItem text="%menu.file.quit" onAction="#onQuit"/>
           </items>
         </Menu>
-        <Menu text="Édition">
+        <Menu text="%menu.edit">
           <items>
-            <MenuItem text="Copier" onAction="#onCopy"/>
-            <MenuItem text="Coller" onAction="#onPaste"/>
-            <MenuItem text="Couper" onAction="#onCut"/>
+            <MenuItem text="%menu.edit.copy" onAction="#onCopy"/>
+            <MenuItem text="%menu.edit.paste" onAction="#onPaste"/>
+            <MenuItem text="%menu.edit.cut" onAction="#onCut"/>
           </items>
         </Menu>
-        <Menu text="Vue">
+        <Menu text="%menu.view">
           <items>
-            <Menu text="Objets">
+            <Menu text="%menu.view.objects">
               <items>
-                <MenuItem text="Entrées" onAction="#onViewEntries"/>
-                <MenuItem text="Sens" onAction="#onViewSenses"/>
-                <MenuItem text="Exemples" onAction="#onViewExamples"/>
-                <MenuItem text="Notes" onAction="#onViewNotes"/>
-                <MenuItem text="Variantes" onAction="#onViewVariants"/>
-                <MenuItem text="Étymologies" onAction="#onViewEtymologies"/>
+                <MenuItem text="%nav.entries" onAction="#onViewEntries"/>
+                <MenuItem text="%nav.senses" onAction="#onViewSenses"/>
+                <MenuItem text="%nav.examples" onAction="#onViewExamples"/>
+                <MenuItem text="%nav.notes" onAction="#onViewNotes"/>
+                <MenuItem text="%nav.variants" onAction="#onViewVariants"/>
+                <MenuItem text="%nav.etymologies" onAction="#onViewEtymologies"/>
               </items>
             </Menu>
-            <Menu text="Langues">
+            <Menu text="%menu.view.languages">
               <items>
-                <MenuItem text="Langues objet" onAction="#onViewObjectLangs"/>
-                <MenuItem text="Méta-langues" onAction="#onViewMetaLangs"/>
+                <MenuItem text="%nav.objectLangs" onAction="#onViewObjectLangs"/>
+                <MenuItem text="%nav.metaLangs" onAction="#onViewMetaLangs"/>
               </items>
             </Menu>
-            <Menu text="Navigateur de catégories">
+            <Menu text="%menu.view.categories">
               <items>
-                <MenuItem text="Grammatical info" onAction="#onViewGramInfo"/>
-                <MenuItem text="POS" onAction="#onViewPos"/>
-                <MenuItem text="Trait" onAction="#onViewTraits"/>
-                <MenuItem text="Annotation" onAction="#onViewAnnotations"/>
-                <MenuItem text="Translation types" onAction="#onViewTransTypes"/>
-                <MenuItem text="Note types" onAction="#onViewNoteTypes"/>
-                <MenuItem text="Field" onAction="#onViewFields"/>
+                <MenuItem text="%nav.gramInfo" onAction="#onViewGramInfo"/>
+                <MenuItem text="%nav.pos" onAction="#onViewPos"/>
+                <MenuItem text="%nav.traits" onAction="#onViewTraits"/>
+                <MenuItem text="%nav.annotations" onAction="#onViewAnnotations"/>
+                <MenuItem text="%nav.transTypes" onAction="#onViewTransTypes"/>
+                <MenuItem text="%nav.noteTypes" onAction="#onViewNoteTypes"/>
+                <MenuItem text="%nav.fields" onAction="#onViewFields"/>
               </items>
             </Menu>
           </items>
         </Menu>
-        <Menu text="Configuration des champs">
+        <Menu text="%menu.config">
           <items>
-            <MenuItem text="Types de notes" onAction="#onConfigNoteTypes"/>
-            <MenuItem text="Types de traductions" onAction="#onConfigTranslationTypes"/>
-            <MenuItem text="Langues" onAction="#onConfigLanguages"/>
-            <MenuItem text="Types de trait" onAction="#onConfigTraitTypes"/>
-            <MenuItem text="Types d'annotation" onAction="#onConfigAnnotationTypes"/>
-            <MenuItem text="Types de field" onAction="#onConfigFieldTypes"/>
+            <MenuItem text="%menu.config.noteTypes" onAction="#onConfigNoteTypes"/>
+            <MenuItem text="%menu.config.translationTypes" onAction="#onConfigTranslationTypes"/>
+            <MenuItem text="%menu.config.languages" onAction="#onConfigLanguages"/>
+            <MenuItem text="%menu.config.traitTypes" onAction="#onConfigTraitTypes"/>
+            <MenuItem text="%menu.config.annotationTypes" onAction="#onConfigAnnotationTypes"/>
+            <MenuItem text="%menu.config.fieldTypes" onAction="#onConfigFieldTypes"/>
           </items>
         </Menu>
-        <Menu text="Outil">
+        <Menu text="%menu.tools">
           <items>
-            <MenuItem text="Valider le dictionnaire" onAction="#onValidateDictionary"/>
-            <MenuItem text="Exporter en CSV" onAction="#onExportCsv"/>
+            <MenuItem text="%menu.tools.validate" onAction="#onValidateDictionary"/>
+            <MenuItem text="%menu.tools.exportCsv" onAction="#onExportCsv"/>
           </items>
         </Menu>
       </menus>
     </MenuBar>
   </top>
 
-  <!-- Left: TreeView navigation (5.7.2) -->
   <left>
     <VBox spacing="6" BorderPane.alignment="CENTER" styleClass="left-nav" prefWidth="200">
       <padding>
         <Insets top="10" right="6" bottom="10" left="6"/>
       </padding>
-      <Label text="Navigation" styleClass="section-title"/>
+      <Label text="%panel.navigation" styleClass="section-title"/>
       <TreeView fx:id="navTree" VBox.vgrow="ALWAYS" styleClass="nav-tree"/>
     </VBox>
   </left>
 
-  <!-- Center + Right: SplitPane (5.8: table left, form right) -->
   <center>
     <SplitPane fx:id="mainSplit" dividerPositions="0.6" BorderPane.alignment="CENTER">
-      <!-- Center: dynamic table area -->
       <VBox spacing="8" styleClass="center">
         <padding>
           <Insets top="10" right="10" bottom="10" left="10"/>
         </padding>
         <HBox alignment="CENTER_LEFT" spacing="12">
-          <Label fx:id="viewTitle" text="Entrées" styleClass="panel-title"/>
+          <Label fx:id="viewTitle" text="%nav.entries" styleClass="panel-title"/>
           <HBox HBox.hgrow="ALWAYS"/>
           <Label fx:id="tableCountLabel" text="" styleClass="table-footer-text"/>
         </HBox>
         <HBox spacing="8" alignment="CENTER_LEFT">
-          <TextField fx:id="searchField" promptText="Rechercher / Filtrer…" styleClass="search-input" HBox.hgrow="ALWAYS"/>
-          <Button fx:id="addButton" text="+ Nouveau" onAction="#onCreateNewObject" styleClass="note-button"/>
+          <TextField fx:id="searchField" promptText="%search.prompt" styleClass="search-input" HBox.hgrow="ALWAYS"/>
+          <Button fx:id="addButton" text="%btn.new" onAction="#onCreateNewObject" styleClass="note-button"/>
         </HBox>
-        <!-- Dynamic table container -->
         <StackPane fx:id="tableContainer" VBox.vgrow="ALWAYS"/>
       </VBox>
 
-      <!-- Right: detail / editor panel -->
       <ScrollPane fitToWidth="true" styleClass="right-panel">
         <content>
           <VBox fx:id="rightContent" spacing="10">
             <padding>
               <Insets top="10" right="10" bottom="10" left="10"/>
             </padding>
-            <Label text="Formulaire d'édition" styleClass="panel-title"/>
+            <Label text="%panel.editForm" styleClass="panel-title"/>
             <HBox spacing="8" alignment="CENTER_LEFT" styleClass="edit-header">
-              <Label fx:id="editEntryTitle" text="(sélectionne un élément)" styleClass="edit-entry-title"/>
+              <Label fx:id="editEntryTitle" text="%panel.selectElement" styleClass="edit-entry-title"/>
               <Label fx:id="editEntryCode" text="" styleClass="edit-entry-code"/>
             </HBox>
             <VBox fx:id="editorContainer" spacing="8"/>
             <HBox alignment="CENTER_RIGHT">
-              <Button text="Modifier l'entrée" onAction="#onModifyEntry" styleClass="example-add-button"
+              <Button text="%btn.modifyEntry" onAction="#onModifyEntry" styleClass="example-add-button"
                       maxWidth="1.7976931348623157E308" HBox.hgrow="ALWAYS"/>
             </HBox>
           </VBox>

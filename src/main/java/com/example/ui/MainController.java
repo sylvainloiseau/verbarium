@@ -38,23 +38,23 @@ import java.util.stream.Collectors;
  */
 public final class MainController {
 
-    /* ─── Nav view identifiers ─── */
-    private static final String NAV_ENTRIES     = "Entrées";
-    private static final String NAV_SENSES      = "Sens";
-    private static final String NAV_EXAMPLES    = "Exemples";
-    private static final String NAV_NOTES       = "Notes";
-    private static final String NAV_VARIANTS    = "Variantes";
-    private static final String NAV_ETYMOLOGIES = "Étymologies";
-    private static final String NAV_OBJ_LANGS   = "Langues objet";
-    private static final String NAV_META_LANGS  = "Méta-langues";
-    private static final String NAV_TRAITS      = "Trait";
-    private static final String NAV_ANNOTATIONS = "Annotation";
-    private static final String NAV_FIELDS      = "Field";
-    private static final String NAV_GRAM_INFO   = "Grammatical info";
-    private static final String NAV_POS         = "POS";
-    private static final String NAV_TRANS_TYPES = "Translation types";
-    private static final String NAV_NOTE_TYPES  = "Note types";
-    private static final String NAV_QUICK_ENTRY = "Saisie rapide";
+    /* ─── Nav view identifiers (i18n keys) ─── */
+    private static final String NAV_ENTRIES     = "nav.entries";
+    private static final String NAV_SENSES      = "nav.senses";
+    private static final String NAV_EXAMPLES    = "nav.examples";
+    private static final String NAV_NOTES       = "nav.notes";
+    private static final String NAV_VARIANTS    = "nav.variants";
+    private static final String NAV_ETYMOLOGIES = "nav.etymologies";
+    private static final String NAV_OBJ_LANGS   = "nav.objectLangs";
+    private static final String NAV_META_LANGS  = "nav.metaLangs";
+    private static final String NAV_TRAITS      = "nav.traits";
+    private static final String NAV_ANNOTATIONS = "nav.annotations";
+    private static final String NAV_FIELDS      = "nav.fields";
+    private static final String NAV_GRAM_INFO   = "nav.gramInfo";
+    private static final String NAV_POS         = "nav.pos";
+    private static final String NAV_TRANS_TYPES = "nav.transTypes";
+    private static final String NAV_NOTE_TYPES  = "nav.noteTypes";
+    private static final String NAV_QUICK_ENTRY = "nav.quickEntry";
 
     /* ─── State ─── */
     private final DictionaryService dictionaryService = new DictionaryService();
@@ -116,41 +116,46 @@ public final class MainController {
     /* ─── Navigation tree (5.7.2) ─── */
 
     private void buildNavTree() {
-        TreeItem<String> root = new TreeItem<>("Dictionnaire");
+        TreeItem<String> root = new TreeItem<>(I18n.get("nav.dictionary"));
         root.setExpanded(true);
 
-        TreeItem<String> objects = new TreeItem<>("Objets");
+        TreeItem<String> objects = new TreeItem<>(I18n.get("nav.objects"));
         objects.setExpanded(true);
         objects.getChildren().addAll(
-            new TreeItem<>(NAV_ENTRIES), new TreeItem<>(NAV_SENSES),
-            new TreeItem<>(NAV_EXAMPLES), new TreeItem<>(NAV_NOTES),
-            new TreeItem<>(NAV_VARIANTS), new TreeItem<>(NAV_ETYMOLOGIES)
+            navItem(NAV_ENTRIES), navItem(NAV_SENSES),
+            navItem(NAV_EXAMPLES), navItem(NAV_NOTES),
+            navItem(NAV_VARIANTS), navItem(NAV_ETYMOLOGIES)
         );
 
-        TreeItem<String> langs = new TreeItem<>("Langues");
+        TreeItem<String> langs = new TreeItem<>(I18n.get("nav.languages"));
         langs.setExpanded(true);
-        langs.getChildren().addAll(new TreeItem<>(NAV_OBJ_LANGS), new TreeItem<>(NAV_META_LANGS));
+        langs.getChildren().addAll(navItem(NAV_OBJ_LANGS), navItem(NAV_META_LANGS));
 
-        TreeItem<String> cats = new TreeItem<>("Nav. de catégories");
+        TreeItem<String> cats = new TreeItem<>(I18n.get("nav.categories"));
         cats.setExpanded(true);
         cats.getChildren().addAll(
-            new TreeItem<>(NAV_GRAM_INFO), new TreeItem<>(NAV_POS),
-            new TreeItem<>(NAV_TRAITS), new TreeItem<>(NAV_ANNOTATIONS),
-            new TreeItem<>(NAV_TRANS_TYPES), new TreeItem<>(NAV_NOTE_TYPES),
-            new TreeItem<>(NAV_FIELDS)
+            navItem(NAV_GRAM_INFO), navItem(NAV_POS),
+            navItem(NAV_TRAITS), navItem(NAV_ANNOTATIONS),
+            navItem(NAV_TRANS_TYPES), navItem(NAV_NOTE_TYPES),
+            navItem(NAV_FIELDS)
         );
 
-        TreeItem<String> quick = new TreeItem<>(NAV_QUICK_ENTRY);
+        TreeItem<String> quick = navItem(NAV_QUICK_ENTRY);
 
         root.getChildren().addAll(objects, langs, cats, quick);
         navTree.setRoot(root);
         navTree.setShowRoot(false);
 
+        navKeyMap.clear();
+        mapNavKeys(root);
+
         navTree.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> {
-            if (newV != null && newV.isLeaf()) switchView(newV.getValue());
+            if (newV != null && newV.isLeaf()) {
+                String key = navKeyMap.get(newV);
+                if (key != null) switchView(key);
+            }
         });
 
-        // Context menu on tree items (5.8: right-click "créer un nouvel objet")
         navTree.setCellFactory(tv -> {
             TreeCell<String> cell = new TreeCell<>() {
                 @Override protected void updateItem(String item, boolean empty) {
@@ -159,7 +164,7 @@ public final class MainController {
                 }
             };
             ContextMenu ctx = new ContextMenu();
-            MenuItem createItem = new MenuItem("Créer un nouvel objet");
+            MenuItem createItem = new MenuItem(I18n.get("btn.createObject"));
             createItem.setOnAction(e -> onCreateNewObject());
             ctx.getItems().add(createItem);
             cell.setContextMenu(ctx);
@@ -167,16 +172,30 @@ public final class MainController {
         });
     }
 
+    private final Map<TreeItem<String>, String> navKeyMap = new HashMap<>();
+
+    private TreeItem<String> navItem(String i18nKey) {
+        TreeItem<String> item = new TreeItem<>(I18n.get(i18nKey));
+        navKeyMap.put(item, i18nKey);
+        return item;
+    }
+
+    private void mapNavKeys(TreeItem<String> node) {
+        for (TreeItem<String> child : node.getChildren()) {
+            if (!navKeyMap.containsKey(child)) mapNavKeys(child);
+        }
+    }
+
     /* ─── View switching ─── */
 
     private void switchView(String viewName) {
         currentView = viewName;
-        viewTitle.setText(viewName);
+        viewTitle.setText(I18n.get(viewName));
         editorContainer.getChildren().clear();
-        editEntryTitle.setText("(sélectionne un élément)");
+        editEntryTitle.setText(I18n.get("panel.selectElement"));
         editEntryCode.setText("");
         tableContainer.getChildren().clear();
-        addButton.setText("+ Nouveau");
+        addButton.setText(I18n.get("btn.new"));
 
         switch (viewName) {
             case NAV_ENTRIES     -> showEntryView();
@@ -211,7 +230,7 @@ public final class MainController {
     }
 
     private void showEntryView() {
-        addButton.setText("+ Nouvelle entrée");
+        addButton.setText(I18n.get("btn.newEntry"));
         // Entry table uses its own FilteredList; wrap with column filters too
         HBox filterRow = buildEntryFilterRow();
         VBox wrapper = new VBox(filterRow, entryTable);
@@ -230,7 +249,7 @@ public final class MainController {
         row.setStyle("-fx-background-color: #eef2f3;");
         for (TableColumn<LiftEntry, ?> col : collectLeafColumns(entryTable)) {
             TextField tf = new TextField();
-            tf.setPromptText("Filtrer…");
+            tf.setPromptText(I18n.get("filter.prompt"));
             tf.setPrefWidth(col.getPrefWidth());
             tf.setStyle("-fx-font-size: 11px; -fx-padding: 2 4 2 4;");
             tf.textProperty().addListener((obs, o, n) -> applyCurrentFilter());
@@ -244,7 +263,7 @@ public final class MainController {
         entryTable.getColumns().clear();
         if (currentDictionary == null) return;
 
-        TableColumn<LiftEntry, String> codeCol = new TableColumn<>("Code");
+        TableColumn<LiftEntry, String> codeCol = new TableColumn<>(I18n.get("col.code"));
         codeCol.setPrefWidth(120);
         codeCol.setCellValueFactory(cd -> {
             LiftEntry e = cd.getValue();
@@ -254,7 +273,7 @@ public final class MainController {
 
         var formLangs = currentDictionary.getLiftDictionaryComponents().getAllEntries().stream()
                 .flatMap(e -> e.getForms().getLangs().stream()).filter(s -> s != null && !s.isBlank()).distinct().sorted().toList();
-        TableColumn<LiftEntry, String> formGroup = new TableColumn<>("Form");
+        TableColumn<LiftEntry, String> formGroup = new TableColumn<>(I18n.get("col.form"));
         for (String lang : formLangs) {
             TableColumn<LiftEntry, String> c = new TableColumn<>(lang);
             c.setPrefWidth(140);
@@ -262,7 +281,7 @@ public final class MainController {
             formGroup.getColumns().add(c);
         }
 
-        TableColumn<LiftEntry, String> morphCol = new TableColumn<>("morph-type");
+        TableColumn<LiftEntry, String> morphCol = new TableColumn<>(I18n.get("col.morphType"));
         morphCol.setPrefWidth(110);
         morphCol.setCellValueFactory(cd -> {
             LiftEntry e = cd.getValue();
@@ -270,7 +289,7 @@ public final class MainController {
                 Bindings.createStringBinding(() -> getTraitValue(e, "morph-type"), e.traitsProperty());
         });
 
-        TableColumn<LiftEntry, String> dateCol = new TableColumn<>("Date création");
+        TableColumn<LiftEntry, String> dateCol = new TableColumn<>(I18n.get("col.dateCreated"));
         dateCol.setPrefWidth(130);
         dateCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue() == null ? "" : cd.getValue().getDateCreated().orElse("")));
 
@@ -285,13 +304,13 @@ public final class MainController {
         if (currentDictionary == null) { tableContainer.getChildren().setAll(senseTable); return; }
 
         List<String> metaLangs = getMetaLanguages();
-        TableColumn<LiftSense, String> idCol = col("ID", s -> s.getId().orElse(""));
-        TableColumn<LiftSense, String> giCol = col("Gram. Info", s -> s.getGrammaticalInfo().map(GrammaticalInfo::getValue).orElse(""));
-        TableColumn<LiftSense, String> glossGroup = new TableColumn<>("Gloss");
+        TableColumn<LiftSense, String> idCol = col(I18n.get("col.id"), s -> s.getId().orElse(""));
+        TableColumn<LiftSense, String> giCol = col(I18n.get("col.gramInfo"), s -> s.getGrammaticalInfo().map(GrammaticalInfo::getValue).orElse(""));
+        TableColumn<LiftSense, String> glossGroup = new TableColumn<>(I18n.get("col.gloss"));
         for (String l : metaLangs) {
             glossGroup.getColumns().add(col(l, s -> s.getGloss().getForm(l).map(Form::toPlainText).orElse("")));
         }
-        TableColumn<LiftSense, String> defGroup = new TableColumn<>("Définition");
+        TableColumn<LiftSense, String> defGroup = new TableColumn<>(I18n.get("col.definition"));
         for (String l : metaLangs) {
             defGroup.getColumns().add(col(l, s -> s.getDefinition().getForm(l).map(Form::toPlainText).orElse("")));
         }
@@ -310,8 +329,8 @@ public final class MainController {
         if (currentDictionary == null) { tableContainer.getChildren().setAll(exampleTable); return; }
 
         List<String> objLangs = getObjectLanguages();
-        TableColumn<LiftExample, String> srcCol = col("Source", ex -> ex.getSource().orElse(""));
-        TableColumn<LiftExample, String> exGroup = new TableColumn<>("Exemple");
+        TableColumn<LiftExample, String> srcCol = col(I18n.get("col.source"), ex -> ex.getSource().orElse(""));
+        TableColumn<LiftExample, String> exGroup = new TableColumn<>(I18n.get("col.example"));
         for (String l : objLangs) {
             exGroup.getColumns().add(col(l, ex -> ex.getExample().getForm(l).map(Form::toPlainText).orElse("")));
         }
@@ -328,8 +347,8 @@ public final class MainController {
         TableView<LiftNote> noteTable = new TableView<>();
         if (currentDictionary == null) { tableContainer.getChildren().setAll(noteTable); return; }
         List<String> metaLangs = getMetaLanguages();
-        TableColumn<LiftNote, String> typeCol = col("Type", n -> n.getType().orElse(""));
-        TableColumn<LiftNote, String> textGroup = new TableColumn<>("Texte");
+        TableColumn<LiftNote, String> typeCol = col(I18n.get("col.type"), n -> n.getType().orElse(""));
+        TableColumn<LiftNote, String> textGroup = new TableColumn<>(I18n.get("col.text"));
         for (String l : metaLangs) textGroup.getColumns().add(col(l, n -> n.getText().getForm(l).map(Form::toPlainText).orElse("")));
         noteTable.getColumns().addAll(typeCol, textGroup);
         noteTable.getItems().addAll(currentDictionary.getLiftDictionaryComponents().getAllNotes());
@@ -345,8 +364,8 @@ public final class MainController {
         variantTable.getColumns().clear();
         if (currentDictionary == null) { tableContainer.getChildren().setAll(variantTable); return; }
         List<String> objLangs = getObjectLanguages();
-        TableColumn<LiftVariant, String> refCol = col("Ref", v -> v.getRefId().orElse(""));
-        TableColumn<LiftVariant, String> formGroup = new TableColumn<>("Formes");
+        TableColumn<LiftVariant, String> refCol = col(I18n.get("col.ref"), v -> v.getRefId().orElse(""));
+        TableColumn<LiftVariant, String> formGroup = new TableColumn<>(I18n.get("col.forms"));
         for (String l : objLangs) formGroup.getColumns().add(col(l, v -> v.getForms().getForm(l).map(Form::toPlainText).orElse("")));
         variantTable.getColumns().addAll(refCol, formGroup);
         variantTable.getItems().addAll(currentDictionary.getLiftDictionaryComponents().getAllVariants());
@@ -361,8 +380,8 @@ public final class MainController {
         TableView<LiftEtymology> etyTable = new TableView<>();
         if (currentDictionary == null) { tableContainer.getChildren().setAll(etyTable); return; }
         etyTable.getColumns().addAll(
-            col("Type", (LiftEtymology e) -> e.getType() != null ? e.getType() : ""),
-            col("Source", (LiftEtymology e) -> e.getSource() != null ? e.getSource() : "")
+            col(I18n.get("col.type"), (LiftEtymology e) -> e.getType() != null ? e.getType() : ""),
+            col(I18n.get("col.source"), (LiftEtymology e) -> e.getSource() != null ? e.getSource() : "")
         );
         currentDictionary.getLiftDictionaryComponents().getAllEntries().stream()
             .flatMap(e -> e.getEtymologies().stream()).forEach(etyTable.getItems()::add);
@@ -401,15 +420,14 @@ public final class MainController {
             }
         }
 
-        TableColumn<MultiTextField, String> parentTypeCol = new TableColumn<>("Type parent");
+        TableColumn<MultiTextField, String> parentTypeCol = new TableColumn<>(I18n.get("col.parentType"));
         parentTypeCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue().parentType()));
         parentTypeCol.setPrefWidth(100);
-        TableColumn<MultiTextField, String> parentIdCol = new TableColumn<>("Parent");
+        TableColumn<MultiTextField, String> parentIdCol = new TableColumn<>(I18n.get("col.parent"));
         parentIdCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue().parentId()));
         parentIdCol.setPrefWidth(120);
 
-        // One column per language
-        TableColumn<MultiTextField, String> langGroup = new TableColumn<>("Langues");
+        TableColumn<MultiTextField, String> langGroup = new TableColumn<>(I18n.get("nav.languages"));
         for (String l : langs) {
             TableColumn<MultiTextField, String> c = new TableColumn<>(l);
             c.setCellValueFactory(cd -> new ReadOnlyStringWrapper(l.equals(cd.getValue().lang()) ? cd.getValue().text() : ""));
@@ -440,49 +458,47 @@ public final class MainController {
 
         List<LiftTrait> allTraits = currentDictionary.getLiftDictionaryComponents().getAllTraits();
 
-        // Top: name frequency table
         Map<String, Long> nameCounts = allTraits.stream()
             .collect(Collectors.groupingBy(LiftTrait::getName, Collectors.counting()));
         TableView<CategoryRow> nameTable = new TableView<>();
         nameTable.getColumns().addAll(
-            colCat("Nom", CategoryRow::value),
-            colCat("Fréquence", r -> String.valueOf(r.frequency()))
+            colCat(I18n.get("col.name"), CategoryRow::value),
+            colCat(I18n.get("col.frequency"), r -> String.valueOf(r.frequency()))
         );
         nameCounts.entrySet().stream().sorted(Map.Entry.<String, Long>comparingByValue().reversed())
             .forEach(e -> nameTable.getItems().add(new CategoryRow(e.getKey(), e.getValue())));
         nameTable.setPrefHeight(180);
 
-        // Bottom: value table filtered by selected name
         traitTable.getColumns().addAll(
-            col("Parent", (LiftTrait t) -> describeParent(t.getParent())),
-            col("Name", LiftTrait::getName),
-            col("Value", LiftTrait::getValue),
-            col("Fréquence", t -> {
+            col(I18n.get("col.parent"), (LiftTrait t) -> describeParent(t.getParent())),
+            col(I18n.get("col.name"), LiftTrait::getName),
+            col(I18n.get("col.value"), LiftTrait::getValue),
+            col(I18n.get("col.frequency"), t -> {
                 long c = allTraits.stream().filter(x -> x.getName().equals(t.getName()) && x.getValue().equals(t.getValue())).count();
                 return String.valueOf(c);
             })
         );
         traitTable.getItems().addAll(allTraits);
 
-        Label bottomLabel = new Label("Valeurs (toutes)");
+        Label bottomLabel = new Label(I18n.get("category.traitValues"));
         nameTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
-            if (n == null) { traitTable.getItems().setAll(allTraits); bottomLabel.setText("Valeurs (toutes)"); }
+            if (n == null) { traitTable.getItems().setAll(allTraits); bottomLabel.setText(I18n.get("category.traitValues")); }
             else {
                 traitTable.getItems().setAll(allTraits.stream().filter(t -> n.value().equals(t.getName())).toList());
-                bottomLabel.setText("Valeurs de « " + n.value() + " »");
+                bottomLabel.setText(I18n.get("category.traitValuesOf", n.value()));
             }
             updateCountLabel(traitTable.getItems().size(), allTraits.size());
         });
 
-        Button clearBtn = new Button("Tout afficher");
+        Button clearBtn = new Button(I18n.get("btn.showAll"));
         clearBtn.setOnAction(e -> {
             nameTable.getSelectionModel().clearSelection();
             traitTable.getItems().setAll(allTraits);
-            bottomLabel.setText("Valeurs (toutes)");
+            bottomLabel.setText(I18n.get("category.traitValues"));
             updateCountLabel(allTraits.size(), allTraits.size());
         });
 
-        VBox topPane = new VBox(4, new Label("Noms de trait"), wrapTableWithFilters(nameTable));
+        VBox topPane = new VBox(4, new Label(I18n.get("category.traitNames")), wrapTableWithFilters(nameTable));
         VBox bottomPane = new VBox(4, new HBox(8, bottomLabel, clearBtn), wrapTableWithFilters(traitTable));
         VBox.setVgrow(bottomPane, Priority.ALWAYS);
         SplitPane split = new SplitPane(topPane, bottomPane);
@@ -501,51 +517,49 @@ public final class MainController {
 
         List<LiftAnnotation> all = currentDictionary.getLiftDictionaryComponents().getAllAnnotations();
 
-        // Top: annotation name frequency
         Map<String, Long> nameCounts = all.stream()
             .collect(Collectors.groupingBy(LiftAnnotation::getName, Collectors.counting()));
         TableView<CategoryRow> nameTable = new TableView<>();
         nameTable.getColumns().addAll(
-            colCat("Nom", CategoryRow::value),
-            colCat("Fréquence", r -> String.valueOf(r.frequency()))
+            colCat(I18n.get("col.name"), CategoryRow::value),
+            colCat(I18n.get("col.frequency"), r -> String.valueOf(r.frequency()))
         );
         nameCounts.entrySet().stream().sorted(Map.Entry.<String, Long>comparingByValue().reversed())
             .forEach(e -> nameTable.getItems().add(new CategoryRow(e.getKey(), e.getValue())));
         nameTable.setPrefHeight(180);
 
-        // Bottom: annotation detail table
         annotationTable.getColumns().addAll(
-            col("Parent", (LiftAnnotation a) -> describeParent(a.getParent())),
-            col("Name", LiftAnnotation::getName),
-            col("Value", a -> a.getValue().orElse("")),
-            col("Who", a -> a.getWho().orElse("")),
-            col("When", a -> a.getWhen().orElse("")),
-            col("Fréquence", a -> {
+            col(I18n.get("col.parent"), (LiftAnnotation a) -> describeParent(a.getParent())),
+            col(I18n.get("col.name"), LiftAnnotation::getName),
+            col(I18n.get("col.value"), a -> a.getValue().orElse("")),
+            col(I18n.get("col.who"), a -> a.getWho().orElse("")),
+            col(I18n.get("col.when"), a -> a.getWhen().orElse("")),
+            col(I18n.get("col.frequency"), a -> {
                 long c = all.stream().filter(x -> x.getName().equals(a.getName()) && x.getValue().orElse("").equals(a.getValue().orElse(""))).count();
                 return String.valueOf(c);
             })
         );
         annotationTable.getItems().addAll(all);
 
-        Label bottomLabel = new Label("Valeurs (toutes)");
+        Label bottomLabel = new Label(I18n.get("category.annotationValues"));
         nameTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
-            if (n == null) { annotationTable.getItems().setAll(all); bottomLabel.setText("Valeurs (toutes)"); }
+            if (n == null) { annotationTable.getItems().setAll(all); bottomLabel.setText(I18n.get("category.annotationValues")); }
             else {
                 annotationTable.getItems().setAll(all.stream().filter(a -> n.value().equals(a.getName())).toList());
-                bottomLabel.setText("Valeurs de « " + n.value() + " »");
+                bottomLabel.setText(I18n.get("category.annotationValuesOf", n.value()));
             }
             updateCountLabel(annotationTable.getItems().size(), all.size());
         });
 
-        Button clearBtn = new Button("Tout afficher");
+        Button clearBtn = new Button(I18n.get("btn.showAll"));
         clearBtn.setOnAction(e -> {
             nameTable.getSelectionModel().clearSelection();
             annotationTable.getItems().setAll(all);
-            bottomLabel.setText("Valeurs (toutes)");
+            bottomLabel.setText(I18n.get("category.annotationValues"));
             updateCountLabel(all.size(), all.size());
         });
 
-        VBox topPane = new VBox(4, new Label("Noms d'annotation"), wrapTableWithFilters(nameTable));
+        VBox topPane = new VBox(4, new Label(I18n.get("category.annotationNames")), wrapTableWithFilters(nameTable));
         VBox bottomPane = new VBox(4, new HBox(8, bottomLabel, clearBtn), wrapTableWithFilters(annotationTable));
         VBox.setVgrow(bottomPane, Priority.ALWAYS);
         SplitPane split = new SplitPane(topPane, bottomPane);
@@ -562,8 +576,8 @@ public final class MainController {
         fieldTable.getColumns().clear();
         if (currentDictionary == null) { tableContainer.getChildren().setAll(fieldTable); return; }
         fieldTable.getColumns().addAll(
-            col("Type", LiftField::getName),
-            col("Texte", f -> f.getText().getForms().stream().findFirst().map(Form::toPlainText).orElse(""))
+            col(I18n.get("col.type"), LiftField::getName),
+            col(I18n.get("col.text"), f -> f.getText().getForms().stream().findFirst().map(Form::toPlainText).orElse(""))
         );
         fieldTable.getItems().addAll(currentDictionary.getLiftDictionaryComponents().getAllFields());
         tableContainer.getChildren().setAll(wrapTableWithFilters(fieldTable));
@@ -603,7 +617,7 @@ public final class MainController {
             .filter(Objects::nonNull).distinct().sorted().toList();
         ObservableList<String> gramItems = FXCollections.observableArrayList(knownGramCodes);
 
-        TableColumn<QuickEntryRow, String> giCol = new TableColumn<>("Code gram.");
+        TableColumn<QuickEntryRow, String> giCol = new TableColumn<>(I18n.get("col.gramCode"));
         giCol.setCellValueFactory(cd -> cd.getValue().gramInfoProperty());
         giCol.setCellFactory(tc -> {
             ComboBox<String> combo = new ComboBox<>(gramItems);
@@ -638,14 +652,14 @@ public final class MainController {
 
         tableContainer.getChildren().setAll(quickEntryTable);
         updateCountLabel(0, 0);
-        addButton.setText("Créer les entrées");
+        addButton.setText(I18n.get("btn.createEntries"));
     }
 
     /* ─── Create new object (5.8 context menu) ─── */
 
     @FXML
     private void onCreateNewObject() {
-        if (currentDictionary == null) { showError("Création", "Aucun dictionnaire chargé."); return; }
+        if (currentDictionary == null) { showError(I18n.get("error.creation"), I18n.get("error.noDictionary")); return; }
         LiftFactory factory = getFactory(currentDictionary);
         if (factory == null) return;
 
@@ -654,11 +668,11 @@ public final class MainController {
             case NAV_ENTRIES -> createNewEntry(factory);
             case NAV_SENSES -> {
                 LiftEntry selEntry = entryTable.getSelectionModel().getSelectedItem();
-                if (selEntry == null) { showError("Création", "Sélectionnez d'abord une entrée pour y ajouter un sens."); return; }
+                if (selEntry == null) { showError(I18n.get("error.creation"), I18n.get("info.selectEntryForSense")); return; }
                 factory.createSense(new org.xml.sax.helpers.AttributesImpl(), selEntry);
                 switchView(NAV_SENSES);
             }
-            default -> showInfo("Création", "Utilisez la vue « Saisie rapide » pour ajouter rapidement des entrées.");
+            default -> showInfo(I18n.get("error.creation"), I18n.get("info.useQuickEntry"));
         }
     }
 
@@ -698,7 +712,7 @@ public final class MainController {
             created++;
         }
         if (created > 0) {
-            showInfo("Saisie rapide", created + " entrée(s) créée(s).");
+            showInfo(I18n.get("nav.quickEntry"), I18n.get("info.quickEntryCreated", created));
             quickEntryTable.getItems().clear();
             for (int i = 0; i < 5; i++) quickEntryTable.getItems().add(new QuickEntryRow());
         }
@@ -721,31 +735,31 @@ public final class MainController {
         editEntryCode.setText(getTraitValue(entry, "code"));
         editorContainer.getChildren().clear();
 
-        addSection(editorContainer, "Identifiant", () -> {
+        addSection(editorContainer, I18n.get("editor.identity"), () -> {
             GridPane g = new GridPane(); g.setHgap(8); g.setVgap(6);
-            addReadOnlyRow(g, 0, "ID", entry.getId().orElse(""));
+            addReadOnlyRow(g, 0, I18n.get("field.id"), entry.getId().orElse(""));
 
-            g.add(new Label("Date création"), 0, 1);
+            g.add(new Label(I18n.get("field.dateCreated")), 0, 1);
             DatePicker dpCreated = buildDatePicker(entry.getDateCreated().orElse(""));
             dpCreated.valueProperty().addListener((obs, o, n) -> entry.setDateCreated(n != null ? n.toString() : null));
             GridPane.setHgrow(dpCreated, Priority.ALWAYS);
             g.add(dpCreated, 1, 1);
 
-            g.add(new Label("Date modification"), 0, 2);
+            g.add(new Label(I18n.get("field.dateModified")), 0, 2);
             DatePicker dpModified = buildDatePicker(entry.getDateModified().orElse(""));
             dpModified.valueProperty().addListener((obs, o, n) -> entry.setDateModified(n != null ? n.toString() : null));
             GridPane.setHgrow(dpModified, Priority.ALWAYS);
             g.add(dpModified, 1, 2);
             return g;
         }, true);
-        addListSection(editorContainer, "Traits", entry.getTraits(), t -> {
+        addListSection(editorContainer, I18n.get("editor.traits"), entry.getTraits(), t -> {
             TraitEditor te = new TraitEditor(); te.setTrait(t, objLangs, traitNames, traitValues); return te;
         }, true);
-        addSection(editorContainer, "Formes (lexical-unit)", () -> { MultiTextEditor m = new MultiTextEditor(); m.setAvailableLanguages(objLangs); m.setMultiText(entry.getForms()); return m; }, true);
-        addListSection(editorContainer, "Prononciations", entry.getPronunciations(), p -> { PronunciationEditor pe = new PronunciationEditor(); pe.setPronunciation(p, objLangs); return pe; }, false);
+        addSection(editorContainer, I18n.get("editor.forms"), () -> { MultiTextEditor m = new MultiTextEditor(); m.setAvailableLanguages(objLangs); m.setMultiText(entry.getForms()); return m; }, true);
+        addListSection(editorContainer, I18n.get("editor.pronunciations"), entry.getPronunciations(), p -> { PronunciationEditor pe = new PronunciationEditor(); pe.setPronunciation(p, objLangs); return pe; }, false);
 
         if (!entry.getSenses().isEmpty()) {
-            addSection(editorContainer, "Sens (" + entry.getSenses().size() + ")", () -> {
+            addSection(editorContainer, I18n.get("editor.senses") + " (" + entry.getSenses().size() + ")", () -> {
                 VBox box = new VBox(4);
                 for (LiftSense s : entry.getSenses()) {
                     String label = s.getId().orElse("?") + " – " + s.getGloss().getForms().stream().findFirst().map(Form::toPlainText).orElse("");
@@ -756,14 +770,14 @@ public final class MainController {
                 return box;
             }, true);
         }
-        addListSection(editorContainer, "Variantes", entry.getVariants(), v -> { VariantEditor ve = new VariantEditor(); ve.setVariant(v, objLangs, metaLangs); return ve; }, false);
-        addListSection(editorContainer, "Relations", entry.getRelations(), r -> { RelationEditor re = new RelationEditor(); re.setRelation(r, metaLangs); return re; }, false);
-        addListSection(editorContainer, "Étymologies", entry.getEtymologies(), et -> { EtymologyEditor ee = new EtymologyEditor(); ee.setEtymology(et, objLangs, metaLangs); return ee; }, false);
-        addListSection(editorContainer, "Annotations", entry.getAnnotations(), a -> {
+        addListSection(editorContainer, I18n.get("editor.variants"), entry.getVariants(), v -> { VariantEditor ve = new VariantEditor(); ve.setVariant(v, objLangs, metaLangs); return ve; }, false);
+        addListSection(editorContainer, I18n.get("editor.relations"), entry.getRelations(), r -> { RelationEditor re = new RelationEditor(); re.setRelation(r, metaLangs); return re; }, false);
+        addListSection(editorContainer, I18n.get("editor.etymologies"), entry.getEtymologies(), et -> { EtymologyEditor ee = new EtymologyEditor(); ee.setEtymology(et, objLangs, metaLangs); return ee; }, false);
+        addListSection(editorContainer, I18n.get("editor.annotations"), entry.getAnnotations(), a -> {
             AnnotationEditor ae = new AnnotationEditor(); ae.setAnnotation(a, metaLangs, annotationNames); return ae;
         }, false);
-        addListSection(editorContainer, "Notes", new ArrayList<>(entry.getNotes().values()), n -> { NoteEditor ne = new NoteEditor(); ne.setNote(n, metaLangs); return ne; }, false);
-        addListSection(editorContainer, "Champs", entry.getFields(), f -> {
+        addListSection(editorContainer, I18n.get("editor.notes"), new ArrayList<>(entry.getNotes().values()), n -> { NoteEditor ne = new NoteEditor(); ne.setNote(n, metaLangs); return ne; }, false);
+        addListSection(editorContainer, I18n.get("editor.fields"), entry.getFields(), f -> {
             FieldEditor fe = new FieldEditor(); fe.setField(f, metaLangs, fieldTypes); return fe;
         }, false);
     }
@@ -771,20 +785,20 @@ public final class MainController {
     private void populateSenseEditor(LiftSense sense) {
         List<String> metaLangs = getMetaLanguages();
         List<String> objLangs = getObjectLanguages();
-        editEntryTitle.setText("Sens : " + sense.getId().orElse("?"));
+        editEntryTitle.setText(I18n.get("sense.title", sense.getId().orElse("?")));
         editEntryCode.setText(sense.getGrammaticalInfo().map(GrammaticalInfo::getValue).orElse(""));
         editorContainer.getChildren().clear();
 
         // Parent link: navigate back to entry view filtered to this sense's parent
         findParentEntry(sense).ifPresent(parentEntry -> {
-            Hyperlink backLink = new Hyperlink("← Retour à l'entrée : " + parentEntry.getId().orElse("?"));
+            Hyperlink backLink = new Hyperlink(I18n.get("sense.backToEntry", parentEntry.getId().orElse("?")));
             backLink.setOnAction(e -> { switchView(NAV_ENTRIES); entryTable.getSelectionModel().select(parentEntry); entryTable.scrollTo(parentEntry); });
             editorContainer.getChildren().add(backLink);
         });
 
         // Link to examples
         if (!sense.getExamples().isEmpty()) {
-            Hyperlink exLink = new Hyperlink("Voir les exemples (" + sense.getExamples().size() + ")");
+            Hyperlink exLink = new Hyperlink(I18n.get("sense.viewExamples", sense.getExamples().size()));
             exLink.setOnAction(e -> switchView(NAV_EXAMPLES));
             editorContainer.getChildren().add(exLink);
         }
@@ -802,7 +816,7 @@ public final class MainController {
     }
 
     private void populateExampleEditor(LiftExample ex) {
-        editEntryTitle.setText("Exemple");
+        editEntryTitle.setText(I18n.get("nav.examples"));
         editEntryCode.setText(ex.getSource().orElse(""));
         editorContainer.getChildren().clear();
         ExampleEditor ee = new ExampleEditor();
@@ -811,7 +825,7 @@ public final class MainController {
     }
 
     private void populateNoteEditor(LiftNote note) {
-        editEntryTitle.setText("Note : " + note.getType().orElse("?"));
+        editEntryTitle.setText(I18n.get("nav.notes") + " : " + note.getType().orElse("?"));
         editEntryCode.setText("");
         editorContainer.getChildren().clear();
         NoteEditor ne = new NoteEditor();
@@ -820,7 +834,7 @@ public final class MainController {
     }
 
     private void populateVariantEditor(LiftVariant v) {
-        editEntryTitle.setText("Variante : " + v.getRefId().orElse("?"));
+        editEntryTitle.setText(I18n.get("nav.variants") + " : " + v.getRefId().orElse("?"));
         editEntryCode.setText("");
         editorContainer.getChildren().clear();
         VariantEditor ve = new VariantEditor();
@@ -831,15 +845,15 @@ public final class MainController {
     /* ─── Setup generic tables ─── */
 
     private void setupGenericTables() {
-        entryTable.setPlaceholder(new Label("Aucune donnée"));
-        senseTable.setPlaceholder(new Label("Aucun sens"));
-        exampleTable.setPlaceholder(new Label("Aucun exemple"));
-        variantTable.setPlaceholder(new Label("Aucune variante"));
-        traitTable.setPlaceholder(new Label("Aucun trait"));
-        annotationTable.setPlaceholder(new Label("Aucune annotation"));
-        fieldTable.setPlaceholder(new Label("Aucun champ"));
-        langFieldTable.setPlaceholder(new Label("Aucun champ multilingue"));
-        quickEntryTable.setPlaceholder(new Label("Remplir les cellules puis « Créer les entrées »"));
+        entryTable.setPlaceholder(new Label(I18n.get("placeholder.noData")));
+        senseTable.setPlaceholder(new Label(I18n.get("placeholder.noSense")));
+        exampleTable.setPlaceholder(new Label(I18n.get("placeholder.noExample")));
+        variantTable.setPlaceholder(new Label(I18n.get("placeholder.noVariant")));
+        traitTable.setPlaceholder(new Label(I18n.get("placeholder.noTrait")));
+        annotationTable.setPlaceholder(new Label(I18n.get("placeholder.noAnnotation")));
+        fieldTable.setPlaceholder(new Label(I18n.get("placeholder.noField")));
+        langFieldTable.setPlaceholder(new Label(I18n.get("placeholder.noMultiField")));
+        quickEntryTable.setPlaceholder(new Label(I18n.get("placeholder.quickEntryHint")));
     }
 
     /* ────────────────── FILTER / SEARCH ────────────────── */
@@ -883,34 +897,34 @@ public final class MainController {
 
     @FXML private void onImportLift() {
         FileChooser ch = new FileChooser();
-        ch.setTitle("Ouvrir un fichier LIFT");
-        ch.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("LIFT (*.lift)", "*.lift"), new FileChooser.ExtensionFilter("Tous (*.*)", "*.*"));
+        ch.setTitle(I18n.get("dialog.openLift"));
+        ch.getExtensionFilters().addAll(new FileChooser.ExtensionFilter(I18n.get("dialog.liftFilter"), "*.lift"), new FileChooser.ExtensionFilter(I18n.get("dialog.allFilter"), "*.*"));
         File f = ch.showOpenDialog(navTree.getScene().getWindow());
         if (f == null) return;
         try { setDictionary(dictionaryService.loadFromFile(f)); switchView(NAV_ENTRIES); }
-        catch (Exception e) { showError("Ouvrir", e.getMessage()); }
+        catch (Exception e) { showError(I18n.get("error.open"), e.getMessage()); }
     }
 
     @FXML private void onSave() {
-        if (currentDictionary == null) { showError("Enregistrer", "Aucun dictionnaire chargé."); return; }
-        try { currentDictionary.save(); } catch (Exception e) { showError("Enregistrer", e.getMessage()); }
+        if (currentDictionary == null) { showError(I18n.get("error.save"), I18n.get("error.noDictionary")); return; }
+        try { currentDictionary.save(); } catch (Exception e) { showError(I18n.get("error.save"), e.getMessage()); }
     }
 
     @FXML private void onNewDictionary() { setDictionary(null); switchView(NAV_ENTRIES); }
 
     @FXML private void onSaveAs() {
-        if (currentDictionary == null) { showError("Enregistrer sous", "Aucun dictionnaire."); return; }
-        FileChooser ch = new FileChooser(); ch.setTitle("Enregistrer sous…");
-        ch.getExtensionFilters().add(new FileChooser.ExtensionFilter("LIFT (*.lift)", "*.lift"));
+        if (currentDictionary == null) { showError(I18n.get("error.saveAs"), I18n.get("error.noDictionaryShort")); return; }
+        FileChooser ch = new FileChooser(); ch.setTitle(I18n.get("dialog.saveLift"));
+        ch.getExtensionFilters().add(new FileChooser.ExtensionFilter(I18n.get("dialog.liftFilter"), "*.lift"));
         File f = ch.showSaveDialog(navTree.getScene().getWindow());
-        if (f != null) { try { currentDictionary.save(f); } catch (Exception e) { showError("Enregistrer sous", e.getMessage()); } }
+        if (f != null) { try { currentDictionary.save(f); } catch (Exception e) { showError(I18n.get("error.saveAs"), e.getMessage()); } }
     }
 
-    @FXML private void onPreferences() { showInfo("Paramètres", "Sera disponible dans une prochaine version."); }
+    @FXML private void onPreferences() { showPreferencesDialog(); }
     @FXML private void onQuit() { Platform.exit(); }
 
     @FXML private void onCopy() { copySelectedToClipboard(); }
-    @FXML private void onPaste() { showInfo("Coller", "Sera disponible prochainement."); }
+    @FXML private void onPaste() { showInfo(I18n.get("menu.edit.paste"), I18n.get("info.paste")); }
     @FXML private void onCut() { copySelectedToClipboard(); }
 
     private void copySelectedToClipboard() {
@@ -941,26 +955,26 @@ public final class MainController {
     @FXML private void onViewNoteTypes() { switchView(NAV_NOTE_TYPES); }
 
     /* ─── Configuration menu ─── */
-    @FXML private void onConfigNoteTypes() { showConfigDialog("Types de notes", () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllNotes().stream().map(n -> n.getType().orElse("?")).distinct().sorted().toList()); }
-    @FXML private void onConfigTranslationTypes() { showConfigDialog("Types de traductions", () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllExamples().stream().flatMap(ex -> ex.getTranslations().keySet().stream()).distinct().sorted().toList()); }
-    @FXML private void onConfigLanguages() { showConfigDialog("Langues", this::getAllLanguages); }
-    @FXML private void onConfigTraitTypes() { showConfigDialog("Types de trait", () -> currentDictionary == null ? List.of() : currentDictionary.getTraitName().stream().sorted().toList()); }
-    @FXML private void onConfigAnnotationTypes() { showConfigDialog("Types d'annotation", () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllAnnotations().stream().map(LiftAnnotation::getName).distinct().sorted().toList()); }
-    @FXML private void onConfigFieldTypes() { showConfigDialog("Types de field", () -> currentDictionary == null ? List.of() : currentDictionary.getFieldType().stream().sorted().toList()); }
+    @FXML private void onConfigNoteTypes() { showConfigDialog(I18n.get("menu.config.noteTypes"), () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllNotes().stream().map(n -> n.getType().orElse("?")).distinct().sorted().toList()); }
+    @FXML private void onConfigTranslationTypes() { showConfigDialog(I18n.get("menu.config.translationTypes"), () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllExamples().stream().flatMap(ex -> ex.getTranslations().keySet().stream()).distinct().sorted().toList()); }
+    @FXML private void onConfigLanguages() { showConfigDialog(I18n.get("menu.config.languages"), this::getAllLanguages); }
+    @FXML private void onConfigTraitTypes() { showConfigDialog(I18n.get("menu.config.traitTypes"), () -> currentDictionary == null ? List.of() : currentDictionary.getTraitName().stream().sorted().toList()); }
+    @FXML private void onConfigAnnotationTypes() { showConfigDialog(I18n.get("menu.config.annotationTypes"), () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllAnnotations().stream().map(LiftAnnotation::getName).distinct().sorted().toList()); }
+    @FXML private void onConfigFieldTypes() { showConfigDialog(I18n.get("menu.config.fieldTypes"), () -> currentDictionary == null ? List.of() : currentDictionary.getFieldType().stream().sorted().toList()); }
 
     /* ─── Outil menu ─── */
     @FXML private void onValidateDictionary() {
-        if (currentDictionary == null) { showError("Validation", "Aucun dictionnaire."); return; }
+        if (currentDictionary == null) { showError(I18n.get("error.validation"), I18n.get("error.noDictionaryShort")); return; }
         var c = currentDictionary.getLiftDictionaryComponents();
-        showInfo("Validation", "Entrées: " + c.getAllEntries().size() + "\nSens: " + c.getAllSenses().size() +
-                "\nExemples: " + c.getAllExamples().size() + "\nLangues objet: " + String.join(", ", getObjectLanguages()) +
-                "\nMéta-langues: " + String.join(", ", getMetaLanguages()));
+        showInfo(I18n.get("error.validation"), I18n.get("info.validationResult",
+                c.getAllEntries().size(), c.getAllSenses().size(), c.getAllExamples().size(),
+                String.join(", ", getObjectLanguages()), String.join(", ", getMetaLanguages())));
     }
 
     @FXML private void onExportCsv() {
-        if (currentDictionary == null) { showError("Export", "Aucun dictionnaire."); return; }
-        FileChooser ch = new FileChooser(); ch.setTitle("Exporter CSV");
-        ch.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV (*.csv)", "*.csv"));
+        if (currentDictionary == null) { showError(I18n.get("error.export"), I18n.get("error.noDictionaryShort")); return; }
+        FileChooser ch = new FileChooser(); ch.setTitle(I18n.get("dialog.exportCsv"));
+        ch.getExtensionFilters().add(new FileChooser.ExtensionFilter(I18n.get("dialog.csvFilter"), "*.csv"));
         File f = ch.showSaveDialog(navTree.getScene().getWindow());
         if (f == null) return;
         try (PrintWriter pw = new PrintWriter(f, "UTF-8")) {
@@ -969,32 +983,32 @@ public final class MainController {
             for (LiftEntry e : currentDictionary.getLiftDictionaryComponents().getAllEntries()) {
                 pw.print(e.getId().orElse("")); for (String l : ol) pw.print("\t" + e.getForms().getForm(l).map(Form::toPlainText).orElse("")); pw.println();
             }
-            showInfo("Export", "Export réussi: " + f.getAbsolutePath());
-        } catch (Exception e) { showError("Export", e.getMessage()); }
+            showInfo(I18n.get("error.export"), I18n.get("info.exportSuccess", f.getAbsolutePath()));
+        } catch (Exception e) { showError(I18n.get("error.export"), e.getMessage()); }
     }
 
     @FXML private void onModifyEntry() {
         if (!currentView.equals(NAV_ENTRIES)) return;
         LiftEntry entry = entryTable.getSelectionModel().getSelectedItem();
-        if (entry == null) { showError("Modification", "Aucune entrée sélectionnée."); return; }
+        if (entry == null) { showError(I18n.get("error.modification"), I18n.get("error.noEntrySelected")); return; }
         populateEntryEditor(entry);
     }
 
     /* ════════════════════ GRAMMATICAL INFO VIEW ════════════════════ */
 
     private void showGramInfoView() {
-        if (currentDictionary == null) { tableContainer.getChildren().setAll(new Label("Aucun dictionnaire")); return; }
+        if (currentDictionary == null) { tableContainer.getChildren().setAll(new Label(I18n.get("placeholder.noDictionary"))); return; }
         Map<String, Long> counts = new LinkedHashMap<>();
         for (LiftSense s : currentDictionary.getLiftDictionaryComponents().getAllSenses()) {
             s.getGrammaticalInfo().ifPresent(gi -> counts.merge(gi.getValue(), 1L, Long::sum));
         }
-        showCategoryTable("Grammatical Info", "Valeur", counts);
+        showCategoryTable(I18n.get("nav.gramInfo"), I18n.get("col.value"), counts);
     }
 
     /* ════════════════════ POS VIEW ════════════════════ */
 
     private void showPosView() {
-        if (currentDictionary == null) { tableContainer.getChildren().setAll(new Label("Aucun dictionnaire")); return; }
+        if (currentDictionary == null) { tableContainer.getChildren().setAll(new Label(I18n.get("placeholder.noDictionary"))); return; }
         Map<String, Long> counts = new LinkedHashMap<>();
         for (LiftTrait t : currentDictionary.getLiftDictionaryComponents().getAllTraits()) {
             if ("from-part-of-speech".equals(t.getName()) || "POS".equalsIgnoreCase(t.getName())) {
@@ -1005,29 +1019,29 @@ public final class MainController {
         for (LiftSense s : currentDictionary.getLiftDictionaryComponents().getAllSenses()) {
             s.getGrammaticalInfo().ifPresent(gi -> counts.merge(gi.getValue(), 1L, Long::sum));
         }
-        showCategoryTable("POS", "Catégorie", counts);
+        showCategoryTable(I18n.get("nav.pos"), I18n.get("col.category"), counts);
     }
 
     /* ════════════════════ TRANSLATION TYPES VIEW ════════════════════ */
 
     private void showTranslationTypesView() {
-        if (currentDictionary == null) { tableContainer.getChildren().setAll(new Label("Aucun dictionnaire")); return; }
+        if (currentDictionary == null) { tableContainer.getChildren().setAll(new Label(I18n.get("placeholder.noDictionary"))); return; }
         Map<String, Long> counts = new LinkedHashMap<>();
         for (LiftExample ex : currentDictionary.getLiftDictionaryComponents().getAllExamples()) {
             for (String type : ex.getTranslations().keySet()) counts.merge(type, 1L, Long::sum);
         }
-        showCategoryTable("Translation types", "Type", counts);
+        showCategoryTable(I18n.get("nav.transTypes"), I18n.get("col.type"), counts);
     }
 
     /* ════════════════════ NOTE TYPES VIEW ════════════════════ */
 
     private void showNoteTypesView() {
-        if (currentDictionary == null) { tableContainer.getChildren().setAll(new Label("Aucun dictionnaire")); return; }
+        if (currentDictionary == null) { tableContainer.getChildren().setAll(new Label(I18n.get("placeholder.noDictionary"))); return; }
         Map<String, Long> counts = new LinkedHashMap<>();
         for (LiftNote n : currentDictionary.getLiftDictionaryComponents().getAllNotes()) {
-            counts.merge(n.getType().orElse("(sans type)"), 1L, Long::sum);
+            counts.merge(n.getType().orElse(I18n.get("placeholder.noType")), 1L, Long::sum);
         }
-        showCategoryTable("Note types", "Type", counts);
+        showCategoryTable(I18n.get("nav.noteTypes"), I18n.get("col.type"), counts);
     }
 
     /** Shared helper: show a simple value + frequency table for category views. */
@@ -1038,7 +1052,7 @@ public final class MainController {
         TableColumn<CategoryRow, String> valCol = new TableColumn<>(colLabel);
         valCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue().value()));
         valCol.setPrefWidth(250);
-        TableColumn<CategoryRow, String> freqCol = new TableColumn<>("Fréquence");
+        TableColumn<CategoryRow, String> freqCol = new TableColumn<>(I18n.get("col.frequency"));
         freqCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(String.valueOf(cd.getValue().frequency())));
         freqCol.setPrefWidth(100);
         table.getColumns().addAll(valCol, freqCol);
@@ -1068,7 +1082,7 @@ public final class MainController {
 
         for (TableColumn<T, ?> column : collectLeafColumns(table)) {
             TextField tf = new TextField();
-            tf.setPromptText("Filtrer…");
+            tf.setPromptText(I18n.get("filter.prompt"));
             tf.setPrefWidth(column.getPrefWidth());
             tf.setStyle("-fx-font-size: 11px; -fx-padding: 2 4 2 4;");
             filterFields.add(tf);
@@ -1132,7 +1146,7 @@ public final class MainController {
     }
 
     private static <T> void addListSection(VBox container, String title, List<T> items, ItemRenderer<T> renderer, boolean expanded) {
-        if (items == null || items.isEmpty()) { TitledPane tp = new TitledPane(title + " (0)", new Label("Aucun")); tp.setExpanded(false); tp.setAnimated(false); container.getChildren().add(tp); return; }
+        if (items == null || items.isEmpty()) { TitledPane tp = new TitledPane(title + " (0)", new Label(I18n.get("editor.none"))); tp.setExpanded(false); tp.setAnimated(false); container.getChildren().add(tp); return; }
         VBox box = new VBox(4); int i = 1;
         for (T item : items) { TitledPane ip = new TitledPane("#" + i++, renderer.render(item)); ip.setExpanded(false); ip.setAnimated(false); box.getChildren().add(ip); }
         TitledPane tp = new TitledPane(title + " (" + items.size() + ")", box); tp.setExpanded(expanded); tp.setAnimated(false); container.getChildren().add(tp);
@@ -1215,6 +1229,34 @@ public final class MainController {
     private void showError(String title, String msg) { Alert a = new Alert(Alert.AlertType.ERROR); a.setTitle(title); a.setHeaderText(null); a.setContentText(msg); a.showAndWait(); }
     private void showInfo(String title, String msg) { Alert a = new Alert(Alert.AlertType.INFORMATION); a.setTitle(title); a.setHeaderText(null); a.setContentText(msg); a.showAndWait(); }
 
+    private void showPreferencesDialog() {
+        Dialog<Void> dlg = new Dialog<>();
+        dlg.setTitle(I18n.get("prefs.title"));
+        dlg.setHeaderText(I18n.get("prefs.title"));
+        dlg.setResizable(false);
+        dlg.getDialogPane().setPrefSize(400, 200);
+        dlg.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+
+        Label langLabel = new Label(I18n.get("prefs.language"));
+        ComboBox<String> langCombo = new ComboBox<>(FXCollections.observableArrayList("Français", "English"));
+        langCombo.setValue("fr".equals(I18n.getLocale().getLanguage()) ? "Français" : "English");
+
+        langCombo.setOnAction(e -> {
+            String sel = langCombo.getValue();
+            Locale newLocale = "Français".equals(sel) ? Locale.FRENCH : Locale.ENGLISH;
+            if (!newLocale.getLanguage().equals(I18n.getLocale().getLanguage())) {
+                I18n.setLocale(newLocale);
+                dlg.close();
+                Platform.runLater(com.example.MainApp::reloadScene);
+            }
+        });
+
+        VBox content = new VBox(12, new HBox(12, langLabel, langCombo));
+        content.setPadding(new Insets(16));
+        dlg.getDialogPane().setContent(content);
+        dlg.showAndWait();
+    }
+
     private record ConfigRow(javafx.beans.property.StringProperty abbrev, javafx.beans.property.StringProperty description) {
         ConfigRow(String a, String d) {
             this(new javafx.beans.property.SimpleStringProperty(a), new javafx.beans.property.SimpleStringProperty(d));
@@ -1224,8 +1266,8 @@ public final class MainController {
     private void showConfigDialog(String title, ListSupplier supplier) {
         List<String> items = supplier.get();
         Dialog<Void> dlg = new Dialog<>();
-        dlg.setTitle("Configuration – " + title);
-        dlg.setHeaderText(title + " (" + items.size() + " valeurs)");
+        dlg.setTitle(I18n.get("config.title", title));
+        dlg.setHeaderText(I18n.get("config.header", title, items.size()));
         dlg.setResizable(true);
         dlg.getDialogPane().setPrefSize(600, 480);
         dlg.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
@@ -1234,13 +1276,13 @@ public final class MainController {
         configTable.setEditable(true);
         configTable.setPrefHeight(320);
 
-        TableColumn<ConfigRow, String> abbrCol = new TableColumn<>("Abréviation");
+        TableColumn<ConfigRow, String> abbrCol = new TableColumn<>(I18n.get("col.abbreviation"));
         abbrCol.setCellValueFactory(cd -> cd.getValue().abbrev());
         abbrCol.setCellFactory(TextFieldTableCell.forTableColumn());
         abbrCol.setOnEditCommit(e -> e.getRowValue().abbrev().set(e.getNewValue()));
         abbrCol.setPrefWidth(180);
 
-        TableColumn<ConfigRow, String> descCol = new TableColumn<>("Description");
+        TableColumn<ConfigRow, String> descCol = new TableColumn<>(I18n.get("col.description"));
         descCol.setCellValueFactory(cd -> cd.getValue().description());
         descCol.setCellFactory(TextFieldTableCell.forTableColumn());
         descCol.setOnEditCommit(e -> e.getRowValue().description().set(e.getNewValue()));
@@ -1250,10 +1292,10 @@ public final class MainController {
         for (String item : items) configTable.getItems().add(new ConfigRow(item, ""));
 
         TextField addAbbrField = new TextField();
-        addAbbrField.setPromptText("Abréviation…");
+        addAbbrField.setPromptText(I18n.get("config.addAbbr"));
         TextField addDescField = new TextField();
-        addDescField.setPromptText("Description…");
-        Button addBtn = new Button("Ajouter");
+        addDescField.setPromptText(I18n.get("config.addDesc"));
+        Button addBtn = new Button(I18n.get("btn.add"));
         addBtn.setOnAction(e -> {
             String a = addAbbrField.getText().trim();
             if (!a.isEmpty()) {
@@ -1261,7 +1303,7 @@ public final class MainController {
                 addAbbrField.clear(); addDescField.clear();
             }
         });
-        Button removeBtn = new Button("Supprimer");
+        Button removeBtn = new Button(I18n.get("btn.delete"));
         removeBtn.setOnAction(e -> {
             ConfigRow sel = configTable.getSelectionModel().getSelectedItem();
             if (sel != null) configTable.getItems().remove(sel);
