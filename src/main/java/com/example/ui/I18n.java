@@ -19,7 +19,11 @@ public final class I18n {
     private static ResourceBundle bundle;
 
     static {
-        String saved = PREFS.get(PREF_KEY, "fr");
+        String saved = PREFS.get(PREF_KEY, null);
+        if (saved == null) {
+            saved = "fr";
+            PREFS.put(PREF_KEY, saved);
+        }
         currentLocale = Locale.of(saved);
         bundle = ResourceBundle.getBundle(BUNDLE_BASE, currentLocale);
     }
