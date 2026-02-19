@@ -116,6 +116,8 @@ public final class MainController {
     /* ─── Navigation tree (5.7.2) ─── */
 
     private void buildNavTree() {
+        navKeyMap.clear();
+
         TreeItem<String> root = new TreeItem<>(I18n.get("nav.dictionary"));
         root.setExpanded(true);
 
@@ -145,9 +147,6 @@ public final class MainController {
         root.getChildren().addAll(objects, langs, cats, quick);
         navTree.setRoot(root);
         navTree.setShowRoot(false);
-
-        navKeyMap.clear();
-        mapNavKeys(root);
 
         navTree.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> {
             if (newV != null && newV.isLeaf()) {
@@ -180,11 +179,6 @@ public final class MainController {
         return item;
     }
 
-    private void mapNavKeys(TreeItem<String> node) {
-        for (TreeItem<String> child : node.getChildren()) {
-            if (!navKeyMap.containsKey(child)) mapNavKeys(child);
-        }
-    }
 
     /* ─── View switching ─── */
 
@@ -299,7 +293,7 @@ public final class MainController {
     /* ════════════════════ SENSE VIEW ════════════════════ */
 
     private void showSenseView() {
-        senseTable.getItems().clear();
+        senseTable.setItems(FXCollections.observableArrayList());
         senseTable.getColumns().clear();
         if (currentDictionary == null) { tableContainer.getChildren().setAll(senseTable); return; }
 
@@ -324,7 +318,7 @@ public final class MainController {
     /* ════════════════════ EXAMPLE VIEW ════════════════════ */
 
     private void showExampleView() {
-        exampleTable.getItems().clear();
+        exampleTable.setItems(FXCollections.observableArrayList());
         exampleTable.getColumns().clear();
         if (currentDictionary == null) { tableContainer.getChildren().setAll(exampleTable); return; }
 
@@ -360,7 +354,7 @@ public final class MainController {
     /* ════════════════════ VARIANT VIEW ════════════════════ */
 
     private void showVariantView() {
-        variantTable.getItems().clear();
+        variantTable.setItems(FXCollections.observableArrayList());
         variantTable.getColumns().clear();
         if (currentDictionary == null) { tableContainer.getChildren().setAll(variantTable); return; }
         List<String> objLangs = getObjectLanguages();
@@ -392,7 +386,7 @@ public final class MainController {
     /* ════════════════════ LANGUAGE FIELD VIEW (5.9) ════════════════════ */
 
     private void showLangFieldView(boolean objectLangs) {
-        langFieldTable.getItems().clear();
+        langFieldTable.setItems(FXCollections.observableArrayList());
         langFieldTable.getColumns().clear();
         if (currentDictionary == null) { tableContainer.getChildren().setAll(langFieldTable); return; }
 
@@ -452,7 +446,7 @@ public final class MainController {
     /* ════════════════════ TRAIT VIEW (5.10 – split: names top, values bottom) ════════════════════ */
 
     private void showTraitView() {
-        traitTable.getItems().clear();
+        traitTable.setItems(FXCollections.observableArrayList());
         traitTable.getColumns().clear();
         if (currentDictionary == null) { tableContainer.getChildren().setAll(traitTable); return; }
 
@@ -511,7 +505,7 @@ public final class MainController {
     /* ════════════════════ ANNOTATION VIEW (5.10 – split: names top, values bottom) ════════════════════ */
 
     private void showAnnotationView() {
-        annotationTable.getItems().clear();
+        annotationTable.setItems(FXCollections.observableArrayList());
         annotationTable.getColumns().clear();
         if (currentDictionary == null) { tableContainer.getChildren().setAll(annotationTable); return; }
 
@@ -572,7 +566,7 @@ public final class MainController {
     /* ════════════════════ FIELD VIEW (5.10) ════════════════════ */
 
     private void showFieldView() {
-        fieldTable.getItems().clear();
+        fieldTable.setItems(FXCollections.observableArrayList());
         fieldTable.getColumns().clear();
         if (currentDictionary == null) { tableContainer.getChildren().setAll(fieldTable); return; }
         fieldTable.getColumns().addAll(
@@ -587,7 +581,7 @@ public final class MainController {
     /* ════════════════════ QUICK ENTRY VIEW (5.12) ════════════════════ */
 
     private void showQuickEntryView() {
-        quickEntryTable.getItems().clear();
+        quickEntryTable.setItems(FXCollections.observableArrayList());
         quickEntryTable.getColumns().clear();
         if (currentDictionary == null) { tableContainer.getChildren().setAll(quickEntryTable); return; }
         quickEntryTable.setEditable(true);
