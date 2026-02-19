@@ -809,15 +809,40 @@ public final class MainController {
             .findFirst();
     }
 
-    private void populateExampleEditor(LiftExample ex) {
+    private void populateExampleEditor(LiftSense parentSense, LiftExample ex) {
         editEntryTitle.setText(I18n.get("nav.examples"));
         editEntryCode.setText(ex.getSource().orElse(""));
         editorContainer.getChildren().clear();
+
+        /*Création lien retour*/
+        if (parentSense != null) {
+            Hyperlink backLink = new Hyperlink("<- Retour au sens");
+            backLink.setOnAction(e -> populateSenseEditor(parentSense));
+            editorContainer.getChildren().add(backLink);
+        }
+        /*Création éditeur*/
         ExampleEditor ee = new ExampleEditor();
         ee.setExample(ex, getObjectLanguages(), getMetaLanguages());
         editorContainer.getChildren().add(ee);
     }
 
+    private void populateExampleEditor(LiftExample ex) {
+        Optional<LiftSense> parent = findParentSense(ex);
+        populateExampleEditor(parent.orElse(null), ex);
+    }
+
+    private Optional<LiftSense> findParentSense(LiftExample ex) {
+        if (currentDictionary == null) return Optional.empty();
+        return currentDictionary.getLiftDictionaryComponents().getAllSenses().stream()
+            .filter(s -> containsExample(s, ex))
+            .findFirst();
+    }
+
+    private boolean containsExample(LiftSense sense, LiftExample ex) {
+        if (sense.getExamples().contains(ex)) return true;
+        for (LiftSense sub : sense.getSubSenses()) if (containsExample(sub, ex)) return true;
+        return false;
+    }
     private void populateNoteEditor(LiftNote note) {
         editEntryTitle.setText(I18n.get("nav.notes") + " : " + note.getType().orElse("?"));
         editEntryCode.setText("");
