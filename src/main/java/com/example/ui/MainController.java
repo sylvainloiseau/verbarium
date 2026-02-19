@@ -225,9 +225,21 @@ public final class MainController {
 
     private void showEntryView() {
         addButton.setText(I18n.get("btn.newEntry"));
-        // Entry table uses its own FilteredList; wrap with column filters too
         HBox filterRow = buildEntryFilterRow();
-        VBox wrapper = new VBox(filterRow, entryTable);
+
+        Button clearBtn = new Button("Réinitialiser les filtres");
+        clearBtn.setOnAction(e -> {
+            entryColumnFilters.forEach(tf -> tf.setText(""));
+            applyCurrentFilter();
+            entryTable.getSelectionModel().clearSelection();
+        });
+        HBox header = new HBox();
+        header.setPadding(new Insets(0,6,4,6));
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        header.getChildren().addAll(spacer, clearBtn);
+
+        VBox wrapper = new VBox(header, filterRow, entryTable);
         VBox.setVgrow(entryTable, Priority.ALWAYS);
         tableContainer.getChildren().setAll(wrapper);
         applyCurrentFilter();
@@ -1094,10 +1106,24 @@ public final class MainController {
         FilteredList<T> filtered = new FilteredList<>(sourceItems, t -> true);
         table.setItems(filtered);
 
-        HBox filterRow = new HBox(2);
-        filterRow.setPadding(new Insets(2, 0, 2, 0));
+        HBox filterRow = new HBox(6);
+        filterRow.setPadding(new Insets(4, 6, 4, 6));
         filterRow.setStyle("-fx-background-color: #eef2f3;");
         List<TextField> filterFields = new ArrayList<>();
+
+        Button clearBtn = new Button("Réinitialiser les filtres");
+        clearBtn.setOnAction(e -> {
+            // Clearing text will trigger listeners that update the predicate to show all
+            filterFields.forEach(tf -> tf.setText(""));
+            filtered.setPredicate(t -> true);
+            table.getSelectionModel().clearSelection();
+        });
+
+        HBox header = new HBox();
+        header.setPadding(new Insets(0, 6, 4, 6));
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        header.getChildren().addAll(spacer, clearBtn);
 
         for (TableColumn<T, ?> column : collectLeafColumns(table)) {
             TextField tf = new TextField();
@@ -1124,7 +1150,7 @@ public final class MainController {
             });
         }
 
-        VBox wrapper = new VBox(filterRow, table);
+        VBox wrapper = new VBox(header, filterRow, table);
         VBox.setVgrow(table, Priority.ALWAYS);
         return wrapper;
     }
