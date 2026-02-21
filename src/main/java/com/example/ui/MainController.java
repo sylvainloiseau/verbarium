@@ -16,10 +16,12 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.*;
 import javafx.geometry.Insets;
+import javafx.scene.control.ChoiceDialog;
 import javafx.stage.FileChooser;
 import javafx.application.Platform;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
+import javafx.scene.control.TextInputDialog;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -55,6 +57,13 @@ public final class MainController {
     private static final String NAV_TRANS_TYPES = "nav.transTypes";
     private static final String NAV_NOTE_TYPES  = "nav.noteTypes";
     private static final String NAV_QUICK_ENTRY = "nav.quickEntry";
+
+    /* ─── Header configuration nav keys ─── */
+    private static final String NAV_CFG_NOTE_TYPES  = "nav.cfgNoteTypes";
+    private static final String NAV_CFG_TRANS_TYPES = "nav.cfgTransTypes";
+    private static final String NAV_CFG_GRAM_INFO   = "nav.cfgGramInfo";
+    private static final String NAV_CFG_TRAIT_RANGES = "nav.cfgTraitRanges";
+    private static final String NAV_CFG_FIELD_DEFS  = "nav.cfgFieldDefs";
 
     /* ─── State ─── */
     private final DictionaryService dictionaryService = new DictionaryService();
@@ -142,9 +151,17 @@ public final class MainController {
             navItem(NAV_FIELDS)
         );
 
+        TreeItem<String> headerCfg = new TreeItem<>(I18n.get("nav.headerConfig"));
+        headerCfg.setExpanded(true);
+        headerCfg.getChildren().addAll(
+            navItem(NAV_CFG_NOTE_TYPES), navItem(NAV_CFG_TRANS_TYPES),
+            navItem(NAV_CFG_GRAM_INFO), navItem(NAV_CFG_TRAIT_RANGES),
+            navItem(NAV_CFG_FIELD_DEFS)
+        );
+
         TreeItem<String> quick = navItem(NAV_QUICK_ENTRY);
 
-        root.getChildren().addAll(objects, langs, cats, quick);
+        root.getChildren().addAll(objects, langs, cats, headerCfg, quick);
         navTree.setRoot(root);
         navTree.setShowRoot(false);
 
@@ -208,6 +225,11 @@ public final class MainController {
             case NAV_TRANS_TYPES -> showTranslationTypesView();
             case NAV_NOTE_TYPES  -> showNoteTypesView();
             case NAV_QUICK_ENTRY -> showQuickEntryView();
+            case NAV_CFG_NOTE_TYPES  -> showHeaderRangeView("note-type");
+            case NAV_CFG_TRANS_TYPES -> showHeaderRangeView("translation-type");
+            case NAV_CFG_GRAM_INFO   -> showHeaderRangeView("grammatical-info");
+            case NAV_CFG_TRAIT_RANGES -> showHeaderAllRangesView();
+            case NAV_CFG_FIELD_DEFS  -> showHeaderFieldDefsView();
             default -> showEntryView();
         }
     }
@@ -786,6 +808,81 @@ public final class MainController {
         addListSection(editorContainer, I18n.get("editor.fields"), entry.getFields(), f -> {
             FieldEditor fe = new FieldEditor(); fe.setField(f, metaLangs, fieldTypes); return fe;
         }, false);
+
+        LiftFactory factory = getFactory(currentDictionary);
+        if (factory != null) {
+            FlowPane addButtons = new FlowPane(8, 6);
+            addButtons.setPadding(new Insets(8, 0, 0, 0));
+
+            Button addSenseBtn = new Button(I18n.get("btn.addSense"));
+            addSenseBtn.setOnAction(e -> {
+                factory.createSense(new org.xml.sax.helpers.AttributesImpl(), entry);
+                populateEntryEditor(entry);
+            });
+
+            Button addVariantBtn = new Button(I18n.get("btn.addVariant"));
+            addVariantBtn.setOnAction(e -> {
+                factory.createVariant(new org.xml.sax.helpers.AttributesImpl(), entry);
+                populateEntryEditor(entry);
+            });
+
+            Button addPronBtn = new Button(I18n.get("btn.addPronunciation"));
+            addPronBtn.setOnAction(e -> {
+                factory.createPronunciation(entry);
+                populateEntryEditor(entry);
+            });
+
+            Button addTraitBtn = new Button(I18n.get("btn.addTrait"));
+            addTraitBtn.setOnAction(e -> {
+                List<String> names = getKnownTraitNames();
+                ChoiceDialog<String> dlg = new ChoiceDialog<>(names.isEmpty() ? null : names.get(0), names);
+                dlg.setTitle(I18n.get("btn.addTrait"));
+                dlg.setHeaderText(I18n.get("col.name"));
+                dlg.showAndWait().ifPresent(name -> {
+                    factory.createTrait(name, "", entry);
+                    populateEntryEditor(entry);
+                });
+            });
+
+            Button addNoteBtn = new Button(I18n.get("btn.addNote"));
+            addNoteBtn.setOnAction(e -> {
+                List<String> types = getKnownNoteTypes();
+                ChoiceDialog<String> dlg = new ChoiceDialog<>(types.isEmpty() ? null : types.get(0), types);
+                dlg.setTitle(I18n.get("btn.addNote"));
+                dlg.setHeaderText(I18n.get("col.type"));
+                dlg.showAndWait().ifPresent(type -> {
+                    factory.createNote(type, entry);
+                    populateEntryEditor(entry);
+                });
+            });
+
+            Button addFieldBtn = new Button(I18n.get("btn.addField"));
+            addFieldBtn.setOnAction(e -> {
+                List<String> types = getKnownFieldTypes();
+                ChoiceDialog<String> dlg = new ChoiceDialog<>(types.isEmpty() ? null : types.get(0), types);
+                dlg.setTitle(I18n.get("btn.addField"));
+                dlg.setHeaderText(I18n.get("col.type"));
+                dlg.showAndWait().ifPresent(type -> {
+                    factory.createField(type, entry);
+                    populateEntryEditor(entry);
+                });
+            });
+
+            Button addAnnotBtn = new Button(I18n.get("btn.addAnnotation"));
+            addAnnotBtn.setOnAction(e -> {
+                List<String> names = getKnownAnnotationNames();
+                ChoiceDialog<String> dlg = new ChoiceDialog<>(names.isEmpty() ? null : names.get(0), names);
+                dlg.setTitle(I18n.get("btn.addAnnotation"));
+                dlg.setHeaderText(I18n.get("col.name"));
+                dlg.showAndWait().ifPresent(name -> {
+                    factory.createAnnotation(name, entry);
+                    populateEntryEditor(entry);
+                });
+            });
+
+            addButtons.getChildren().addAll(addSenseBtn, addVariantBtn, addPronBtn, addTraitBtn, addNoteBtn, addFieldBtn, addAnnotBtn);
+            editorContainer.getChildren().add(addButtons);
+        }
     }
 
     private void populateSenseEditor(LiftSense sense) {
@@ -812,6 +909,33 @@ public final class MainController {
         SenseEditor se = new SenseEditor();
         se.setSense(sense, metaLangs, objLangs);
         editorContainer.getChildren().add(se);
+
+        LiftFactory factory = getFactory(currentDictionary);
+        if (factory != null) {
+            FlowPane addButtons = new FlowPane(8, 6);
+            addButtons.setPadding(new Insets(8, 0, 0, 0));
+
+            Button addExBtn = new Button(I18n.get("btn.addExample"));
+            addExBtn.setOnAction(e -> {
+                factory.createExample(new org.xml.sax.helpers.AttributesImpl(), sense);
+                populateSenseEditor(sense);
+            });
+
+            Button addNoteBtn = new Button(I18n.get("btn.addNote"));
+            addNoteBtn.setOnAction(e -> {
+                List<String> types = getKnownNoteTypes();
+                ChoiceDialog<String> dlg = new ChoiceDialog<>(types.isEmpty() ? null : types.get(0), types);
+                dlg.setTitle(I18n.get("btn.addNote"));
+                dlg.setHeaderText(I18n.get("col.type"));
+                dlg.showAndWait().ifPresent(type -> {
+                    factory.createNote(type, sense);
+                    populateSenseEditor(sense);
+                });
+            });
+
+            addButtons.getChildren().addAll(addExBtn, addNoteBtn);
+            editorContainer.getChildren().add(addButtons);
+        }
     }
 
     private Optional<LiftEntry> findParentEntry(LiftSense sense) {
@@ -916,6 +1040,7 @@ public final class MainController {
         this.currentDictionary = dictionary;
         baseEntries.clear();
         if (dictionary == null) { updateCountLabel(0, 0); return; }
+        ensureHeaderComplete();
         baseEntries.addAll(dictionary.getLiftDictionaryComponents().getAllEntries());
         configureEntryTableColumns();
         if (currentView.equals(NAV_ENTRIES)) {
@@ -1166,6 +1291,348 @@ public final class MainController {
         else { for (TableColumn<T, ?> child : col.getColumns()) collectLeaves(child, leaves); }
     }
 
+    /* ════════════════════ HEADER CONFIGURATION VIEWS ════════════════════ */
+
+    private void showHeaderRangeView(String rangeId) {
+        if (currentDictionary == null) { tableContainer.getChildren().setAll(new Label(I18n.get("cfg.noHeader"))); return; }
+        LiftHeader header = currentDictionary.getLiftDictionaryComponents().getHeader();
+        LiftFactory factory = getFactory(currentDictionary);
+        if (header == null || factory == null) { tableContainer.getChildren().setAll(new Label(I18n.get("cfg.noHeader"))); return; }
+
+        LiftHeaderRange range = header.getRanges().stream()
+            .filter(r -> rangeId.equals(r.getId())).findFirst()
+            .orElseGet(() -> factory.createRange(rangeId, header));
+
+        TableView<LiftHeaderRangeElement> table = new TableView<>();
+        table.setEditable(true);
+        table.getColumns().addAll(
+            col(I18n.get("cfg.rangeId"), LiftHeaderRangeElement::getId),
+            col(I18n.get("cfg.label"), re -> re.getLabel().getForms().stream().findFirst().map(Form::toPlainText).orElse("")),
+            col(I18n.get("cfg.abbrev"), re -> re.getAbbrev().getForms().stream().findFirst().map(Form::toPlainText).orElse("")),
+            col(I18n.get("cfg.description"), re -> re.getDescription().getForms().stream().findFirst().map(Form::toPlainText).orElse("")),
+            col(I18n.get("cfg.usageCount"), re -> String.valueOf(countRangeElementUsage(rangeId, re.getId())))
+        );
+        table.getItems().addAll(range.getRangeElements());
+
+        table.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
+            if (n != null) populateRangeElementEditor(range, n);
+        });
+
+        TextField newIdField = new TextField();
+        newIdField.setPromptText(I18n.get("cfg.rangeId"));
+        Button addBtn = new Button(I18n.get("cfg.addElement"));
+        addBtn.setOnAction(e -> {
+            String id = newIdField.getText().trim();
+            if (!id.isEmpty() && range.getRangeElements().stream().noneMatch(re -> re.getId().equals(id))) {
+                LiftHeaderRangeElement newElem = factory.createRangeElement(id, range);
+                List<String> metaLangs = getMetaLanguages();
+                if (!metaLangs.isEmpty()) {
+                    newElem.getDescription().add(new Form(metaLangs.get(0), I18n.get("cfg.autoAdded")));
+                }
+                table.getItems().add(newElem);
+                newIdField.clear();
+            }
+        });
+
+        Button deleteBtn = new Button(I18n.get("btn.delete"));
+        deleteBtn.setOnAction(e -> {
+            LiftHeaderRangeElement sel = table.getSelectionModel().getSelectedItem();
+            if (sel == null) return;
+            long usage = countRangeElementUsage(rangeId, sel.getId());
+            if (usage > 0) {
+                showError(I18n.get("btn.delete"), I18n.get("cfg.deleteNotAllowed", usage));
+            } else {
+                range.getRangeElements().remove(sel);
+                table.getItems().remove(sel);
+            }
+        });
+
+        Button renameBtn = new Button(I18n.get("cfg.rename"));
+        renameBtn.setOnAction(e -> {
+            LiftHeaderRangeElement sel = table.getSelectionModel().getSelectedItem();
+            if (sel == null) return;
+            TextInputDialog dlg = new TextInputDialog(sel.getId());
+            dlg.setTitle(I18n.get("cfg.rename"));
+            dlg.setHeaderText(I18n.get("cfg.renamePrompt", sel.getId()));
+            dlg.showAndWait().ifPresent(newName -> {
+                if (!newName.isBlank()) {
+                    renameRangeElementInData(rangeId, sel.getId(), newName);
+                    showHeaderRangeView(rangeId);
+                }
+            });
+        });
+
+        HBox controls = new HBox(8, newIdField, addBtn, deleteBtn, renameBtn);
+        controls.setPadding(new Insets(6, 0, 0, 0));
+        HBox.setHgrow(newIdField, Priority.ALWAYS);
+
+        VBox wrapper = new VBox(6, wrapTableWithFilters(table), controls);
+        VBox.setVgrow(wrapper.getChildren().get(0), Priority.ALWAYS);
+        tableContainer.getChildren().setAll(wrapper);
+        updateCountLabel(table.getItems().size(), table.getItems().size());
+    }
+
+    private void showHeaderAllRangesView() {
+        if (currentDictionary == null) { tableContainer.getChildren().setAll(new Label(I18n.get("cfg.noHeader"))); return; }
+        LiftHeader header = currentDictionary.getLiftDictionaryComponents().getHeader();
+        if (header == null) { tableContainer.getChildren().setAll(new Label(I18n.get("cfg.noHeader"))); return; }
+
+        TableView<LiftHeaderRange> rangeTable = new TableView<>();
+        rangeTable.getColumns().addAll(
+            col(I18n.get("cfg.rangeId"), LiftHeaderRange::getId),
+            col(I18n.get("cfg.usageCount"), r -> String.valueOf(r.getRangeElements().size())),
+            col(I18n.get("cfg.description"), r -> r.getDescription().getForms().stream().findFirst().map(Form::toPlainText).orElse(""))
+        );
+        rangeTable.getItems().addAll(header.getRanges());
+
+        rangeTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
+            if (n != null) {
+                editorContainer.getChildren().clear();
+                editEntryTitle.setText(I18n.get("cfg.rangeElements", n.getId()));
+                editEntryCode.setText(n.getId());
+
+                VBox elemBox = new VBox(4);
+                for (LiftHeaderRangeElement re : n.getRangeElements()) {
+                    String label = re.getId() + " – " + re.getDescription().getForms().stream().findFirst().map(Form::toPlainText).orElse("");
+                    elemBox.getChildren().add(new Label(label));
+                }
+                Hyperlink editLink = new Hyperlink(I18n.get("cfg.rangeElements", n.getId()));
+                editLink.setOnAction(e -> showHeaderRangeView(n.getId()));
+                editorContainer.getChildren().addAll(editLink, elemBox);
+            }
+        });
+
+        LiftFactory factory = getFactory(currentDictionary);
+        TextField newRangeField = new TextField();
+        newRangeField.setPromptText(I18n.get("cfg.rangeId"));
+        Button addBtn = new Button(I18n.get("cfg.addElement"));
+        addBtn.setOnAction(e -> {
+            String id = newRangeField.getText().trim();
+            if (!id.isEmpty() && factory != null && header.getRanges().stream().noneMatch(r -> r.getId().equals(id))) {
+                LiftHeaderRange newRange = factory.createRange(id, header);
+                rangeTable.getItems().add(newRange);
+                newRangeField.clear();
+            }
+        });
+
+        HBox controls = new HBox(8, newRangeField, addBtn);
+        controls.setPadding(new Insets(6, 0, 0, 0));
+        HBox.setHgrow(newRangeField, Priority.ALWAYS);
+
+        VBox wrapper = new VBox(6, wrapTableWithFilters(rangeTable), controls);
+        VBox.setVgrow(wrapper.getChildren().get(0), Priority.ALWAYS);
+        tableContainer.getChildren().setAll(wrapper);
+        updateCountLabel(rangeTable.getItems().size(), rangeTable.getItems().size());
+    }
+
+    private void showHeaderFieldDefsView() {
+        if (currentDictionary == null) { tableContainer.getChildren().setAll(new Label(I18n.get("cfg.noHeader"))); return; }
+        LiftHeader header = currentDictionary.getLiftDictionaryComponents().getHeader();
+        LiftFactory factory = getFactory(currentDictionary);
+        if (header == null || factory == null) { tableContainer.getChildren().setAll(new Label(I18n.get("cfg.noHeader"))); return; }
+
+        TableView<LiftHeaderFieldDefinition> table = new TableView<>();
+        table.getColumns().addAll(
+            col(I18n.get("cfg.fieldDefName"), LiftHeaderFieldDefinition::getName),
+            col(I18n.get("cfg.fieldDefType"), fd -> fd.getType().orElse("")),
+            col(I18n.get("cfg.fieldDefClass"), fd -> fd.getFClass().orElse("")),
+            col(I18n.get("cfg.label"), fd -> fd.getLabel().getForms().stream().findFirst().map(Form::toPlainText).orElse("")),
+            col(I18n.get("cfg.description"), fd -> fd.getDescription().getForms().stream().findFirst().map(Form::toPlainText).orElse("")),
+            col(I18n.get("cfg.usageCount"), fd -> String.valueOf(countFieldUsage(fd.getName())))
+        );
+        table.getItems().addAll(header.getFields());
+
+        table.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
+            if (n != null) populateFieldDefEditor(n);
+        });
+
+        TextField newNameField = new TextField();
+        newNameField.setPromptText(I18n.get("cfg.fieldDefName"));
+        Button addBtn = new Button(I18n.get("cfg.addElement"));
+        addBtn.setOnAction(e -> {
+            String name = newNameField.getText().trim();
+            if (!name.isEmpty() && header.getFields().stream().noneMatch(fd -> fd.getName().equals(name))) {
+                LiftHeaderFieldDefinition newFd = factory.createFieldDefinition(name, header);
+                List<String> metaLangs = getMetaLanguages();
+                if (!metaLangs.isEmpty()) {
+                    newFd.getDescription().add(new Form(metaLangs.get(0), I18n.get("cfg.autoAdded")));
+                }
+                table.getItems().add(newFd);
+                newNameField.clear();
+            }
+        });
+
+        Button deleteBtn = new Button(I18n.get("btn.delete"));
+        deleteBtn.setOnAction(e -> {
+            LiftHeaderFieldDefinition sel = table.getSelectionModel().getSelectedItem();
+            if (sel == null) return;
+            long usage = countFieldUsage(sel.getName());
+            if (usage > 0) {
+                showError(I18n.get("btn.delete"), I18n.get("cfg.deleteNotAllowed", usage));
+            } else {
+                header.getFields().remove(sel);
+                table.getItems().remove(sel);
+            }
+        });
+
+        HBox controls = new HBox(8, newNameField, addBtn, deleteBtn);
+        controls.setPadding(new Insets(6, 0, 0, 0));
+        HBox.setHgrow(newNameField, Priority.ALWAYS);
+
+        VBox wrapper = new VBox(6, wrapTableWithFilters(table), controls);
+        VBox.setVgrow(wrapper.getChildren().get(0), Priority.ALWAYS);
+        tableContainer.getChildren().setAll(wrapper);
+        updateCountLabel(table.getItems().size(), table.getItems().size());
+    }
+
+    private void populateRangeElementEditor(LiftHeaderRange range, LiftHeaderRangeElement elem) {
+        editEntryTitle.setText(elem.getId());
+        editEntryCode.setText(range.getId());
+        editorContainer.getChildren().clear();
+        List<String> metaLangs = getMetaLanguages();
+
+        addSection(editorContainer, I18n.get("cfg.label"), () -> {
+            MultiTextEditor m = new MultiTextEditor(); m.setAvailableLanguages(metaLangs); m.setMultiText(elem.getLabel()); return m;
+        }, true);
+        addSection(editorContainer, I18n.get("cfg.abbrev"), () -> {
+            MultiTextEditor m = new MultiTextEditor(); m.setAvailableLanguages(metaLangs); m.setMultiText(elem.getAbbrev()); return m;
+        }, true);
+        addSection(editorContainer, I18n.get("cfg.description"), () -> {
+            MultiTextEditor m = new MultiTextEditor(); m.setAvailableLanguages(metaLangs); m.setMultiText(elem.getDescription()); return m;
+        }, true);
+    }
+
+    private void populateFieldDefEditor(LiftHeaderFieldDefinition fd) {
+        editEntryTitle.setText(fd.getName());
+        editEntryCode.setText(fd.getType().orElse(""));
+        editorContainer.getChildren().clear();
+        List<String> metaLangs = getMetaLanguages();
+
+        addSection(editorContainer, I18n.get("cfg.label"), () -> {
+            MultiTextEditor m = new MultiTextEditor(); m.setAvailableLanguages(metaLangs); m.setMultiText(fd.getLabel()); return m;
+        }, true);
+        addSection(editorContainer, I18n.get("cfg.description"), () -> {
+            MultiTextEditor m = new MultiTextEditor(); m.setAvailableLanguages(metaLangs); m.setMultiText(fd.getDescription()); return m;
+        }, true);
+        addSection(editorContainer, I18n.get("cfg.fieldDefType"), () -> {
+            GridPane g = new GridPane(); g.setHgap(8); g.setVgap(6);
+            addReadOnlyRow(g, 0, I18n.get("cfg.fieldDefName"), fd.getName());
+            g.add(new Label(I18n.get("cfg.fieldDefType")), 0, 1);
+            TextField typeTf = new TextField(fd.getType().orElse(""));
+            typeTf.textProperty().addListener((obs, o, n) -> fd.setType(n.isBlank() ? Optional.empty() : Optional.of(n)));
+            GridPane.setHgrow(typeTf, Priority.ALWAYS); g.add(typeTf, 1, 1);
+            g.add(new Label(I18n.get("cfg.fieldDefClass")), 0, 2);
+            TextField classTf = new TextField(fd.getFClass().orElse(""));
+            classTf.textProperty().addListener((obs, o, n) -> fd.setFClass(n.isBlank() ? Optional.empty() : Optional.of(n)));
+            GridPane.setHgrow(classTf, Priority.ALWAYS); g.add(classTf, 1, 2);
+            return g;
+        }, false);
+    }
+
+    /* ─── Header usage counting & renaming ─── */
+
+    private long countRangeElementUsage(String rangeId, String elementId) {
+        if (currentDictionary == null) return 0;
+        var comps = currentDictionary.getLiftDictionaryComponents();
+        if ("note-type".equals(rangeId))
+            return comps.getAllNotes().stream().filter(n -> elementId.equals(n.getType().orElse(null))).count();
+        if ("translation-type".equals(rangeId))
+            return comps.getAllExamples().stream().filter(ex -> ex.getTranslations().containsKey(elementId)).count();
+        if ("grammatical-info".equals(rangeId))
+            return comps.getAllSenses().stream().filter(s -> s.getGrammaticalInfo().map(g -> elementId.equals(g.getValue())).orElse(false)).count();
+        return comps.getAllTraits().stream().filter(t -> rangeId.equals(t.getName()) && elementId.equals(t.getValue())).count();
+    }
+
+    private long countFieldUsage(String fieldName) {
+        if (currentDictionary == null) return 0;
+        return currentDictionary.getLiftDictionaryComponents().getAllFields().stream()
+            .filter(f -> fieldName.equals(f.getName())).count();
+    }
+
+    private void renameRangeElementInData(String rangeId, String oldId, String newId) {
+        if (currentDictionary == null) return;
+        var comps = currentDictionary.getLiftDictionaryComponents();
+        LiftHeader header = comps.getHeader();
+        if (header != null) {
+            header.getRanges().stream().filter(r -> rangeId.equals(r.getId())).findFirst().ifPresent(r -> {
+                r.getRangeElements().stream().filter(re -> oldId.equals(re.getId())).findFirst().ifPresent(re -> {
+                    try {
+                        var idField = LiftHeaderRangeElement.class.getDeclaredField("id");
+                        idField.setAccessible(true);
+                        idField.set(re, newId);
+                    } catch (Exception ignored) {}
+                });
+            });
+        }
+        if ("note-type".equals(rangeId)) {
+            comps.getAllNotes().stream().filter(n -> oldId.equals(n.getType().orElse(null))).forEach(n -> n.setType(newId));
+        } else if ("grammatical-info".equals(rangeId)) {
+            comps.getAllSenses().stream()
+                .filter(s -> s.getGrammaticalInfo().map(g -> oldId.equals(g.getValue())).orElse(false))
+                .forEach(s -> s.setGrammaticalInfo(newId));
+        } else {
+            comps.getAllTraits().stream().filter(t -> rangeId.equals(t.getName()) && oldId.equals(t.getValue()))
+                .forEach(t -> t.setValue(newId));
+        }
+    }
+
+    /* ════════════════════ AUTO-POPULATE HEADER ════════════════════ */
+
+    private void ensureHeaderComplete() {
+        if (currentDictionary == null) return;
+        LiftFactory factory = getFactory(currentDictionary);
+        if (factory == null) return;
+        var comps = currentDictionary.getLiftDictionaryComponents();
+        LiftHeader header = comps.getHeader();
+        if (header == null) header = factory.createHeader();
+
+        String autoDesc = I18n.get("cfg.autoAdded");
+        List<String> metaLangs = getMetaLanguages();
+        String descLang = metaLangs.isEmpty() ? "en" : metaLangs.get(0);
+
+        ensureRange(factory, header, "note-type",
+            comps.getAllNotes().stream().map(n -> n.getType().orElse(null)).filter(Objects::nonNull).collect(Collectors.toSet()),
+            descLang, autoDesc);
+
+        ensureRange(factory, header, "translation-type",
+            comps.getAllExamples().stream().flatMap(ex -> ex.getTranslations().keySet().stream()).collect(Collectors.toSet()),
+            descLang, autoDesc);
+
+        ensureRange(factory, header, "grammatical-info",
+            comps.getAllSenses().stream().map(s -> s.getGrammaticalInfo().map(GrammaticalInfo::getValue).orElse(null)).filter(Objects::nonNull).collect(Collectors.toSet()),
+            descLang, autoDesc);
+
+        Map<String, Set<String>> traitsByName = new HashMap<>();
+        for (LiftTrait t : comps.getAllTraits()) {
+            traitsByName.computeIfAbsent(t.getName(), k -> new TreeSet<>()).add(t.getValue());
+        }
+        for (var entry : traitsByName.entrySet()) {
+            ensureRange(factory, header, entry.getKey(), entry.getValue(), descLang, autoDesc);
+        }
+
+        Set<String> fieldNames = comps.getAllFields().stream().map(LiftField::getName).collect(Collectors.toSet());
+        Set<String> definedFields = header.getFields().stream().map(LiftHeaderFieldDefinition::getName).collect(Collectors.toSet());
+        for (String fn : fieldNames) {
+            if (!definedFields.contains(fn)) {
+                LiftHeaderFieldDefinition fd = factory.createFieldDefinition(fn, header);
+                fd.getDescription().add(new Form(descLang, autoDesc));
+            }
+        }
+    }
+
+    private static void ensureRange(LiftFactory factory, LiftHeader header, String rangeId, Set<String> values, String descLang, String autoDesc) {
+        LiftHeaderRange range = header.getRanges().stream()
+            .filter(r -> rangeId.equals(r.getId())).findFirst()
+            .orElseGet(() -> factory.createRange(rangeId, header));
+        Set<String> existing = range.getRangeElements().stream().map(LiftHeaderRangeElement::getId).collect(Collectors.toSet());
+        for (String val : values) {
+            if (!existing.contains(val)) {
+                LiftHeaderRangeElement newElem = factory.createRangeElement(val, range);
+                newElem.getDescription().add(new Form(descLang, autoDesc));
+            }
+        }
+    }
+
     /* ────────────────── UTILITIES ────────────────── */
 
     @FunctionalInterface private interface NodeFactory { javafx.scene.Node create(); }
@@ -1250,16 +1717,34 @@ public final class MainController {
         return all.stream().filter(s -> s != null && !s.isBlank()).sorted().toList();
     }
 
-    /* ─── Known dropdown values from dictionary ─── */
+    /* ─── Known dropdown values from header ranges ─── */
 
     private List<String> getKnownTraitNames() {
-        return currentDictionary == null ? List.of() : currentDictionary.getTraitName().stream().sorted().toList();
+        if (currentDictionary == null) return List.of();
+        LiftHeader h = currentDictionary.getLiftDictionaryComponents().getHeader();
+        if (h != null) {
+            Set<String> standardRanges = Set.of("note-type", "translation-type", "grammatical-info");
+            return h.getRanges().stream().map(LiftHeaderRange::getId)
+                .filter(id -> !standardRanges.contains(id)).sorted().toList();
+        }
+        return currentDictionary.getTraitName().stream().sorted().toList();
     }
     private Map<String, Set<String>> getKnownTraitValues() {
         if (currentDictionary == null) return Map.of();
         Map<String, Set<String>> result = new HashMap<>();
-        for (LiftTrait t : currentDictionary.getLiftDictionaryComponents().getAllTraits()) {
-            result.computeIfAbsent(t.getName(), k -> new TreeSet<>()).add(t.getValue());
+        LiftHeader h = currentDictionary.getLiftDictionaryComponents().getHeader();
+        if (h != null) {
+            Set<String> standardRanges = Set.of("note-type", "translation-type", "grammatical-info");
+            for (LiftHeaderRange r : h.getRanges()) {
+                if (standardRanges.contains(r.getId())) continue;
+                Set<String> vals = r.getRangeElements().stream().map(LiftHeaderRangeElement::getId).collect(Collectors.toCollection(TreeSet::new));
+                result.put(r.getId(), vals);
+            }
+        }
+        if (result.isEmpty()) {
+            for (LiftTrait t : currentDictionary.getLiftDictionaryComponents().getAllTraits()) {
+                result.computeIfAbsent(t.getName(), k -> new TreeSet<>()).add(t.getValue());
+            }
         }
         return result;
     }
@@ -1268,7 +1753,28 @@ public final class MainController {
             .map(LiftAnnotation::getName).filter(Objects::nonNull).distinct().sorted().toList();
     }
     private List<String> getKnownFieldTypes() {
-        return currentDictionary == null ? List.of() : currentDictionary.getFieldType().stream().sorted().toList();
+        if (currentDictionary == null) return List.of();
+        LiftHeader h = currentDictionary.getLiftDictionaryComponents().getHeader();
+        if (h != null && !h.getFields().isEmpty()) {
+            return h.getFields().stream().map(LiftHeaderFieldDefinition::getName).sorted().toList();
+        }
+        return currentDictionary.getFieldType().stream().sorted().toList();
+    }
+    private List<String> getKnownNoteTypes() {
+        return getHeaderRangeValues("note-type");
+    }
+    private List<String> getKnownGramInfoValues() {
+        return getHeaderRangeValues("grammatical-info");
+    }
+    private List<String> getHeaderRangeValues(String rangeId) {
+        if (currentDictionary == null) return List.of();
+        LiftHeader h = currentDictionary.getLiftDictionaryComponents().getHeader();
+        if (h != null) {
+            return h.getRanges().stream().filter(r -> rangeId.equals(r.getId())).findFirst()
+                .map(r -> r.getRangeElements().stream().map(LiftHeaderRangeElement::getId).sorted().toList())
+                .orElse(List.of());
+        }
+        return List.of();
     }
 
     private void showError(String title, String msg) { Alert a = new Alert(Alert.AlertType.ERROR); a.setTitle(title); a.setHeaderText(null); a.setContentText(msg); a.showAndWait(); }
