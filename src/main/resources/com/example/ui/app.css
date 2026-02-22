@@ -152,3 +152,21 @@
   -fx-font-size: 16px;
   -fx-text-fill: #4c6f76;
 }
+
+.read-only-meta-field {
+  -fx-control-inner-background: #e7ecee;
+  -fx-background-color: #e7ecee;
+  -fx-text-fill: #56666b;
+  -fx-border-color: #c5d0d4;
+}
+
+.read-only-meta-picker {
+  -fx-opacity: 1;
+}
+
+.read-only-meta-picker .text-field {
+  -fx-control-inner-background: #e7ecee;
+  -fx-background-color: #e7ecee;
+  -fx-text-fill: #56666b;
+  -fx-border-color: #c5d0d4;
+}

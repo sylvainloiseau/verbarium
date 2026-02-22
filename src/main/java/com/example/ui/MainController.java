@@ -765,27 +765,10 @@ public final class MainController {
         editEntryCode.setText(getTraitValue(entry, "code"));
         editorContainer.getChildren().clear();
 
-        addSection(editorContainer, I18n.get("editor.identity"), () -> {
-            GridPane g = new GridPane(); g.setHgap(8); g.setVgap(6);
-            addReadOnlyRow(g, 0, I18n.get("field.id"), entry.getId().orElse(""));
-
-            g.add(new Label(I18n.get("field.dateCreated")), 0, 1);
-            DatePicker dpCreated = buildDatePicker(entry.getDateCreated().orElse(""));
-            dpCreated.valueProperty().addListener((obs, o, n) -> entry.setDateCreated(n != null ? n.toString() : null));
-            GridPane.setHgrow(dpCreated, Priority.ALWAYS);
-            g.add(dpCreated, 1, 1);
-
-            g.add(new Label(I18n.get("field.dateModified")), 0, 2);
-            DatePicker dpModified = buildDatePicker(entry.getDateModified().orElse(""));
-            dpModified.valueProperty().addListener((obs, o, n) -> entry.setDateModified(n != null ? n.toString() : null));
-            GridPane.setHgrow(dpModified, Priority.ALWAYS);
-            g.add(dpModified, 1, 2);
-            return g;
-        }, true);
+        addSection(editorContainer, I18n.get("editor.forms"), () -> { MultiTextEditor m = new MultiTextEditor(); m.setAvailableLanguages(objLangs); m.setMultiText(entry.getForms()); return m; }, true);
         addListSection(editorContainer, I18n.get("editor.traits"), entry.getTraits(), t -> {
             TraitEditor te = new TraitEditor(); te.setTrait(t, objLangs, traitNames, traitValues); return te;
         }, true);
-        addSection(editorContainer, I18n.get("editor.forms"), () -> { MultiTextEditor m = new MultiTextEditor(); m.setAvailableLanguages(objLangs); m.setMultiText(entry.getForms()); return m; }, true);
         addListSection(editorContainer, I18n.get("editor.pronunciations"), entry.getPronunciations(), p -> { PronunciationEditor pe = new PronunciationEditor(); pe.setPronunciation(p, objLangs); return pe; }, false);
 
         if (!entry.getSenses().isEmpty()) {
@@ -815,6 +798,23 @@ public final class MainController {
         addListSection(editorContainer, I18n.get("editor.fields"), entry.getFields(), f -> {
             FieldEditor fe = new FieldEditor(); fe.setField(f, metaLangs, fieldTypes); return fe;
         }, false);
+        addSection(editorContainer, I18n.get("editor.identity"), () -> {
+            GridPane g = new GridPane(); g.setHgap(8); g.setVgap(6);
+            addReadOnlyRow(g, 0, I18n.get("field.id"), entry.getId().orElse(""));
+
+            g.add(new Label(I18n.get("field.dateCreated")), 0, 1);
+            DatePicker dpCreated = buildDatePicker(entry.getDateCreated().orElse(""));
+            styleReadOnlyDatePicker(dpCreated);
+            GridPane.setHgrow(dpCreated, Priority.ALWAYS);
+            g.add(dpCreated, 1, 1);
+
+            g.add(new Label(I18n.get("field.dateModified")), 0, 2);
+            DatePicker dpModified = buildDatePicker(entry.getDateModified().orElse(""));
+            styleReadOnlyDatePicker(dpModified);
+            GridPane.setHgrow(dpModified, Priority.ALWAYS);
+            g.add(dpModified, 1, 2);
+            return g;
+        }, true);
 
         LiftFactory factory = getFactory(currentDictionary);
         if (factory != null) {
@@ -1700,7 +1700,23 @@ public final class MainController {
 
     private static void addReadOnlyRow(GridPane grid, int row, String label, String value) {
         grid.add(new Label(label), 0, row);
-        TextField tf = new TextField(value); tf.setEditable(false); GridPane.setHgrow(tf, Priority.ALWAYS); grid.add(tf, 1, row);
+        TextField tf = new TextField(value);
+        styleReadOnlyTextField(tf);
+        GridPane.setHgrow(tf, Priority.ALWAYS);
+        grid.add(tf, 1, row);
+    }
+
+    private static void styleReadOnlyTextField(TextField tf) {
+        tf.setEditable(false);
+        tf.setFocusTraversable(false);
+        tf.getStyleClass().add("read-only-meta-field");
+    }
+
+    private static void styleReadOnlyDatePicker(DatePicker dp) {
+        dp.setEditable(false);
+        dp.setDisable(true);
+        dp.setFocusTraversable(false);
+        dp.getStyleClass().add("read-only-meta-picker");
     }
 
     private void updateCountLabel(int shown, int total) { if (tableCountLabel != null) tableCountLabel.setText(shown + " / " + total); }
