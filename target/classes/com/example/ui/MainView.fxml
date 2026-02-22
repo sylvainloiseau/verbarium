@@ -97,7 +97,7 @@
   </top>
 
   <left>
-    <VBox spacing="6" BorderPane.alignment="CENTER" styleClass="left-nav" prefWidth="200">
+    <VBox spacing="6" BorderPane.alignment="CENTER" styleClass="left-nav" prefWidth="260" minWidth="240">
       <padding>
         <Insets top="10" right="6" bottom="10" left="6"/>
       </padding>

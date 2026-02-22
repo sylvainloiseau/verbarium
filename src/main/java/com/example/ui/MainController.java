@@ -17,6 +17,8 @@ import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.*;
 import javafx.geometry.Insets;
 import javafx.scene.control.ChoiceDialog;
+import javafx.scene.control.RadioButton;
+import javafx.scene.control.ToggleGroup;
 import javafx.stage.FileChooser;
 import javafx.application.Platform;
 import javafx.scene.input.Clipboard;
@@ -1468,11 +1470,15 @@ public final class MainController {
         TableView<LiftHeaderFieldDefinition> table = new TableView<>();
         table.getColumns().addAll(
             col(I18n.get("cfg.fieldDefName"), LiftHeaderFieldDefinition::getName),
+            col(I18n.get("cfg.kind"), fd -> switch (fd.getKind()) {
+                case FIELD -> I18n.get("cfg.kindField");
+                case TRAIT -> I18n.get("cfg.kindTrait");
+                case UNKNOWN -> I18n.get("cfg.kindUnknown");
+            }),
             col(I18n.get("cfg.fieldDefType"), fd -> fd.getType().orElse("")),
-            col(I18n.get("cfg.fieldDefClass"), fd -> fd.getFClass().orElse("")),
-            col(I18n.get("cfg.label"), fd -> fd.getLabel().getForms().stream().findFirst().map(Form::toPlainText).orElse("")),
+            col(I18n.get("cfg.targets"), fd -> fd.getFClass().orElse("")),
             col(I18n.get("cfg.description"), fd -> fd.getDescription().getForms().stream().findFirst().map(Form::toPlainText).orElse("")),
-            col(I18n.get("cfg.usageCount"), fd -> String.valueOf(countFieldUsage(fd.getName())))
+            col(I18n.get("cfg.usageCount"), fd -> String.valueOf(countFieldOrTraitUsage(fd)))
         );
         table.getItems().addAll(header.getFields());
 
@@ -1480,27 +1486,14 @@ public final class MainController {
             if (n != null) populateFieldDefEditor(n);
         });
 
-        TextField newNameField = new TextField();
-        newNameField.setPromptText(I18n.get("cfg.fieldDefName"));
-        Button addBtn = new Button(I18n.get("cfg.addElement"));
-        addBtn.setOnAction(e -> {
-            String name = newNameField.getText().trim();
-            if (!name.isEmpty() && header.getFields().stream().noneMatch(fd -> fd.getName().equals(name))) {
-                LiftHeaderFieldDefinition newFd = factory.createFieldDefinition(name, header);
-                List<String> metaLangs = getMetaLanguages();
-                if (!metaLangs.isEmpty()) {
-                    newFd.getDescription().add(new Form(metaLangs.get(0), I18n.get("cfg.autoAdded")));
-                }
-                table.getItems().add(newFd);
-                newNameField.clear();
-            }
-        });
+        Button addBtn = new Button(I18n.get("cfg.newFieldOrTrait"));
+        addBtn.setOnAction(e -> showNewFieldDefDialog(header, factory, table));
 
         Button deleteBtn = new Button(I18n.get("btn.delete"));
         deleteBtn.setOnAction(e -> {
             LiftHeaderFieldDefinition sel = table.getSelectionModel().getSelectedItem();
             if (sel == null) return;
-            long usage = countFieldUsage(sel.getName());
+            long usage = countFieldOrTraitUsage(sel);
             if (usage > 0) {
                 showError(I18n.get("btn.delete"), I18n.get("cfg.deleteNotAllowed", usage));
             } else {
@@ -1509,14 +1502,76 @@ public final class MainController {
             }
         });
 
-        HBox controls = new HBox(8, newNameField, addBtn, deleteBtn);
+        HBox controls = new HBox(8, addBtn, deleteBtn);
         controls.setPadding(new Insets(6, 0, 0, 0));
-        HBox.setHgrow(newNameField, Priority.ALWAYS);
 
         VBox wrapper = new VBox(6, wrapTableWithFilters(table), controls);
         VBox.setVgrow(wrapper.getChildren().get(0), Priority.ALWAYS);
         tableContainer.getChildren().setAll(wrapper);
         updateCountLabel(table.getItems().size(), table.getItems().size());
+    }
+
+    private void showNewFieldDefDialog(LiftHeader header, LiftFactory factory, TableView<LiftHeaderFieldDefinition> table) {
+        Dialog<LiftHeaderFieldDefinition> dlg = new Dialog<>();
+        dlg.setTitle(I18n.get("cfg.newFieldOrTrait"));
+        dlg.setHeaderText(I18n.get("cfg.chooseKind"));
+        dlg.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        dlg.setResizable(true);
+        dlg.getDialogPane().setPrefWidth(450);
+
+        TextField nameField = new TextField();
+        nameField.setPromptText(I18n.get("cfg.fieldDefName"));
+
+        ToggleGroup kindGroup = new ToggleGroup();
+        RadioButton rbField = new RadioButton(I18n.get("cfg.kindField"));
+        rbField.setToggleGroup(kindGroup);
+        rbField.setSelected(true);
+        RadioButton rbTrait = new RadioButton(I18n.get("cfg.kindTrait"));
+        rbTrait.setToggleGroup(kindGroup);
+
+        ComboBox<String> typeCombo = new ComboBox<>();
+        typeCombo.setEditable(true);
+        typeCombo.setPromptText(I18n.get("cfg.fieldDefType"));
+        Runnable updateTypes = () -> {
+            typeCombo.getItems().clear();
+            if (rbField.isSelected()) {
+                typeCombo.getItems().addAll("multistring", "multitext");
+                typeCombo.setValue("multitext");
+            } else {
+                typeCombo.getItems().addAll("datetime", "integer", "option", "option-collection", "option-sequence");
+                typeCombo.setValue("option");
+            }
+        };
+        updateTypes.run();
+        rbField.setOnAction(e -> updateTypes.run());
+        rbTrait.setOnAction(e -> updateTypes.run());
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10); grid.setVgap(10);
+        grid.setPadding(new Insets(10));
+        grid.add(new Label(I18n.get("cfg.fieldDefName")), 0, 0);
+        grid.add(nameField, 1, 0);
+        grid.add(new Label(I18n.get("cfg.kind")), 0, 1);
+        grid.add(new HBox(12, rbField, rbTrait), 1, 1);
+        grid.add(new Label(I18n.get("cfg.fieldDefType")), 0, 2);
+        grid.add(typeCombo, 1, 2);
+        GridPane.setHgrow(nameField, Priority.ALWAYS);
+        GridPane.setHgrow(typeCombo, Priority.ALWAYS);
+        dlg.getDialogPane().setContent(grid);
+
+        dlg.setResultConverter(bt -> {
+            if (bt != ButtonType.OK) return null;
+            String name = nameField.getText().trim();
+            if (name.isEmpty() || header.getFields().stream().anyMatch(fd -> fd.getName().equals(name))) return null;
+            LiftHeaderFieldDefinition fd = factory.createFieldDefinition(name, header);
+            String typeVal = typeCombo.getValue();
+            if (typeVal != null && !typeVal.isBlank()) fd.setType(Optional.of(typeVal));
+            List<String> metaLangs = getMetaLanguages();
+            if (!metaLangs.isEmpty()) fd.getDescription().add(new Form(metaLangs.get(0), I18n.get("cfg.autoAdded")));
+            return fd;
+        });
+
+        dlg.showAndWait().ifPresent(fd -> table.getItems().add(fd));
     }
 
     private void populateRangeElementEditor(LiftHeaderRange range, LiftHeaderRangeElement elem) {
@@ -1538,9 +1593,46 @@ public final class MainController {
 
     private void populateFieldDefEditor(LiftHeaderFieldDefinition fd) {
         editEntryTitle.setText(fd.getName());
-        editEntryCode.setText(fd.getType().orElse(""));
+        String kindLabel = switch (fd.getKind()) {
+            case FIELD -> I18n.get("cfg.kindField");
+            case TRAIT -> I18n.get("cfg.kindTrait");
+            case UNKNOWN -> I18n.get("cfg.kindUnknown");
+        };
+        editEntryCode.setText(kindLabel + " – " + fd.getType().orElse(""));
         editorContainer.getChildren().clear();
         List<String> metaLangs = getMetaLanguages();
+
+        addSection(editorContainer, I18n.get("editor.identity"), () -> {
+            GridPane g = new GridPane(); g.setHgap(8); g.setVgap(6);
+            addReadOnlyRow(g, 0, I18n.get("cfg.fieldDefName"), fd.getName());
+            addReadOnlyRow(g, 1, I18n.get("cfg.kind"), kindLabel);
+
+            g.add(new Label(I18n.get("cfg.fieldDefType")), 0, 2);
+            ComboBox<String> typeCombo = new ComboBox<>();
+            typeCombo.setEditable(true);
+            typeCombo.getItems().addAll("multistring", "multitext", "datetime", "integer", "option", "option-collection", "option-sequence");
+            typeCombo.setValue(fd.getType().orElse(""));
+            typeCombo.valueProperty().addListener((obs, o, n) -> {
+                fd.setType(n == null || n.isBlank() ? Optional.empty() : Optional.of(n));
+            });
+            GridPane.setHgrow(typeCombo, Priority.ALWAYS);
+            g.add(typeCombo, 1, 2);
+
+            g.add(new Label(I18n.get("cfg.targets")), 0, 3);
+            TextField classTf = new TextField(fd.getFClass().orElse(""));
+            classTf.setPromptText("entry sense variant ...");
+            classTf.textProperty().addListener((obs, o, n) -> fd.setFClass(n.isBlank() ? Optional.empty() : Optional.of(n)));
+            GridPane.setHgrow(classTf, Priority.ALWAYS);
+            g.add(classTf, 1, 3);
+
+            g.add(new Label(I18n.get("cfg.optionRange")), 0, 4);
+            TextField orTf = new TextField(fd.getOptionRange().orElse(""));
+            orTf.setPromptText("range id...");
+            orTf.textProperty().addListener((obs, o, n) -> fd.setOptionRange(n.isBlank() ? Optional.empty() : Optional.of(n)));
+            GridPane.setHgrow(orTf, Priority.ALWAYS);
+            g.add(orTf, 1, 4);
+            return g;
+        }, true);
 
         addSection(editorContainer, I18n.get("cfg.label"), () -> {
             MultiTextEditor m = new MultiTextEditor(); m.setAvailableLanguages(metaLangs); m.setMultiText(fd.getLabel()); return m;
@@ -1548,19 +1640,14 @@ public final class MainController {
         addSection(editorContainer, I18n.get("cfg.description"), () -> {
             MultiTextEditor m = new MultiTextEditor(); m.setAvailableLanguages(metaLangs); m.setMultiText(fd.getDescription()); return m;
         }, true);
-        addSection(editorContainer, I18n.get("cfg.fieldDefType"), () -> {
-            GridPane g = new GridPane(); g.setHgap(8); g.setVgap(6);
-            addReadOnlyRow(g, 0, I18n.get("cfg.fieldDefName"), fd.getName());
-            g.add(new Label(I18n.get("cfg.fieldDefType")), 0, 1);
-            TextField typeTf = new TextField(fd.getType().orElse(""));
-            typeTf.textProperty().addListener((obs, o, n) -> fd.setType(n.isBlank() ? Optional.empty() : Optional.of(n)));
-            GridPane.setHgrow(typeTf, Priority.ALWAYS); g.add(typeTf, 1, 1);
-            g.add(new Label(I18n.get("cfg.fieldDefClass")), 0, 2);
-            TextField classTf = new TextField(fd.getFClass().orElse(""));
-            classTf.textProperty().addListener((obs, o, n) -> fd.setFClass(n.isBlank() ? Optional.empty() : Optional.of(n)));
-            GridPane.setHgrow(classTf, Priority.ALWAYS); g.add(classTf, 1, 2);
-            return g;
-        }, false);
+    }
+
+    private long countFieldOrTraitUsage(LiftHeaderFieldDefinition fd) {
+        if (currentDictionary == null) return 0;
+        var comps = currentDictionary.getLiftDictionaryComponents();
+        long fieldCount = comps.getAllFields().stream().filter(f -> fd.getName().equals(f.getName())).count();
+        long traitCount = comps.getAllTraits().stream().filter(t -> fd.getName().equals(t.getName())).count();
+        return fieldCount + traitCount;
     }
 
     /* ─── Header usage counting & renaming ─── */
@@ -1644,11 +1731,23 @@ public final class MainController {
             ensureRange(factory, header, entry.getKey(), entry.getValue(), descLang, autoDesc);
         }
 
+        Set<String> definedFieldDefs = header.getFields().stream().map(LiftHeaderFieldDefinition::getName).collect(Collectors.toSet());
+
         Set<String> fieldNames = comps.getAllFields().stream().map(LiftField::getName).collect(Collectors.toSet());
-        Set<String> definedFields = header.getFields().stream().map(LiftHeaderFieldDefinition::getName).collect(Collectors.toSet());
         for (String fn : fieldNames) {
-            if (!definedFields.contains(fn)) {
+            if (!definedFieldDefs.contains(fn)) {
                 LiftHeaderFieldDefinition fd = factory.createFieldDefinition(fn, header);
+                fd.setKind(FieldDefinitionKind.FIELD);
+                fd.getDescription().add(new Form(descLang, autoDesc));
+                definedFieldDefs.add(fn);
+            }
+        }
+
+        Set<String> traitNames = comps.getAllTraits().stream().map(LiftTrait::getName).collect(Collectors.toSet());
+        for (String tn : traitNames) {
+            if (!definedFieldDefs.contains(tn)) {
+                LiftHeaderFieldDefinition fd = factory.createFieldDefinition(tn, header);
+                fd.setKind(FieldDefinitionKind.TRAIT);
                 fd.getDescription().add(new Form(descLang, autoDesc));
             }
         }

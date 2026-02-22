@@ -23,6 +23,7 @@ com\example\ui\MainController$NodeFactory.class
 com\example\MainApp.class
 com\example\ui\controls\MultiTextEditor.class
 com\example\ui\MainController$1.class
+com\example\ui\MainController$3.class
 com\example\ui\model\SenseRow.class
 com\example\core\LiftOpenException.class
 com\example\ui\controls\ExtensibleWithoutFieldEditor.class
