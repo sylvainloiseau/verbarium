@@ -69,6 +69,7 @@ public final class MainController {
     private final DictionaryService dictionaryService = new DictionaryService();
     private LiftDictionary currentDictionary;
     private String currentView = NAV_ENTRIES;
+    private boolean ignoreNavSelectionEvents = false;
 
     /* ─── FXML nodes ─── */
     @FXML private TreeView<String> navTree;
@@ -166,6 +167,7 @@ public final class MainController {
         navTree.setShowRoot(false);
 
         navTree.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> {
+            if (ignoreNavSelectionEvents) return;
             if (newV != null && newV.isLeaf()) {
                 String key = navKeyMap.get(newV);
                 if (key != null) switchView(key);
@@ -792,7 +794,12 @@ public final class MainController {
                 for (LiftSense s : entry.getSenses()) {
                     String label = s.getId().orElse("?") + " – " + s.getGloss().getForms().stream().findFirst().map(Form::toPlainText).orElse("");
                     Hyperlink link = new Hyperlink(label);
-                    link.setOnAction(e -> { switchView(NAV_SENSES); senseTable.getSelectionModel().select(s); senseTable.scrollTo(s); });
+                    link.setOnAction(e -> {
+                        switchView(NAV_SENSES);
+                        senseTable.getSelectionModel().select(s);
+                        senseTable.scrollTo(s);
+                        pinLeftNavigationOnEntries();
+                    });
                     box.getChildren().add(link);
                 }
                 return box;
@@ -902,7 +909,13 @@ public final class MainController {
         // Link to examples
         if (!sense.getExamples().isEmpty()) {
             Hyperlink exLink = new Hyperlink(I18n.get("sense.viewExamples", sense.getExamples().size()));
-            exLink.setOnAction(e -> switchView(NAV_EXAMPLES));
+            LiftExample firstExample = sense.getExamples().getFirst();
+            exLink.setOnAction(e -> {
+                switchView(NAV_EXAMPLES);
+                exampleTable.getSelectionModel().select(firstExample);
+                exampleTable.scrollTo(firstExample);
+                pinLeftNavigationOnEntries();
+            });
             editorContainer.getChildren().add(exLink);
         }
 
@@ -979,6 +992,27 @@ public final class MainController {
         for (LiftSense sub : sense.getSubSenses()) if (containsExample(sub, ex)) return true;
         return false;
     }
+
+    private void pinLeftNavigationOnEntries() {
+        if (navTree == null || navTree.getSelectionModel() == null) return;
+        TreeItem<String> entriesItem = findNavItemByKey(NAV_ENTRIES);
+        if (entriesItem == null) return;
+
+        ignoreNavSelectionEvents = true;
+        try {
+            navTree.getSelectionModel().select(entriesItem);
+        } finally {
+            ignoreNavSelectionEvents = false;
+        }
+    }
+
+    private TreeItem<String> findNavItemByKey(String navKey) {
+        for (Map.Entry<TreeItem<String>, String> entry : navKeyMap.entrySet()) {
+            if (Objects.equals(entry.getValue(), navKey)) return entry.getKey();
+        }
+        return null;
+    }
+
     private void populateNoteEditor(LiftNote note) {
         editEntryTitle.setText(I18n.get("nav.notes") + " : " + note.getType().orElse("?"));
         editEntryCode.setText("");
