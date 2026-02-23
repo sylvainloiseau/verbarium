@@ -107,9 +107,9 @@
   </left>
 
   <center>
-    <SplitPane fx:id="mainSplit" dividerPositions="0.6" BorderPane.alignment="CENTER">
+    <SplitPane fx:id="mainSplit" dividerPositions="0.58" BorderPane.alignment="CENTER">
 
-      <VBox spacing="8" styleClass="center" SplitPane.resizableWithParent="true">
+      <VBox spacing="8" styleClass="center" minWidth="300.0">
         <padding>
           <Insets top="10" right="10" bottom="10" left="10"/>
         </padding>
@@ -125,9 +125,9 @@
         <StackPane fx:id="tableContainer" VBox.vgrow="ALWAYS"/>
       </VBox>
 
-      <ScrollPane fitToWidth="true" styleClass="right-panel" minWidth="280.0" SplitPane.resizableWithParent="true">
+      <ScrollPane fitToWidth="true" styleClass="right-panel" minWidth="300.0">
         <content>
-          <VBox fx:id="rightContent" spacing="10">
+          <VBox fx:id="rightContent" spacing="10" minWidth="280.0">
             <padding>
               <Insets top="10" right="10" bottom="10" left="10"/>
             </padding>
