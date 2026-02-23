@@ -85,6 +85,7 @@ public final class MainController {
     @FXML private VBox rightContent;
     @FXML private VBox editorContainer;
     @FXML private Menu recentMenu;
+    @FXML private MenuBar menuBar;
     @FXML private SplitPane mainSplit;
     @FXML private Button addButton;
 
@@ -124,7 +125,29 @@ public final class MainController {
         searchField.textProperty().addListener((obs, o, n) -> applyCurrentFilter());
         setDictionary(loadDemoDictionary());
         ensureRightPanelVisible();
+        setupMenuHover();
         switchView(NAV_ENTRIES);
+    }
+
+    private void setupMenuHover() {
+        if (menuBar == null) return;
+        // Nodes are not yet in the scene graph at initialize() time; install after layout.
+        menuBar.sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene == null) return;
+            Platform.runLater(() -> {
+                for (Menu menu : menuBar.getMenus()) {
+                    javafx.scene.Node btn = menu.getStyleableNode();
+                    if (btn == null) continue;
+                    btn.setOnMouseEntered(e -> {
+                        boolean anyOpen = menuBar.getMenus().stream().anyMatch(Menu::isShowing);
+                        if (anyOpen) {
+                            menuBar.getMenus().forEach(Menu::hide);
+                            menu.show();
+                        }
+                    });
+                }
+            });
+        });
     }
 
     /* ─── Navigation tree (5.7.2) ─── */

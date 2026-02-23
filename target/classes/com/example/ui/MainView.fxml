@@ -22,7 +22,7 @@
             styleClass="root">
 
   <top>
-    <MenuBar BorderPane.alignment="CENTER" styleClass="top-menu">
+    <MenuBar fx:id="menuBar" BorderPane.alignment="CENTER" styleClass="top-menu">
       <menus>
         <Menu text="%menu.file">
           <items>
@@ -132,10 +132,10 @@
               <Insets top="10" right="10" bottom="10" left="10"/>
             </padding>
             <Label text="%panel.editForm" styleClass="panel-title"/>
-            <HBox spacing="8" alignment="CENTER_LEFT" styleClass="edit-header">
+            <VBox spacing="2" styleClass="edit-header">
               <Label fx:id="editEntryTitle" text="%panel.selectElement" styleClass="edit-entry-title"/>
               <Label fx:id="editEntryCode" text="" styleClass="edit-entry-code"/>
-            </HBox>
+            </VBox>
             <VBox fx:id="editorContainer" spacing="8"/>
             <HBox alignment="CENTER_RIGHT">
               <Button text="%btn.modifyEntry" onAction="#onModifyEntry" styleClass="example-add-button"
