@@ -833,7 +833,9 @@ public final class MainController {
 
         addSection(editorContainer, I18n.get("editor.forms"), () -> { MultiTextEditor m = new MultiTextEditor(); m.setAvailableLanguages(objLangs); m.setMultiText(entry.getForms()); return m; }, true);
         addListSection(editorContainer, I18n.get("editor.traits"), safeList(entry.getTraits()), t -> {
-            TraitEditor te = new TraitEditor(); te.setTrait(t, objLangs, traitNames, traitValues); return te;
+            TraitEditor te = new TraitEditor();
+            te.setTrait(t, objLangs, traitNames, traitValues, findFieldDef(t.getName()));
+            return te;
         }, true);
         addListSection(editorContainer, I18n.get("editor.pronunciations"), safeList(entry.getPronunciations()), p -> { PronunciationEditor pe = new PronunciationEditor(); pe.setPronunciation(p, objLangs); return pe; }, false);
 
@@ -1675,54 +1677,58 @@ public final class MainController {
             .filter(r -> rangeId.equals(r.getId())).findFirst()
             .orElseGet(() -> factory.createRange(rangeId, header));
 
-        TableView<LiftHeaderRangeElement> table = new TableView<>();
-        table.setEditable(true);
-        table.getColumns().addAll(
-            col(I18n.get("cfg.rangeId"), LiftHeaderRangeElement::getId),
-            col(I18n.get("cfg.label"), re -> re.getLabel().getForms().stream().findFirst().map(Form::toPlainText).orElse("")),
-            col(I18n.get("cfg.abbrev"), re -> re.getAbbrev().getForms().stream().findFirst().map(Form::toPlainText).orElse("")),
-            col(I18n.get("cfg.description"), re -> re.getDescription().getForms().stream().findFirst().map(Form::toPlainText).orElse("")),
-            col(I18n.get("cfg.usageCount"), re -> String.valueOf(countRangeElementUsage(rangeId, re.getId())))
-        );
-        table.getItems().addAll(range.getRangeElements());
-
-        table.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
-            if (n != null) populateRangeElementEditor(range, n);
+        // Build TreeView reflecting @parent hierarchy
+        TreeView<LiftHeaderRangeElement> tree = buildRangeElementTree(range);
+        tree.setShowRoot(false);
+        tree.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
+            if (n != null && n.getValue() != null) populateRangeElementEditor(range, n.getValue());
         });
 
         TextField newIdField = new TextField();
         newIdField.setPromptText(I18n.get("cfg.rangeId"));
+
+        // Parent selector — choose a parent from existing elements (optional)
+        ComboBox<String> parentCombo = new ComboBox<>();
+        parentCombo.setPromptText(I18n.get("cfg.parentElement"));
+        parentCombo.setEditable(false);
+        parentCombo.getItems().add("");  // no parent
+        range.getRangeElements().stream().map(LiftHeaderRangeElement::getId).forEach(parentCombo.getItems()::add);
+
         Button addBtn = new Button(I18n.get("cfg.addElement"));
         addBtn.setOnAction(e -> {
             String id = newIdField.getText().trim();
             if (!id.isEmpty() && range.getRangeElements().stream().noneMatch(re -> re.getId().equals(id))) {
                 LiftHeaderRangeElement newElem = factory.createRangeElement(id, range);
+                String parentSel = parentCombo.getValue();
+                if (parentSel != null && !parentSel.isBlank()) newElem.setParentId(parentSel);
                 List<String> metaLangs = getMetaLanguages();
-                if (!metaLangs.isEmpty()) {
-                    newElem.getDescription().add(new Form(metaLangs.get(0), I18n.get("cfg.autoAdded")));
-                }
-                table.getItems().add(newElem);
+                if (!metaLangs.isEmpty()) newElem.getDescription().add(new Form(metaLangs.get(0), I18n.get("cfg.autoAdded")));
                 newIdField.clear();
+                parentCombo.getItems().add(id);
+                // Rebuild tree
+                showHeaderRangeView(rangeId);
             }
         });
 
         Button deleteBtn = new Button(I18n.get("btn.delete"));
         deleteBtn.setOnAction(e -> {
-            LiftHeaderRangeElement sel = table.getSelectionModel().getSelectedItem();
-            if (sel == null) return;
+            TreeItem<LiftHeaderRangeElement> selItem = tree.getSelectionModel().getSelectedItem();
+            if (selItem == null || selItem.getValue() == null) return;
+            LiftHeaderRangeElement sel = selItem.getValue();
             long usage = countRangeElementUsage(rangeId, sel.getId());
             if (usage > 0) {
                 showError(I18n.get("btn.delete"), I18n.get("cfg.deleteNotAllowed", usage));
             } else {
                 range.getRangeElements().remove(sel);
-                table.getItems().remove(sel);
+                showHeaderRangeView(rangeId);
             }
         });
 
         Button renameBtn = new Button(I18n.get("cfg.rename"));
         renameBtn.setOnAction(e -> {
-            LiftHeaderRangeElement sel = table.getSelectionModel().getSelectedItem();
-            if (sel == null) return;
+            TreeItem<LiftHeaderRangeElement> selItem = tree.getSelectionModel().getSelectedItem();
+            if (selItem == null || selItem.getValue() == null) return;
+            LiftHeaderRangeElement sel = selItem.getValue();
             TextInputDialog dlg = new TextInputDialog(sel.getId());
             dlg.setTitle(I18n.get("cfg.rename"));
             dlg.setHeaderText(I18n.get("cfg.renamePrompt", sel.getId()));
@@ -1734,14 +1740,63 @@ public final class MainController {
             });
         });
 
-        HBox controls = new HBox(8, newIdField, addBtn, deleteBtn, renameBtn);
-        controls.setPadding(new Insets(6, 0, 0, 0));
+        Label countLbl = new Label();
+        int total = range.getRangeElements().size();
+        countLbl.setText(total + " " + I18n.get("cfg.elements"));
+        countLbl.setStyle("-fx-text-fill: #66767a; -fx-font-size: 12px;");
+
+        HBox addRow = new HBox(8, newIdField, parentCombo, addBtn);
+        addRow.setPadding(new Insets(4, 0, 0, 0));
         HBox.setHgrow(newIdField, Priority.ALWAYS);
 
-        VBox wrapper = new VBox(6, wrapTableWithFilters(table), controls);
-        VBox.setVgrow(wrapper.getChildren().get(0), Priority.ALWAYS);
+        HBox actionRow = new HBox(8, deleteBtn, renameBtn, new HBox(), countLbl);
+        HBox.setHgrow(actionRow.getChildren().get(2), Priority.ALWAYS);
+
+        VBox.setVgrow(tree, Priority.ALWAYS);
+        VBox wrapper = new VBox(6, tree, addRow, actionRow);
         tableContainer.getChildren().setAll(wrapper);
-        updateCountLabel(table.getItems().size(), table.getItems().size());
+        updateCountLabel(total, total);
+    }
+
+    /** Build a TreeView of LiftHeaderRangeElements respecting the @parent hierarchy. */
+    private TreeView<LiftHeaderRangeElement> buildRangeElementTree(LiftHeaderRange range) {
+        TreeItem<LiftHeaderRangeElement> root = new TreeItem<>(null);
+        root.setExpanded(true);
+        Map<String, TreeItem<LiftHeaderRangeElement>> itemMap = new java.util.LinkedHashMap<>();
+
+        // First pass: create all items
+        for (LiftHeaderRangeElement re : range.getRangeElements()) {
+            TreeItem<LiftHeaderRangeElement> item = new TreeItem<>(re);
+            item.setExpanded(true);
+            itemMap.put(re.getId(), item);
+        }
+        // Second pass: wire parent-child relationships
+        for (LiftHeaderRangeElement re : range.getRangeElements()) {
+            TreeItem<LiftHeaderRangeElement> item = itemMap.get(re.getId());
+            String pid = re.getParentId().orElse(null);
+            if (pid != null && itemMap.containsKey(pid)) {
+                itemMap.get(pid).getChildren().add(item);
+            } else {
+                root.getChildren().add(item);
+            }
+        }
+
+        TreeView<LiftHeaderRangeElement> tree = new TreeView<>(root);
+        tree.setCellFactory(tv -> new TreeCell<>() {
+            @Override protected void updateItem(LiftHeaderRangeElement item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) { setText(null); }
+                else {
+                    String abbrev = item.getAbbrev().getForms().stream().findFirst().map(Form::toPlainText).orElse("");
+                    String label  = item.getLabel().getForms().stream().findFirst().map(Form::toPlainText).orElse("");
+                    String display = item.getId();
+                    if (!abbrev.isBlank()) display += "  [" + abbrev + "]";
+                    if (!label.isBlank())  display += "  – " + label;
+                    setText(display);
+                }
+            }
+        });
+        return tree;
     }
 
     private void showHeaderAllRangesView() {
@@ -1803,9 +1858,9 @@ public final class MainController {
         LiftFactory factory = getFactory(currentDictionary);
         if (header == null || factory == null) { tableContainer.getChildren().setAll(new Label(I18n.get("cfg.noHeader"))); return; }
 
-        TableView<LiftHeaderFieldDefinition> table = new TableView<>();
+        TableView<LiftFieldAndTraitDefinition> table = new TableView<>();
         table.getColumns().addAll(
-            col(I18n.get("cfg.fieldDefName"), LiftHeaderFieldDefinition::getName),
+            col(I18n.get("cfg.fieldDefName"), LiftFieldAndTraitDefinition::getName),
             col(I18n.get("cfg.kind"), fd -> fieldDefKindLabel(fd)),
             col(I18n.get("cfg.fieldDefType"), fd -> fd.getType().orElse("")),
             col(I18n.get("cfg.targets"), fd -> fd.getFClass().orElse("")),
@@ -1823,7 +1878,7 @@ public final class MainController {
 
         Button deleteBtn = new Button(I18n.get("btn.delete"));
         deleteBtn.setOnAction(e -> {
-            LiftHeaderFieldDefinition sel = table.getSelectionModel().getSelectedItem();
+            LiftFieldAndTraitDefinition sel = table.getSelectionModel().getSelectedItem();
             if (sel == null) return;
             long usage = countFieldOrTraitUsage(sel);
             if (usage > 0) {
@@ -1843,8 +1898,8 @@ public final class MainController {
         updateCountLabel(table.getItems().size(), table.getItems().size());
     }
 
-    private void showNewFieldDefDialog(LiftHeader header, LiftFactory factory, TableView<LiftHeaderFieldDefinition> table) {
-        Dialog<LiftHeaderFieldDefinition> dlg = new Dialog<>();
+    private void showNewFieldDefDialog(LiftHeader header, LiftFactory factory, TableView<LiftFieldAndTraitDefinition> table) {
+        Dialog<LiftFieldAndTraitDefinition> dlg = new Dialog<>();
         dlg.setTitle(I18n.get("cfg.newFieldOrTrait"));
         dlg.setHeaderText(I18n.get("cfg.chooseKind"));
         dlg.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
@@ -1895,7 +1950,7 @@ public final class MainController {
             if (bt != ButtonType.OK) return null;
             String name = nameField.getText().trim();
             if (name.isEmpty() || header.getFields().stream().anyMatch(fd -> fd.getName().equals(name))) return null;
-            LiftHeaderFieldDefinition fd = factory.createFieldDefinition(name, header);
+            LiftFieldAndTraitDefinition fd = factory.createFieldDefinition(name, header);
             String typeVal = typeCombo.getValue();
             if (typeVal != null && !typeVal.isBlank()) fd.setType(Optional.of(typeVal));
             List<String> metaLangs = getMetaLanguages();
@@ -1923,7 +1978,7 @@ public final class MainController {
         }, true);
     }
 
-    private void populateFieldDefEditor(LiftHeaderFieldDefinition fd) {
+    private void populateFieldDefEditor(LiftFieldAndTraitDefinition fd) {
         editEntryTitle.setText(fd.getName());
         String kindLabel = fieldDefKindLabel(fd);
         editEntryCode.setText(kindLabel + " – " + fd.getType().orElse(""));
@@ -1970,7 +2025,7 @@ public final class MainController {
         }, true);
     }
 
-    private long countFieldOrTraitUsage(LiftHeaderFieldDefinition fd) {
+    private long countFieldOrTraitUsage(LiftFieldAndTraitDefinition fd) {
         if (currentDictionary == null) return 0;
         var comps = currentDictionary.getLiftDictionaryComponents();
         long fieldCount = comps.getAllFields().stream().filter(f -> fd.getName().equals(f.getName())).count();
@@ -2059,12 +2114,12 @@ public final class MainController {
             ensureRange(factory, header, entry.getKey(), entry.getValue(), descLang, autoDesc);
         }
 
-        Set<String> definedFieldDefs = header.getFields().stream().map(LiftHeaderFieldDefinition::getName).collect(Collectors.toSet());
+        Set<String> definedFieldDefs = header.getFields().stream().map(LiftFieldAndTraitDefinition::getName).collect(Collectors.toSet());
 
         Set<String> fieldNames = comps.getAllFields().stream().map(LiftField::getName).collect(Collectors.toSet());
         for (String fn : fieldNames) {
             if (!definedFieldDefs.contains(fn)) {
-                LiftHeaderFieldDefinition fd = factory.createFieldDefinition(fn, header);
+                LiftFieldAndTraitDefinition fd = factory.createFieldDefinition(fn, header);
                 fd.setType(Optional.of("multitext"));
                 fd.getDescription().add(new Form(descLang, autoDesc));
                 definedFieldDefs.add(fn);
@@ -2074,18 +2129,26 @@ public final class MainController {
         Set<String> traitNames = comps.getAllTraits().stream().map(LiftTrait::getName).collect(Collectors.toSet());
         for (String tn : traitNames) {
             if (!definedFieldDefs.contains(tn)) {
-                LiftHeaderFieldDefinition fd = factory.createFieldDefinition(tn, header);
+                LiftFieldAndTraitDefinition fd = factory.createFieldDefinition(tn, header);
                 fd.setType(Optional.of("option"));
                 fd.getDescription().add(new Form(descLang, autoDesc));
             }
         }
     }
 
-    private static String fieldDefKindLabel(LiftHeaderFieldDefinition fd) {
+    private static String fieldDefKindLabel(LiftFieldAndTraitDefinition fd) {
         if (fd == null) return "";
         if (fd.isFieldDefinition()) return I18n.get("cfg.kindField");
         if (fd.isTraitDefinition()) return I18n.get("cfg.kindTrait");
         return I18n.get("cfg.kindUnknown");
+    }
+
+    /** Find the LiftFieldAndTraitDefinition for a given trait/field name in the current dictionary header. */
+    private Optional<LiftFieldAndTraitDefinition> findFieldDef(String name) {
+        if (currentDictionary == null || name == null) return Optional.empty();
+        LiftHeader header = currentDictionary.getLiftDictionaryComponents().getHeader();
+        if (header == null) return Optional.empty();
+        return header.getFields().stream().filter(fd -> name.equals(fd.getName())).findFirst();
     }
 
     private static void ensureRange(LiftFactory factory, LiftHeader header, String rangeId, Set<String> values, String descLang, String autoDesc) {
@@ -2248,7 +2311,7 @@ public final class MainController {
         if (currentDictionary == null) return List.of();
         LiftHeader h = currentDictionary.getLiftDictionaryComponents().getHeader();
         if (h != null && !h.getFields().isEmpty()) {
-            return h.getFields().stream().map(LiftHeaderFieldDefinition::getName).sorted().toList();
+            return h.getFields().stream().map(LiftFieldAndTraitDefinition::getName).sorted().toList();
         }
         return currentDictionary.getFieldType().stream().sorted().toList();
     }

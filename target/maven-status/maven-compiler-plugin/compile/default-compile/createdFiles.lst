@@ -1,6 +1,8 @@
 com\example\ui\MainController$2.class
 com\example\ui\controls\FieldEditor.class
 com\example\ui\controls\TraitEditor.class
+com\example\ui\MainController$7.class
+com\example\ui\controls\TraitEditor$2.class
 com\example\ui\MainController$ListSupplier.class
 com\example\ui\controls\EtymologyEditor.class
 com\example\ui\MainController$QuickEntryRow.class
@@ -11,6 +13,7 @@ com\example\ui\I18n.class
 com\example\ui\controls\NoteEditor.class
 com\example\ui\controls\MultiTextEditor$Row.class
 com\example\ui\MainController$MultiTextField.class
+com\example\ui\controls\TraitEditor$1.class
 com\example\ui\controls\VariantEditor.class
 com\example\core\DictionaryService.class
 com\example\ui\controls\AnnotationEditor.class
@@ -20,6 +23,7 @@ com\example\ui\controls\PronunciationEditor.class
 com\example\ui\controls\RelationEditor.class
 com\example\ui\MainController$4.class
 com\example\ui\MainController.class
+com\example\ui\controls\TraitEditor$3.class
 com\example\ui\MainController$NodeFactory.class
 com\example\MainApp.class
 com\example\ui\controls\MultiTextEditor.class
