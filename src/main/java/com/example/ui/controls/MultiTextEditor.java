@@ -1,5 +1,6 @@
 package com.example.ui.controls;
 
+import fr.cnrs.lacito.liftapi.model.LiftAnnotation;
 import fr.cnrs.lacito.liftapi.model.MultiText;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -25,7 +26,9 @@ import java.util.*;
 public final class MultiTextEditor extends VBox {
 
     private final VBox rowsBox = new VBox(6);
+    private final VBox annotationsBox = new VBox(6);
     private final ComboBox<String> addLangCombo = new ComboBox<>();
+    private final TitledPane annotationsPane = new TitledPane("Annotations", annotationsBox);
     private final ObservableList<String> allLanguages = FXCollections.observableArrayList();
 
     private MultiText multiText;
@@ -46,7 +49,10 @@ public final class MultiTextEditor extends VBox {
             }
         });
 
-        getChildren().addAll(rowsBox, addLangCombo);
+        annotationsPane.setExpanded(false);
+        annotationsPane.setAnimated(false);
+
+        getChildren().addAll(rowsBox, addLangCombo, annotationsPane);
     }
 
     public void setAvailableLanguages(Collection<String> langs) {
@@ -61,6 +67,7 @@ public final class MultiTextEditor extends VBox {
         for (var node : rowsBox.getChildren()) {
             if (node instanceof Row r) r.langLabel.setText(r.boundLang);
         }
+        rebuildAnnotations();
     }
 
     public void setMultiText(MultiText mt) {
@@ -70,7 +77,7 @@ public final class MultiTextEditor extends VBox {
 
     private void rebuild() {
         rowsBox.getChildren().clear();
-        if (multiText == null) { refreshAddLangChoices(); return; }
+        if (multiText == null) { refreshAddLangChoices(); rebuildAnnotations(); return; }
 
         for (String l : sorted(multiText.getLangs())) {
             if (!allLanguages.contains(l)) allLanguages.add(l);
@@ -81,6 +88,7 @@ public final class MultiTextEditor extends VBox {
             rowsBox.getChildren().add(new Row(lang));
         }
         refreshAddLangChoices();
+        rebuildAnnotations();
     }
 
     private void addRowForLang(String lang) {
@@ -103,6 +111,34 @@ public final class MultiTextEditor extends VBox {
         }
         addLangCombo.setItems(FXCollections.observableArrayList(available));
         addLangCombo.setDisable(available.isEmpty());
+    }
+
+    private void rebuildAnnotations() {
+        annotationsBox.getChildren().clear();
+        if (multiText == null || multiText.getAnnotations().isEmpty()) {
+            annotationsBox.getChildren().add(new Label("(aucune annotation)"));
+            return;
+        }
+
+        List<String> knownNames = multiText.getAnnotations().stream()
+            .map(LiftAnnotation::getName)
+            .filter(Objects::nonNull)
+            .distinct()
+            .sorted()
+            .toList();
+
+        int i = 1;
+        for (LiftAnnotation a : multiText.getAnnotations()) {
+            AnnotationEditor ae = new AnnotationEditor();
+            ae.setAnnotation(a, allLanguages, knownNames);
+
+            String title = a.getName() == null || a.getName().isBlank() ? "#" + i : "#" + i + " - " + a.getName();
+            TitledPane tp = new TitledPane(title, ae);
+            tp.setExpanded(false);
+            tp.setAnimated(false);
+            annotationsBox.getChildren().add(tp);
+            i++;
+        }
     }
 
     private Set<String> getUsedLanguages() {
