@@ -252,11 +252,17 @@ public final class MainController {
 
     private void showEntryView() {
         addButton.setText(I18n.get("btn.newEntry"));
-        HBox filterRow = buildEntryFilterRow();
+        GridPane filterRow = buildEntryFilterRow();
+        String clearOption = I18n.get("filter.clear");
 
-        Button clearBtn = new Button("Réinitialiser les filtres");
+        Button clearBtn = new Button(I18n.get("filter.resetAll"));
         clearBtn.setOnAction(e -> {
-            entryColumnFilters.forEach(tf -> tf.setText(""));
+            entryFilterInternalUpdate = true;
+            try {
+                entryColumnFilters.forEach(cb -> cb.setValue(clearOption));
+            } finally {
+                entryFilterInternalUpdate = false;
+            }
             applyCurrentFilter();
             entryTable.getSelectionModel().clearSelection();
         });
@@ -273,21 +279,72 @@ public final class MainController {
         updateCountLabel(filteredEntries.size(), baseEntries.size());
     }
 
-    private final List<TextField> entryColumnFilters = new ArrayList<>();
+    private final List<ComboBox<String>> entryColumnFilters = new ArrayList<>();
+    private boolean entryFilterInternalUpdate = false;
 
-    private HBox buildEntryFilterRow() {
+    private GridPane buildEntryFilterRow() {
         entryColumnFilters.clear();
-        HBox row = new HBox(2);
+        GridPane row = new GridPane();
+        row.setHgap(0);
         row.setPadding(new Insets(2, 0, 2, 0));
         row.setStyle("-fx-background-color: #eef2f3;");
-        for (TableColumn<LiftEntry, ?> col : collectLeafColumns(entryTable)) {
-            TextField tf = new TextField();
-            tf.setPromptText(I18n.get("filter.prompt"));
-            tf.setPrefWidth(col.getPrefWidth());
-            tf.setStyle("-fx-font-size: 11px; -fx-padding: 2 4 2 4;");
-            tf.textProperty().addListener((obs, o, n) -> applyCurrentFilter());
-            entryColumnFilters.add(tf);
-            row.getChildren().add(tf);
+        String clearOption = I18n.get("filter.clear");
+        List<TableColumn<LiftEntry, ?>> leaves = collectLeafColumns(entryTable);
+
+        for (int i = 0; i < leaves.size(); i++) {
+            TableColumn<LiftEntry, ?> col = leaves.get(i);
+            ComboBox<String> cb = new ComboBox<>();
+            cb.setPromptText(I18n.get("filter.prompt"));
+            cb.setEditable(false);
+            cb.setMaxWidth(Double.MAX_VALUE);
+            cb.setStyle("-fx-font-size: 11px; -fx-padding: 0 2 0 2;");
+            cb.setCellFactory(list -> new ListCell<>() {
+                @Override protected void updateItem(String item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) {
+                        setText(null);
+                        setDisable(false);
+                        setStyle("");
+                        return;
+                    }
+                    setText(item);
+                    boolean isClearItem = clearOption.equals(item);
+                    boolean activeFilter = isActiveFilter(cb.getValue(), clearOption);
+                    boolean disableClear = isClearItem && !activeFilter;
+                    setDisable(disableClear);
+                    setStyle(disableClear ? "-fx-opacity: 0.45;" : "");
+                }
+            });
+            cb.setButtonCell(new ListCell<>() {
+                @Override protected void updateItem(String item, boolean empty) {
+                    super.updateItem(item, empty);
+                    setText(empty || item == null ? null : item);
+                }
+            });
+            cb.valueProperty().addListener((obs, o, n) -> {
+                if (clearOption.equals(n) && !isActiveFilter(o, clearOption)) {
+                    cb.setValue(o);
+                    return;
+                }
+                if (entryFilterInternalUpdate) return;
+                applyCurrentFilter();
+            });
+            entryColumnFilters.add(cb);
+
+            ColumnConstraints cc = new ColumnConstraints();
+            cc.prefWidthProperty().bind(col.widthProperty());
+            cc.minWidthProperty().bind(col.widthProperty());
+            cc.maxWidthProperty().bind(col.widthProperty());
+            row.getColumnConstraints().add(cc);
+            GridPane.setHgrow(cb, Priority.ALWAYS);
+            row.add(cb, i, 0);
+        }
+
+        entryFilterInternalUpdate = true;
+        try {
+            entryColumnFilters.forEach(cb -> cb.setValue(clearOption));
+        } finally {
+            entryFilterInternalUpdate = false;
         }
         return row;
     }
@@ -984,21 +1041,73 @@ public final class MainController {
         String q = Optional.ofNullable(searchField.getText()).orElse("").trim().toLowerCase(Locale.ROOT);
         if (currentView.equals(NAV_ENTRIES)) {
             List<TableColumn<LiftEntry, ?>> leaves = collectLeafColumns(entryTable);
+            String clearOption = I18n.get("filter.clear");
             filteredEntries.setPredicate(entry -> {
                 if (entry == null) return false;
                 if (!q.isEmpty() && !buildSearchText(entry).toLowerCase(Locale.ROOT).contains(q)) return false;
-                // Per-column filters
                 for (int i = 0; i < entryColumnFilters.size() && i < leaves.size(); i++) {
-                    String ft = entryColumnFilters.get(i).getText();
-                    if (ft == null || ft.isBlank()) continue;
+                    String selected = entryColumnFilters.get(i).getValue();
+                    if (!isActiveFilter(selected, clearOption)) continue;
                     Object val = leaves.get(i).getCellObservableValue(entry) != null ? leaves.get(i).getCellObservableValue(entry).getValue() : null;
                     String cellText = val != null ? val.toString() : "";
-                    if (!cellText.toLowerCase(Locale.ROOT).contains(ft.toLowerCase(Locale.ROOT))) return false;
+                    if (!selected.equals(cellText)) return false;
                 }
                 return true;
             });
+            refreshEntryFacetChoices(q, leaves, clearOption);
             updateCountLabel(filteredEntries.size(), baseEntries.size());
         }
+    }
+
+    private void refreshEntryFacetChoices(String q, List<TableColumn<LiftEntry, ?>> leaves, String clearOption) {
+        if (entryColumnFilters.isEmpty()) return;
+        entryFilterInternalUpdate = true;
+        try {
+            for (int i = 0; i < entryColumnFilters.size() && i < leaves.size(); i++) {
+                ComboBox<String> combo = entryColumnFilters.get(i);
+                String currentValue = combo.getValue();
+                final int colIndex = i;
+
+                List<String> values = baseEntries.stream()
+                    .filter(e -> e != null && (q.isEmpty() || buildSearchText(e).toLowerCase(Locale.ROOT).contains(q)))
+                    .filter(e -> rowMatchesEntryFiltersExcluding(e, leaves, clearOption, colIndex))
+                    .map(e -> {
+                        Object v = leaves.get(colIndex).getCellObservableValue(e) != null ? leaves.get(colIndex).getCellObservableValue(e).getValue() : null;
+                        return v == null ? "" : v.toString();
+                    })
+                    .filter(s -> !s.isBlank())
+                    .distinct()
+                    .sorted(String.CASE_INSENSITIVE_ORDER)
+                    .toList();
+
+                ObservableList<String> items = FXCollections.observableArrayList();
+                items.add(clearOption);
+                items.addAll(values);
+                combo.setItems(items);
+
+                if (currentValue != null && items.contains(currentValue)) combo.setValue(currentValue);
+                else combo.setValue(clearOption);
+            }
+        } finally {
+            entryFilterInternalUpdate = false;
+        }
+    }
+
+    private boolean rowMatchesEntryFiltersExcluding(
+        LiftEntry entry,
+        List<TableColumn<LiftEntry, ?>> leaves,
+        String clearOption,
+        int ignoredColumn
+    ) {
+        for (int i = 0; i < entryColumnFilters.size() && i < leaves.size(); i++) {
+            if (i == ignoredColumn) continue;
+            String selected = entryColumnFilters.get(i).getValue();
+            if (!isActiveFilter(selected, clearOption)) continue;
+            Object val = leaves.get(i).getCellObservableValue(entry) != null ? leaves.get(i).getCellObservableValue(entry).getValue() : null;
+            String cellText = val != null ? val.toString() : "";
+            if (!selected.equals(cellText)) return false;
+        }
+        return true;
     }
 
     /* ────────────────── DICTIONARY MANAGEMENT ────────────────── */
