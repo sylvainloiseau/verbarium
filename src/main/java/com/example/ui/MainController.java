@@ -30,6 +30,7 @@ import java.nio.file.Files;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 /**
@@ -490,18 +491,8 @@ public final class MainController {
 
         List<LiftTrait> allTraits = currentDictionary.getLiftDictionaryComponents().getAllTraits();
 
-        Map<String, Long> nameCounts = allTraits.stream()
-            .collect(Collectors.groupingBy(LiftTrait::getName, Collectors.counting()));
-        TableView<CategoryRow> nameTable = new TableView<>();
-        nameTable.getColumns().addAll(
-            colCat(I18n.get("col.name"), CategoryRow::value),
-            colCat(I18n.get("col.frequency"), r -> String.valueOf(r.frequency()))
-        );
-        nameCounts.entrySet().stream().sorted(Map.Entry.<String, Long>comparingByValue().reversed())
-            .forEach(e -> nameTable.getItems().add(new CategoryRow(e.getKey(), e.getValue())));
-        nameTable.setPrefHeight(180);
-
         traitTable.getColumns().addAll(
+            col(I18n.get("col.parentType"), (LiftTrait t) -> describeParentType(t.getParent())),
             col(I18n.get("col.parent"), (LiftTrait t) -> describeParent(t.getParent())),
             col(I18n.get("col.name"), LiftTrait::getName),
             col(I18n.get("col.value"), LiftTrait::getValue),
@@ -512,35 +503,9 @@ public final class MainController {
         );
         traitTable.getItems().addAll(allTraits);
 
-        Label bottomLabel = new Label(I18n.get("category.traitValues"));
-        nameTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
-            if (n == null) { traitTable.getItems().setAll(allTraits); bottomLabel.setText(I18n.get("category.traitValues")); }
-            else {
-                traitTable.getItems().setAll(allTraits.stream().filter(t -> n.value().equals(t.getName())).toList());
-                bottomLabel.setText(I18n.get("category.traitValuesOf", n.value()));
-            }
-            updateCountLabel(traitTable.getItems().size(), allTraits.size());
-        });
-
-        Button clearBtn = new Button(I18n.get("btn.showAll"));
-        clearBtn.setOnAction(e -> {
-            nameTable.getSelectionModel().clearSelection();
-            traitTable.getItems().setAll(allTraits);
-            bottomLabel.setText(I18n.get("category.traitValues"));
-            updateCountLabel(allTraits.size(), allTraits.size());
-        });
-
-        VBox topPane = new VBox(4, new Label(I18n.get("category.traitNames")), wrapTableWithFilters(nameTable));
-        VBox bottomPane = new VBox(4, new HBox(8, bottomLabel, clearBtn), wrapTableWithFilters(traitTable));
-        VBox.setVgrow(bottomPane, Priority.ALWAYS);
-        SplitPane split = new SplitPane(topPane, bottomPane);
-        split.setOrientation(javafx.geometry.Orientation.VERTICAL);
-        split.setDividerPositions(0.35);
-        tableContainer.getChildren().setAll(split);
+        tableContainer.getChildren().setAll(wrapTableWithFilters(traitTable));
         updateCountLabel(allTraits.size(), allTraits.size());
     }
-
-    /* ════════════════════ ANNOTATION VIEW (5.10 – split: names top, values bottom) ════════════════════ */
 
     private void showAnnotationView() {
         annotationTable.setItems(FXCollections.observableArrayList());
@@ -549,18 +514,8 @@ public final class MainController {
 
         List<LiftAnnotation> all = currentDictionary.getLiftDictionaryComponents().getAllAnnotations();
 
-        Map<String, Long> nameCounts = all.stream()
-            .collect(Collectors.groupingBy(LiftAnnotation::getName, Collectors.counting()));
-        TableView<CategoryRow> nameTable = new TableView<>();
-        nameTable.getColumns().addAll(
-            colCat(I18n.get("col.name"), CategoryRow::value),
-            colCat(I18n.get("col.frequency"), r -> String.valueOf(r.frequency()))
-        );
-        nameCounts.entrySet().stream().sorted(Map.Entry.<String, Long>comparingByValue().reversed())
-            .forEach(e -> nameTable.getItems().add(new CategoryRow(e.getKey(), e.getValue())));
-        nameTable.setPrefHeight(180);
-
         annotationTable.getColumns().addAll(
+            col(I18n.get("col.parentType"), (LiftAnnotation a) -> describeParentType(a.getParent())),
             col(I18n.get("col.parent"), (LiftAnnotation a) -> describeParent(a.getParent())),
             col(I18n.get("col.name"), LiftAnnotation::getName),
             col(I18n.get("col.value"), a -> a.getValue().orElse("")),
@@ -573,31 +528,7 @@ public final class MainController {
         );
         annotationTable.getItems().addAll(all);
 
-        Label bottomLabel = new Label(I18n.get("category.annotationValues"));
-        nameTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
-            if (n == null) { annotationTable.getItems().setAll(all); bottomLabel.setText(I18n.get("category.annotationValues")); }
-            else {
-                annotationTable.getItems().setAll(all.stream().filter(a -> n.value().equals(a.getName())).toList());
-                bottomLabel.setText(I18n.get("category.annotationValuesOf", n.value()));
-            }
-            updateCountLabel(annotationTable.getItems().size(), all.size());
-        });
-
-        Button clearBtn = new Button(I18n.get("btn.showAll"));
-        clearBtn.setOnAction(e -> {
-            nameTable.getSelectionModel().clearSelection();
-            annotationTable.getItems().setAll(all);
-            bottomLabel.setText(I18n.get("category.annotationValues"));
-            updateCountLabel(all.size(), all.size());
-        });
-
-        VBox topPane = new VBox(4, new Label(I18n.get("category.annotationNames")), wrapTableWithFilters(nameTable));
-        VBox bottomPane = new VBox(4, new HBox(8, bottomLabel, clearBtn), wrapTableWithFilters(annotationTable));
-        VBox.setVgrow(bottomPane, Priority.ALWAYS);
-        SplitPane split = new SplitPane(topPane, bottomPane);
-        split.setOrientation(javafx.geometry.Orientation.VERTICAL);
-        split.setDividerPositions(0.35);
-        tableContainer.getChildren().setAll(split);
+        tableContainer.getChildren().setAll(wrapTableWithFilters(annotationTable));
         updateCountLabel(all.size(), all.size());
     }
 
@@ -1267,16 +1198,59 @@ public final class MainController {
         FilteredList<T> filtered = new FilteredList<>(sourceItems, t -> true);
         table.setItems(filtered);
 
+        List<TableColumn<T, ?>> leaves = collectLeafColumns(table);
+        List<ComboBox<String>> filterBoxes = new ArrayList<>();
+        String clearOption = I18n.get("filter.clear");
+        AtomicBoolean internalUpdate = new AtomicBoolean(false);
+
         HBox filterRow = new HBox(6);
         filterRow.setPadding(new Insets(4, 6, 4, 6));
         filterRow.setStyle("-fx-background-color: #eef2f3;");
-        List<TextField> filterFields = new ArrayList<>();
 
-        Button clearBtn = new Button("Réinitialiser les filtres");
+        Runnable refreshPredicate = () -> filtered.setPredicate(row ->
+            rowMatchesAllFilters(row, leaves, filterBoxes, clearOption, -1)
+        );
+
+        Runnable refreshFacetChoices = () -> {
+            if (internalUpdate.get()) return;
+            internalUpdate.set(true);
+            try {
+                for (int i = 0; i < leaves.size(); i++) {
+                    ComboBox<String> combo = filterBoxes.get(i);
+                    String currentValue = combo.getValue();
+                    final int colIndex = i;
+
+                    List<String> values = sourceItems.stream()
+                        .filter(row -> rowMatchesAllFilters(row, leaves, filterBoxes, clearOption, colIndex))
+                        .map(row -> cellText(row, leaves.get(colIndex)))
+                        .filter(s -> s != null && !s.isBlank())
+                        .distinct()
+                        .sorted(String.CASE_INSENSITIVE_ORDER)
+                        .toList();
+
+                    ObservableList<String> items = FXCollections.observableArrayList();
+                    items.add(clearOption);
+                    items.addAll(values);
+                    combo.setItems(items);
+
+                    if (currentValue != null && items.contains(currentValue)) combo.setValue(currentValue);
+                    else combo.setValue(clearOption);
+                }
+            } finally {
+                internalUpdate.set(false);
+            }
+        };
+
+        Button clearBtn = new Button("RÃ©initialiser les filtres");
         clearBtn.setOnAction(e -> {
-            // Clearing text will trigger listeners that update the predicate to show all
-            filterFields.forEach(tf -> tf.setText(""));
-            filtered.setPredicate(t -> true);
+            internalUpdate.set(true);
+            try {
+                filterBoxes.forEach(cb -> cb.setValue(clearOption));
+            } finally {
+                internalUpdate.set(false);
+            }
+            refreshPredicate.run();
+            refreshFacetChoices.run();
             table.getSelectionModel().clearSelection();
         });
 
@@ -1286,34 +1260,87 @@ public final class MainController {
         HBox.setHgrow(spacer, Priority.ALWAYS);
         header.getChildren().addAll(spacer, clearBtn);
 
-        for (TableColumn<T, ?> column : collectLeafColumns(table)) {
-            TextField tf = new TextField();
-            tf.setPromptText(I18n.get("filter.prompt"));
-            tf.setPrefWidth(column.getPrefWidth());
-            tf.setStyle("-fx-font-size: 11px; -fx-padding: 2 4 2 4;");
-            filterFields.add(tf);
-            filterRow.getChildren().add(tf);
-
-            tf.textProperty().addListener((obs, o, n) -> {
-                filtered.setPredicate(row -> {
-                    for (int i = 0; i < filterFields.size(); i++) {
-                        String filterText = filterFields.get(i).getText();
-                        if (filterText == null || filterText.isBlank()) continue;
-                        List<TableColumn<T, ?>> leaves = collectLeafColumns(table);
-                        if (i >= leaves.size()) continue;
-                        TableColumn<T, ?> col = leaves.get(i);
-                        Object cellVal = col.getCellObservableValue(row) != null ? col.getCellObservableValue(row).getValue() : null;
-                        String cellText = cellVal != null ? cellVal.toString() : "";
-                        if (!cellText.toLowerCase(Locale.ROOT).contains(filterText.toLowerCase(Locale.ROOT))) return false;
+        for (TableColumn<T, ?> column : leaves) {
+            ComboBox<String> cb = new ComboBox<>();
+            cb.setPromptText(I18n.get("filter.prompt"));
+            cb.setEditable(false);
+            cb.setPrefWidth(column.getPrefWidth());
+            cb.setMaxWidth(Double.MAX_VALUE);
+            cb.setStyle("-fx-font-size: 11px; -fx-padding: 0 2 0 2;");
+            cb.setCellFactory(list -> new ListCell<>() {
+                @Override protected void updateItem(String item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) {
+                        setText(null);
+                        setDisable(false);
+                        setStyle("");
+                        return;
                     }
-                    return true;
-                });
+                    setText(item);
+                    boolean isClearItem = clearOption.equals(item);
+                    boolean activeFilter = isActiveFilter(cb.getValue(), clearOption);
+                    boolean disableClear = isClearItem && !activeFilter;
+                    setDisable(disableClear);
+                    setStyle(disableClear ? "-fx-opacity: 0.45;" : "");
+                }
+            });
+            cb.setButtonCell(new ListCell<>() {
+                @Override protected void updateItem(String item, boolean empty) {
+                    super.updateItem(item, empty);
+                    setText(empty || item == null ? null : item);
+                }
+            });
+            filterBoxes.add(cb);
+            filterRow.getChildren().add(cb);
+
+            cb.valueProperty().addListener((obs, o, n) -> {
+                if (clearOption.equals(n) && !isActiveFilter(o, clearOption)) {
+                    cb.setValue(o);
+                    return;
+                }
+                if (internalUpdate.get()) return;
+                refreshPredicate.run();
+                refreshFacetChoices.run();
             });
         }
+
+        internalUpdate.set(true);
+        try {
+            filterBoxes.forEach(cb -> cb.setValue(clearOption));
+        } finally {
+            internalUpdate.set(false);
+        }
+        refreshPredicate.run();
+        refreshFacetChoices.run();
 
         VBox wrapper = new VBox(header, filterRow, table);
         VBox.setVgrow(table, Priority.ALWAYS);
         return wrapper;
+    }
+
+    private static <T> boolean rowMatchesAllFilters(
+        T row,
+        List<TableColumn<T, ?>> leaves,
+        List<ComboBox<String>> filterBoxes,
+        String clearOption,
+        int ignoredColumn
+    ) {
+        for (int i = 0; i < filterBoxes.size(); i++) {
+            if (i == ignoredColumn) continue;
+            String selected = filterBoxes.get(i).getValue();
+            if (selected == null || selected.isBlank() || clearOption.equals(selected)) continue;
+            if (!selected.equals(cellText(row, leaves.get(i)))) return false;
+        }
+        return true;
+    }
+
+    private static boolean isActiveFilter(String selected, String clearOption) {
+        return selected != null && !selected.isBlank() && !clearOption.equals(selected);
+    }
+
+    private static <T> String cellText(T row, TableColumn<T, ?> col) {
+        Object cellVal = col.getCellObservableValue(row) != null ? col.getCellObservableValue(row).getValue() : null;
+        return cellVal != null ? cellVal.toString() : "";
     }
 
     /** Collect leaf (non-grouped) columns in display order. */
@@ -1470,11 +1497,7 @@ public final class MainController {
         TableView<LiftHeaderFieldDefinition> table = new TableView<>();
         table.getColumns().addAll(
             col(I18n.get("cfg.fieldDefName"), LiftHeaderFieldDefinition::getName),
-            col(I18n.get("cfg.kind"), fd -> switch (fd.getKind()) {
-                case FIELD -> I18n.get("cfg.kindField");
-                case TRAIT -> I18n.get("cfg.kindTrait");
-                case UNKNOWN -> I18n.get("cfg.kindUnknown");
-            }),
+            col(I18n.get("cfg.kind"), fd -> fieldDefKindLabel(fd)),
             col(I18n.get("cfg.fieldDefType"), fd -> fd.getType().orElse("")),
             col(I18n.get("cfg.targets"), fd -> fd.getFClass().orElse("")),
             col(I18n.get("cfg.description"), fd -> fd.getDescription().getForms().stream().findFirst().map(Form::toPlainText).orElse("")),
@@ -1593,11 +1616,7 @@ public final class MainController {
 
     private void populateFieldDefEditor(LiftHeaderFieldDefinition fd) {
         editEntryTitle.setText(fd.getName());
-        String kindLabel = switch (fd.getKind()) {
-            case FIELD -> I18n.get("cfg.kindField");
-            case TRAIT -> I18n.get("cfg.kindTrait");
-            case UNKNOWN -> I18n.get("cfg.kindUnknown");
-        };
+        String kindLabel = fieldDefKindLabel(fd);
         editEntryCode.setText(kindLabel + " – " + fd.getType().orElse(""));
         editorContainer.getChildren().clear();
         List<String> metaLangs = getMetaLanguages();
@@ -1737,7 +1756,7 @@ public final class MainController {
         for (String fn : fieldNames) {
             if (!definedFieldDefs.contains(fn)) {
                 LiftHeaderFieldDefinition fd = factory.createFieldDefinition(fn, header);
-                fd.setKind(FieldDefinitionKind.FIELD);
+                fd.setType(Optional.of("multitext"));
                 fd.getDescription().add(new Form(descLang, autoDesc));
                 definedFieldDefs.add(fn);
             }
@@ -1747,10 +1766,17 @@ public final class MainController {
         for (String tn : traitNames) {
             if (!definedFieldDefs.contains(tn)) {
                 LiftHeaderFieldDefinition fd = factory.createFieldDefinition(tn, header);
-                fd.setKind(FieldDefinitionKind.TRAIT);
+                fd.setType(Optional.of("option"));
                 fd.getDescription().add(new Form(descLang, autoDesc));
             }
         }
+    }
+
+    private static String fieldDefKindLabel(LiftHeaderFieldDefinition fd) {
+        if (fd == null) return "";
+        if (fd.isFieldDefinition()) return I18n.get("cfg.kindField");
+        if (fd.isTraitDefinition()) return I18n.get("cfg.kindTrait");
+        return I18n.get("cfg.kindUnknown");
     }
 
     private static void ensureRange(LiftFactory factory, LiftHeader header, String rangeId, Set<String> values, String descLang, String autoDesc) {
@@ -1851,6 +1877,14 @@ public final class MainController {
         if (parent instanceof LiftEntry e) return "entry:" + e.getId().orElse("?");
         if (parent instanceof LiftSense s) return "sense:" + s.getId().orElse("?");
         if (parent instanceof GrammaticalInfo) return "gram-info";
+        return parent.getClass().getSimpleName();
+    }
+
+    private static String describeParentType(Object parent) {
+        if (parent == null) return "";
+        if (parent instanceof LiftEntry) return I18n.get("nav.entries");
+        if (parent instanceof LiftSense) return I18n.get("nav.senses");
+        if (parent instanceof GrammaticalInfo) return I18n.get("nav.gramInfo");
         return parent.getClass().getSimpleName();
     }
 
