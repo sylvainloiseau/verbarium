@@ -123,6 +123,7 @@ public final class MainController {
         setupGenericTables();
         searchField.textProperty().addListener((obs, o, n) -> applyCurrentFilter());
         setDictionary(loadDemoDictionary());
+        ensureRightPanelVisible();
         switchView(NAV_ENTRIES);
     }
 
@@ -206,6 +207,7 @@ public final class MainController {
 
     private void switchView(String viewName) {
         currentView = viewName;
+        ensureRightPanelVisible();
         viewTitle.setText(I18n.get(viewName));
         editorContainer.getChildren().clear();
         editEntryTitle.setText(I18n.get("panel.selectElement"));
@@ -236,6 +238,23 @@ public final class MainController {
             case NAV_CFG_TRAIT_RANGES -> showHeaderAllRangesView();
             case NAV_CFG_FIELD_DEFS  -> showHeaderFieldDefsView();
             default -> showEntryView();
+        }
+    }
+
+    private void ensureRightPanelVisible() {
+        if (rightContent != null) {
+            rightContent.setManaged(true);
+            rightContent.setVisible(true);
+        }
+        if (mainSplit != null && mainSplit.getItems().size() >= 2) {
+            javafx.scene.Node rightPane = mainSplit.getItems().get(1);
+            if (rightPane instanceof Region region) {
+                region.setMinWidth(320);
+                region.setPrefWidth(360);
+            }
+            SplitPane.setResizableWithParent(rightPane, Boolean.FALSE);
+            // Keep a stable center/editor split so the right editor pane cannot stay collapsed.
+            mainSplit.setDividerPositions(0.62);
         }
     }
 
@@ -273,9 +292,17 @@ public final class MainController {
         header.getChildren().addAll(spacer, clearBtn);
 
         VBox wrapper = new VBox(header, filterRow, entryTable);
+        wrapper.setMinWidth(0);
+        filterRow.setMinWidth(0);
+        entryTable.setMinWidth(0);
         VBox.setVgrow(entryTable, Priority.ALWAYS);
         tableContainer.getChildren().setAll(wrapper);
         applyCurrentFilter();
+        if (!filteredEntries.isEmpty()) {
+            entryTable.getSelectionModel().selectFirst();
+            LiftEntry selected = entryTable.getSelectionModel().getSelectedItem();
+            if (selected != null) populateEntryEditor(selected);
+        }
         updateCountLabel(filteredEntries.size(), baseEntries.size());
     }
 
@@ -333,8 +360,6 @@ public final class MainController {
 
             ColumnConstraints cc = new ColumnConstraints();
             cc.prefWidthProperty().bind(col.widthProperty());
-            cc.minWidthProperty().bind(col.widthProperty());
-            cc.maxWidthProperty().bind(col.widthProperty());
             row.getColumnConstraints().add(cc);
             GridPane.setHgrow(cb, Priority.ALWAYS);
             row.add(cb, i, 0);
@@ -527,6 +552,9 @@ public final class MainController {
 
         langFieldTable.getColumns().addAll(parentTypeCol, parentIdCol, langGroup);
         langFieldTable.getItems().addAll(rows);
+        langFieldTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
+            if (n != null) populateLangFieldEditor(n);
+        });
         tableContainer.getChildren().setAll(wrapTableWithFilters(langFieldTable));
         updateCountLabel(rows.size(), rows.size());
     }
@@ -559,6 +587,9 @@ public final class MainController {
             })
         );
         traitTable.getItems().addAll(allTraits);
+        traitTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
+            if (n != null) populateTraitSummaryEditor(n);
+        });
 
         tableContainer.getChildren().setAll(wrapTableWithFilters(traitTable));
         updateCountLabel(allTraits.size(), allTraits.size());
@@ -584,6 +615,9 @@ public final class MainController {
             })
         );
         annotationTable.getItems().addAll(all);
+        annotationTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
+            if (n != null) populateAnnotationSummaryEditor(n);
+        });
 
         tableContainer.getChildren().setAll(wrapTableWithFilters(annotationTable));
         updateCountLabel(all.size(), all.size());
@@ -600,6 +634,9 @@ public final class MainController {
             col(I18n.get("col.text"), f -> f.getText().getForms().stream().findFirst().map(Form::toPlainText).orElse(""))
         );
         fieldTable.getItems().addAll(currentDictionary.getLiftDictionaryComponents().getAllFields());
+        fieldTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
+            if (n != null) populateFieldSummaryEditor(n);
+        });
         tableContainer.getChildren().setAll(wrapTableWithFilters(fieldTable));
         updateCountLabel(fieldTable.getItems().size(), fieldTable.getItems().size());
     }
@@ -741,6 +778,7 @@ public final class MainController {
     /* ─── Editor population helpers ─── */
 
     private void populateEntryEditor(LiftEntry entry) {
+        try {
         List<String> objLangs = getObjectLanguages();
         List<String> metaLangs = getMetaLanguages();
 
@@ -756,36 +794,32 @@ public final class MainController {
         editorContainer.getChildren().clear();
 
         addSection(editorContainer, I18n.get("editor.forms"), () -> { MultiTextEditor m = new MultiTextEditor(); m.setAvailableLanguages(objLangs); m.setMultiText(entry.getForms()); return m; }, true);
-        addListSection(editorContainer, I18n.get("editor.traits"), entry.getTraits(), t -> {
+        addListSection(editorContainer, I18n.get("editor.traits"), safeList(entry.getTraits()), t -> {
             TraitEditor te = new TraitEditor(); te.setTrait(t, objLangs, traitNames, traitValues); return te;
         }, true);
-        addListSection(editorContainer, I18n.get("editor.pronunciations"), entry.getPronunciations(), p -> { PronunciationEditor pe = new PronunciationEditor(); pe.setPronunciation(p, objLangs); return pe; }, false);
+        addListSection(editorContainer, I18n.get("editor.pronunciations"), safeList(entry.getPronunciations()), p -> { PronunciationEditor pe = new PronunciationEditor(); pe.setPronunciation(p, objLangs); return pe; }, false);
 
-        if (!entry.getSenses().isEmpty()) {
-            addSection(editorContainer, I18n.get("editor.senses") + " (" + entry.getSenses().size() + ")", () -> {
+        List<LiftSense> senses = safeList(entry.getSenses());
+        if (!senses.isEmpty()) {
+            addSection(editorContainer, I18n.get("editor.senses") + " (" + senses.size() + ")", () -> {
                 VBox box = new VBox(4);
-                for (LiftSense s : entry.getSenses()) {
+                for (LiftSense s : senses) {
                     String label = s.getId().orElse("?") + " – " + s.getGloss().getForms().stream().findFirst().map(Form::toPlainText).orElse("");
                     Hyperlink link = new Hyperlink(label);
-                    link.setOnAction(e -> {
-                        switchView(NAV_SENSES);
-                        senseTable.getSelectionModel().select(s);
-                        senseTable.scrollTo(s);
-                        pinLeftNavigationOnEntries();
-                    });
+                    link.setOnAction(e -> navigateToSenseKeepingEntriesFocus(s));
                     box.getChildren().add(link);
                 }
                 return box;
             }, true);
         }
-        addListSection(editorContainer, I18n.get("editor.variants"), entry.getVariants(), v -> { VariantEditor ve = new VariantEditor(); ve.setVariant(v, objLangs, metaLangs); return ve; }, false);
-        addListSection(editorContainer, I18n.get("editor.relations"), entry.getRelations(), r -> { RelationEditor re = new RelationEditor(); re.setRelation(r, metaLangs); return re; }, false);
-        addListSection(editorContainer, I18n.get("editor.etymologies"), entry.getEtymologies(), et -> { EtymologyEditor ee = new EtymologyEditor(); ee.setEtymology(et, objLangs, metaLangs); return ee; }, false);
-        addListSection(editorContainer, I18n.get("editor.annotations"), entry.getAnnotations(), a -> {
+        addListSection(editorContainer, I18n.get("editor.variants"), safeList(entry.getVariants()), v -> { VariantEditor ve = new VariantEditor(); ve.setVariant(v, objLangs, metaLangs); return ve; }, false);
+        addListSection(editorContainer, I18n.get("editor.relations"), safeList(entry.getRelations()), r -> { RelationEditor re = new RelationEditor(); re.setRelation(r, metaLangs); return re; }, false);
+        addListSection(editorContainer, I18n.get("editor.etymologies"), safeList(entry.getEtymologies()), et -> { EtymologyEditor ee = new EtymologyEditor(); ee.setEtymology(et, objLangs, metaLangs); return ee; }, false);
+        addListSection(editorContainer, I18n.get("editor.annotations"), safeList(entry.getAnnotations()), a -> {
             AnnotationEditor ae = new AnnotationEditor(); ae.setAnnotation(a, metaLangs, annotationNames); return ae;
         }, false);
-        addListSection(editorContainer, I18n.get("editor.notes"), new ArrayList<>(entry.getNotes().values()), n -> { NoteEditor ne = new NoteEditor(); ne.setNote(n, metaLangs); return ne; }, false);
-        addListSection(editorContainer, I18n.get("editor.fields"), entry.getFields(), f -> {
+        addListSection(editorContainer, I18n.get("editor.notes"), new ArrayList<>(safeMapValues(entry.getNotes())), n -> { NoteEditor ne = new NoteEditor(); ne.setNote(n, metaLangs); return ne; }, false);
+        addListSection(editorContainer, I18n.get("editor.fields"), safeList(entry.getFields()), f -> {
             FieldEditor fe = new FieldEditor(); fe.setField(f, metaLangs, fieldTypes); return fe;
         }, false);
         addSection(editorContainer, I18n.get("editor.identity"), () -> {
@@ -880,6 +914,20 @@ public final class MainController {
             addButtons.getChildren().addAll(addSenseBtn, addVariantBtn, addPronBtn, addTraitBtn, addNoteBtn, addFieldBtn, addAnnotBtn);
             editorContainer.getChildren().add(addButtons);
         }
+        } catch (Exception ex) {
+            LinkedHashMap<String, String> values = new LinkedHashMap<>();
+            values.put(I18n.get("field.id"), entry == null ? "" : entry.getId().orElse(""));
+            values.put("Erreur", Optional.ofNullable(ex.getMessage()).orElse(ex.getClass().getSimpleName()));
+            populateSummaryEditor("Entrée (erreur d'affichage)", "", values);
+        }
+    }
+
+    private static <T> List<T> safeList(List<T> list) {
+        return list == null ? List.of() : list;
+    }
+
+    private static <K, V> Collection<V> safeMapValues(Map<K, V> map) {
+        return map == null ? List.of() : map.values();
     }
 
     private void populateSenseEditor(LiftSense sense) {
@@ -892,7 +940,7 @@ public final class MainController {
         // Parent link: navigate back to entry view filtered to this sense's parent
         findParentEntry(sense).ifPresent(parentEntry -> {
             Hyperlink backLink = new Hyperlink(I18n.get("sense.backToEntry", parentEntry.getId().orElse("?")));
-            backLink.setOnAction(e -> { switchView(NAV_ENTRIES); entryTable.getSelectionModel().select(parentEntry); entryTable.scrollTo(parentEntry); });
+            backLink.setOnAction(e -> navigateToEntryFromSense(parentEntry));
             editorContainer.getChildren().add(backLink);
         });
 
@@ -900,12 +948,7 @@ public final class MainController {
         if (!sense.getExamples().isEmpty()) {
             Hyperlink exLink = new Hyperlink(I18n.get("sense.viewExamples", sense.getExamples().size()));
             LiftExample firstExample = sense.getExamples().getFirst();
-            exLink.setOnAction(e -> {
-                switchView(NAV_EXAMPLES);
-                exampleTable.getSelectionModel().select(firstExample);
-                exampleTable.scrollTo(firstExample);
-                pinLeftNavigationOnEntries();
-            });
+            exLink.setOnAction(e -> navigateToExampleKeepingEntriesFocus(firstExample));
             editorContainer.getChildren().add(exLink);
         }
 
@@ -983,6 +1026,64 @@ public final class MainController {
         return false;
     }
 
+    private void navigateToSenseKeepingEntriesFocus(LiftSense sense) {
+        if (sense == null) return;
+        switchView(NAV_SENSES);
+        clearSearchAndVisibleColumnFilters();
+        if (senseTable.getItems().contains(sense)) {
+            senseTable.getSelectionModel().select(sense);
+            senseTable.scrollTo(sense);
+        }
+        pinLeftNavigationOnEntries();
+    }
+
+    private void navigateToEntryFromSense(LiftEntry entry) {
+        if (entry == null) return;
+        switchView(NAV_ENTRIES);
+        clearSearchAndVisibleColumnFilters();
+        applyCurrentFilter();
+        if (filteredEntries.contains(entry)) {
+            entryTable.getSelectionModel().select(entry);
+            entryTable.scrollTo(entry);
+            populateEntryEditor(entry);
+        } else if (!filteredEntries.isEmpty()) {
+            LiftEntry first = filteredEntries.getFirst();
+            entryTable.getSelectionModel().select(first);
+            entryTable.scrollTo(first);
+            populateEntryEditor(first);
+        }
+    }
+
+    private void navigateToExampleKeepingEntriesFocus(LiftExample example) {
+        if (example == null) return;
+        switchView(NAV_EXAMPLES);
+        clearSearchAndVisibleColumnFilters();
+        if (exampleTable.getItems().contains(example)) {
+            exampleTable.getSelectionModel().select(example);
+            exampleTable.scrollTo(example);
+        }
+        pinLeftNavigationOnEntries();
+    }
+
+    private void clearSearchAndVisibleColumnFilters() {
+        if (searchField != null && !searchField.getText().isBlank()) {
+            searchField.clear();
+        }
+        if (tableContainer == null || tableContainer.getChildren().isEmpty()) return;
+        javafx.scene.Node root = tableContainer.getChildren().get(0);
+        if (!(root instanceof VBox wrapper) || wrapper.getChildren().size() < 2) return;
+        javafx.scene.Node filterNode = wrapper.getChildren().get(1);
+        if (!(filterNode instanceof Pane filterPane)) return;
+
+        String clearOption = I18n.get("filter.clear");
+        for (javafx.scene.Node child : filterPane.getChildren()) {
+            if (!(child instanceof ComboBox<?> rawCombo)) continue;
+            @SuppressWarnings("unchecked")
+            ComboBox<String> combo = (ComboBox<String>) rawCombo;
+            combo.setValue(clearOption);
+        }
+    }
+
     private void pinLeftNavigationOnEntries() {
         if (navTree == null || navTree.getSelectionModel() == null) return;
         TreeItem<String> entriesItem = findNavItemByKey(NAV_ENTRIES);
@@ -1001,6 +1102,64 @@ public final class MainController {
             if (Objects.equals(entry.getValue(), navKey)) return entry.getKey();
         }
         return null;
+    }
+
+    private void populateLangFieldEditor(MultiTextField row) {
+        LinkedHashMap<String, String> values = new LinkedHashMap<>();
+        values.put(I18n.get("col.parentType"), row.parentType());
+        values.put(I18n.get("col.parent"), row.parentId());
+        values.put(I18n.get("nav.languages"), row.lang());
+        values.put(I18n.get("col.text"), row.text());
+        populateSummaryEditor(I18n.get(currentView), "", values);
+    }
+
+    private void populateTraitSummaryEditor(LiftTrait trait) {
+        LinkedHashMap<String, String> values = new LinkedHashMap<>();
+        values.put(I18n.get("col.parentType"), describeParentType(trait.getParent()));
+        values.put(I18n.get("col.parent"), describeParent(trait.getParent()));
+        values.put(I18n.get("col.name"), trait.getName());
+        values.put(I18n.get("col.value"), trait.getValue());
+        populateSummaryEditor(I18n.get("nav.traits"), "", values);
+    }
+
+    private void populateAnnotationSummaryEditor(LiftAnnotation annotation) {
+        LinkedHashMap<String, String> values = new LinkedHashMap<>();
+        values.put(I18n.get("col.parentType"), describeParentType(annotation.getParent()));
+        values.put(I18n.get("col.parent"), describeParent(annotation.getParent()));
+        values.put(I18n.get("col.name"), annotation.getName());
+        values.put(I18n.get("col.value"), annotation.getValue().orElse(""));
+        values.put(I18n.get("col.who"), annotation.getWho().orElse(""));
+        values.put(I18n.get("col.when"), annotation.getWhen().orElse(""));
+        populateSummaryEditor(I18n.get("nav.annotations"), "", values);
+    }
+
+    private void populateFieldSummaryEditor(LiftField field) {
+        LinkedHashMap<String, String> values = new LinkedHashMap<>();
+        values.put(I18n.get("col.type"), field.getName());
+        values.put(I18n.get("col.text"), field.getText().getForms().stream().findFirst().map(Form::toPlainText).orElse(""));
+        populateSummaryEditor(I18n.get("nav.fields"), "", values);
+    }
+
+    private void populateCategorySummaryEditor(String title, CategoryRow row) {
+        LinkedHashMap<String, String> values = new LinkedHashMap<>();
+        values.put(I18n.get("col.value"), row.value());
+        values.put(I18n.get("col.frequency"), String.valueOf(row.frequency()));
+        populateSummaryEditor(title, "", values);
+    }
+
+    private void populateSummaryEditor(String title, String code, LinkedHashMap<String, String> values) {
+        editEntryTitle.setText(title);
+        editEntryCode.setText(code == null ? "" : code);
+        editorContainer.getChildren().clear();
+
+        GridPane g = new GridPane();
+        g.setHgap(8);
+        g.setVgap(6);
+        int row = 0;
+        for (Map.Entry<String, String> e : values.entrySet()) {
+            addReadOnlyRow(g, row++, e.getKey(), e.getValue() == null ? "" : e.getValue());
+        }
+        editorContainer.getChildren().add(g);
     }
 
     private void populateNoteEditor(LiftNote note) {
@@ -1290,6 +1449,9 @@ public final class MainController {
         table.getColumns().addAll(valCol, freqCol);
         counts.entrySet().stream().sorted(Map.Entry.<String, Long>comparingByValue().reversed())
             .forEach(e -> table.getItems().add(new CategoryRow(e.getKey(), e.getValue())));
+        table.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
+            if (n != null) populateCategorySummaryEditor(title, n);
+        });
         VBox wrapper = wrapTableWithFilters(table);
         tableContainer.getChildren().setAll(wrapper);
         updateCountLabel(table.getItems().size(), table.getItems().size());
@@ -1350,7 +1512,7 @@ public final class MainController {
             }
         };
 
-        Button clearBtn = new Button("RÃ©initialiser les filtres");
+        Button clearBtn = new Button(I18n.get("filter.resetAll"));
         clearBtn.setOnAction(e -> {
             internalUpdate.set(true);
             try {

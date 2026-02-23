@@ -115,12 +115,13 @@ public final class MultiTextEditor extends VBox {
 
     private void rebuildAnnotations() {
         annotationsBox.getChildren().clear();
-        if (multiText == null || multiText.getAnnotations().isEmpty()) {
+        List<LiftAnnotation> annotations = getAnnotationsSafe();
+        if (annotations.isEmpty()) {
             annotationsBox.getChildren().add(new Label("(aucune annotation)"));
             return;
         }
 
-        List<String> knownNames = multiText.getAnnotations().stream()
+        List<String> knownNames = annotations.stream()
             .map(LiftAnnotation::getName)
             .filter(Objects::nonNull)
             .distinct()
@@ -128,7 +129,7 @@ public final class MultiTextEditor extends VBox {
             .toList();
 
         int i = 1;
-        for (LiftAnnotation a : multiText.getAnnotations()) {
+        for (LiftAnnotation a : annotations) {
             AnnotationEditor ae = new AnnotationEditor();
             ae.setAnnotation(a, allLanguages, knownNames);
 
@@ -139,6 +140,13 @@ public final class MultiTextEditor extends VBox {
             annotationsBox.getChildren().add(tp);
             i++;
         }
+    }
+
+    private List<LiftAnnotation> getAnnotationsSafe() {
+        if (multiText == null) return List.of();
+        List<LiftAnnotation> annotations = multiText.getAnnotations();
+        if (annotations == null || annotations.isEmpty()) return List.of();
+        return annotations.stream().filter(Objects::nonNull).toList();
     }
 
     private Set<String> getUsedLanguages() {

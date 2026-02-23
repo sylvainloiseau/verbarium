@@ -107,43 +107,43 @@
   </left>
 
   <center>
-    <SplitPane fx:id="mainSplit" dividerPositions="0.6" BorderPane.alignment="CENTER">
-      <VBox spacing="8" styleClass="center">
-        <padding>
-          <Insets top="10" right="10" bottom="10" left="10"/>
-        </padding>
-        <HBox alignment="CENTER_LEFT" spacing="12">
-          <Label fx:id="viewTitle" text="%nav.entries" styleClass="panel-title"/>
-          <HBox HBox.hgrow="ALWAYS"/>
-          <Label fx:id="tableCountLabel" text="" styleClass="table-footer-text"/>
-        </HBox>
-        <HBox spacing="8" alignment="CENTER_LEFT">
-          <TextField fx:id="searchField" promptText="%search.prompt" styleClass="search-input" HBox.hgrow="ALWAYS"/>
-          <Button fx:id="addButton" text="%btn.new" onAction="#onCreateNewObject" styleClass="note-button"/>
-        </HBox>
-        <StackPane fx:id="tableContainer" VBox.vgrow="ALWAYS"/>
-      </VBox>
-
-      <ScrollPane fitToWidth="true" styleClass="right-panel">
-        <content>
-          <VBox fx:id="rightContent" spacing="10">
-            <padding>
-              <Insets top="10" right="10" bottom="10" left="10"/>
-            </padding>
-            <Label text="%panel.editForm" styleClass="panel-title"/>
-            <HBox spacing="8" alignment="CENTER_LEFT" styleClass="edit-header">
-              <Label fx:id="editEntryTitle" text="%panel.selectElement" styleClass="edit-entry-title"/>
-              <Label fx:id="editEntryCode" text="" styleClass="edit-entry-code"/>
-            </HBox>
-            <VBox fx:id="editorContainer" spacing="8"/>
-            <HBox alignment="CENTER_RIGHT">
-              <Button text="%btn.modifyEntry" onAction="#onModifyEntry" styleClass="example-add-button"
-                      maxWidth="1.7976931348623157E308" HBox.hgrow="ALWAYS"/>
-            </HBox>
-          </VBox>
-        </content>
-      </ScrollPane>
-    </SplitPane>
+    <VBox spacing="8" styleClass="center" BorderPane.alignment="CENTER">
+      <padding>
+        <Insets top="10" right="10" bottom="10" left="10"/>
+      </padding>
+      <HBox alignment="CENTER_LEFT" spacing="12">
+        <Label fx:id="viewTitle" text="%nav.entries" styleClass="panel-title"/>
+        <HBox HBox.hgrow="ALWAYS"/>
+        <Label fx:id="tableCountLabel" text="" styleClass="table-footer-text"/>
+      </HBox>
+      <HBox spacing="8" alignment="CENTER_LEFT">
+        <TextField fx:id="searchField" promptText="%search.prompt" styleClass="search-input" HBox.hgrow="ALWAYS"/>
+        <Button fx:id="addButton" text="%btn.new" onAction="#onCreateNewObject" styleClass="note-button"/>
+      </HBox>
+      <StackPane fx:id="tableContainer" VBox.vgrow="ALWAYS"/>
+    </VBox>
   </center>
+
+  <right>
+    <ScrollPane fitToWidth="true" styleClass="right-panel" BorderPane.alignment="CENTER" minWidth="320.0" prefWidth="360.0">
+      <content>
+        <VBox fx:id="rightContent" spacing="10" minWidth="300.0" prefWidth="340.0">
+          <padding>
+            <Insets top="10" right="10" bottom="10" left="10"/>
+          </padding>
+          <Label text="%panel.editForm" styleClass="panel-title"/>
+          <HBox spacing="8" alignment="CENTER_LEFT" styleClass="edit-header">
+            <Label fx:id="editEntryTitle" text="%panel.selectElement" styleClass="edit-entry-title"/>
+            <Label fx:id="editEntryCode" text="" styleClass="edit-entry-code"/>
+          </HBox>
+          <VBox fx:id="editorContainer" spacing="8"/>
+          <HBox alignment="CENTER_RIGHT">
+            <Button text="%btn.modifyEntry" onAction="#onModifyEntry" styleClass="example-add-button"
+                    maxWidth="1.7976931348623157E308" HBox.hgrow="ALWAYS"/>
+          </HBox>
+        </VBox>
+      </content>
+    </ScrollPane>
+  </right>
 
 </BorderPane>
