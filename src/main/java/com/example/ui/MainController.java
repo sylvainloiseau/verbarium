@@ -241,20 +241,35 @@ public final class MainController {
         }
     }
 
+    private boolean splitConstraintInstalled = false;
+
     private void ensureRightPanelVisible() {
         if (rightContent != null) {
             rightContent.setManaged(true);
             rightContent.setVisible(true);
         }
-        if (mainSplit != null && mainSplit.getItems().size() >= 2) {
+        if (mainSplit != null && mainSplit.getItems().size() >= 2 && !splitConstraintInstalled) {
+            splitConstraintInstalled = true;
+            // Enforce min widths so neither pane can completely disappear.
+            javafx.scene.Node leftPane  = mainSplit.getItems().get(0);
             javafx.scene.Node rightPane = mainSplit.getItems().get(1);
-            if (rightPane instanceof Region region) {
-                region.setMinWidth(320);
-                region.setPrefWidth(360);
-            }
-            SplitPane.setResizableWithParent(rightPane, Boolean.FALSE);
-            // Keep a stable center/editor split so the right editor pane cannot stay collapsed.
-            mainSplit.setDividerPositions(0.62);
+            if (leftPane  instanceof Region r) r.setMinWidth(250);
+            if (rightPane instanceof Region r) r.setMinWidth(300);
+
+            // Clamp the divider so the right panel always stays visible.
+            SplitPane.Divider divider = mainSplit.getDividers().get(0);
+            divider.positionProperty().addListener((obs, oldPos, newPos) -> {
+                double total = mainSplit.getWidth();
+                if (total <= 0) return;
+                double minRight = 300.0;
+                double maxPosition = 1.0 - (minRight / total);
+                double minLeft = 250.0;
+                double minPosition = minLeft / total;
+                double clamped = Math.max(minPosition, Math.min(maxPosition, newPos.doubleValue()));
+                if (Math.abs(clamped - newPos.doubleValue()) > 0.001) {
+                    Platform.runLater(() -> divider.setPosition(clamped));
+                }
+            });
         }
     }
 
