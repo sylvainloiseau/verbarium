@@ -500,10 +500,11 @@ public final class MainController {
         TableView<LiftNote> noteTable = new TableView<>();
         if (currentDictionary == null) { tableContainer.getChildren().setAll(noteTable); return; }
         List<String> metaLangs = getMetaLanguages();
+        TableColumn<LiftNote, String> parentTypeCol = col(I18n.get("col.parentType"), n -> describeParentType(n.getParent()));
         TableColumn<LiftNote, String> typeCol = col(I18n.get("col.type"), n -> n.getType().orElse(""));
         TableColumn<LiftNote, String> textGroup = new TableColumn<>(I18n.get("col.text"));
         for (String l : metaLangs) textGroup.getColumns().add(col(l, n -> n.getText().getForm(l).map(Form::toPlainText).orElse("")));
-        noteTable.getColumns().addAll(typeCol, textGroup);
+        noteTable.getColumns().addAll(parentTypeCol, typeCol, textGroup);
         noteTable.getItems().addAll(currentDictionary.getLiftDictionaryComponents().getAllNotes());
         noteTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> { if (n != null) populateNoteEditor(n); });
         tableContainer.getChildren().setAll(wrapTableWithFilters(noteTable));
@@ -668,6 +669,7 @@ public final class MainController {
         fieldTable.getColumns().clear();
         if (currentDictionary == null) { tableContainer.getChildren().setAll(fieldTable); return; }
         fieldTable.getColumns().addAll(
+            col(I18n.get("col.parentType"), f -> describeParentType(f.getParent())),
             col(I18n.get("col.type"), LiftField::getName),
             col(I18n.get("col.text"), f -> f.getText().getForms().stream().findFirst().map(Form::toPlainText).orElse(""))
         );
@@ -2256,6 +2258,10 @@ public final class MainController {
         if (parent == null) return "";
         if (parent instanceof LiftEntry) return I18n.get("nav.entries");
         if (parent instanceof LiftSense) return I18n.get("nav.senses");
+        if (parent instanceof LiftExample) return I18n.get("nav.examples");
+        if (parent instanceof LiftNote) return I18n.get("nav.notes");
+        if (parent instanceof LiftVariant) return I18n.get("nav.variants");
+        if (parent instanceof LiftEtymology) return I18n.get("nav.etymologies");
         if (parent instanceof GrammaticalInfo) return I18n.get("nav.gramInfo");
         return parent.getClass().getSimpleName();
     }
