@@ -42,6 +42,7 @@ import java.util.stream.Collectors;
  *  - Right:  detail editor form for selected table row
  */
 public final class MainController {
+    private static final String FILTER_MODE_TEXT = "text";
 
     /* ─── Nav view identifiers (i18n keys) ─── */
     private static final String NAV_ENTRIES     = "nav.entries";
@@ -503,7 +504,11 @@ public final class MainController {
         TableColumn<LiftNote, String> parentTypeCol = col(I18n.get("col.parentType"), n -> describeParentType(n.getParent()));
         TableColumn<LiftNote, String> typeCol = col(I18n.get("col.type"), n -> n.getType().orElse(""));
         TableColumn<LiftNote, String> textGroup = new TableColumn<>(I18n.get("col.text"));
-        for (String l : metaLangs) textGroup.getColumns().add(col(l, n -> n.getText().getForm(l).map(Form::toPlainText).orElse("")));
+        for (String l : metaLangs) {
+            TableColumn<LiftNote, String> c = col(l, n -> n.getText().getForm(l).map(Form::toPlainText).orElse(""));
+            c.getProperties().put("filterMode", FILTER_MODE_TEXT);
+            textGroup.getColumns().add(c);
+        }
         noteTable.getColumns().addAll(parentTypeCol, typeCol, textGroup);
         noteTable.getItems().addAll(currentDictionary.getLiftDictionaryComponents().getAllNotes());
         noteTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> { if (n != null) populateNoteEditor(n); });
@@ -1119,10 +1124,13 @@ public final class MainController {
 
         String clearOption = I18n.get("filter.clear");
         for (javafx.scene.Node child : filterPane.getChildren()) {
-            if (!(child instanceof ComboBox<?> rawCombo)) continue;
-            @SuppressWarnings("unchecked")
-            ComboBox<String> combo = (ComboBox<String>) rawCombo;
-            combo.setValue(clearOption);
+            if (child instanceof ComboBox<?> rawCombo) {
+                @SuppressWarnings("unchecked")
+                ComboBox<String> combo = (ComboBox<String>) rawCombo;
+                combo.setValue(clearOption);
+            } else if (child instanceof TextField textField) {
+                textField.clear();
+            }
         }
     }
 
@@ -1512,7 +1520,8 @@ public final class MainController {
         table.setItems(filtered);
 
         List<TableColumn<T, ?>> leaves = collectLeafColumns(table);
-        List<ComboBox<String>> filterBoxes = new ArrayList<>();
+        List<javafx.scene.Node> filterInputs = new ArrayList<>();
+        List<Boolean> textFilterColumns = new ArrayList<>();
         String clearOption = I18n.get("filter.clear");
         AtomicBoolean internalUpdate = new AtomicBoolean(false);
 
@@ -1521,7 +1530,7 @@ public final class MainController {
         filterRow.setStyle("-fx-background-color: #eef2f3;");
 
         Runnable refreshPredicate = () -> filtered.setPredicate(row ->
-            rowMatchesAllFilters(row, leaves, filterBoxes, clearOption, -1)
+            rowMatchesAllFilters(row, leaves, filterInputs, textFilterColumns, clearOption, -1)
         );
 
         Runnable refreshFacetChoices = () -> {
@@ -1529,12 +1538,13 @@ public final class MainController {
             internalUpdate.set(true);
             try {
                 for (int i = 0; i < leaves.size(); i++) {
-                    ComboBox<String> combo = filterBoxes.get(i);
+                    if (textFilterColumns.get(i)) continue;
+                    ComboBox<String> combo = (ComboBox<String>) filterInputs.get(i);
                     String currentValue = combo.getValue();
                     final int colIndex = i;
 
                     List<String> values = sourceItems.stream()
-                        .filter(row -> rowMatchesAllFilters(row, leaves, filterBoxes, clearOption, colIndex))
+                        .filter(row -> rowMatchesAllFilters(row, leaves, filterInputs, textFilterColumns, clearOption, colIndex))
                         .map(row -> cellText(row, leaves.get(colIndex)))
                         .filter(s -> s != null && !s.isBlank())
                         .distinct()
@@ -1558,7 +1568,10 @@ public final class MainController {
         clearBtn.setOnAction(e -> {
             internalUpdate.set(true);
             try {
-                filterBoxes.forEach(cb -> cb.setValue(clearOption));
+                for (int i = 0; i < filterInputs.size(); i++) {
+                    if (textFilterColumns.get(i)) ((TextField) filterInputs.get(i)).clear();
+                    else ((ComboBox<String>) filterInputs.get(i)).setValue(clearOption);
+                }
             } finally {
                 internalUpdate.set(false);
             }
@@ -1574,6 +1587,24 @@ public final class MainController {
         header.getChildren().addAll(spacer, clearBtn);
 
         for (TableColumn<T, ?> column : leaves) {
+            boolean textFilter = FILTER_MODE_TEXT.equals(column.getProperties().get("filterMode"));
+            textFilterColumns.add(textFilter);
+            if (textFilter) {
+                TextField tf = new TextField();
+                tf.setPromptText(I18n.get("filter.prompt"));
+                tf.setPrefWidth(column.getPrefWidth());
+                tf.setMaxWidth(Double.MAX_VALUE);
+                tf.setStyle("-fx-font-size: 11px; -fx-padding: 0 2 0 2;");
+                filterInputs.add(tf);
+                filterRow.getChildren().add(tf);
+                tf.textProperty().addListener((obs, o, n) -> {
+                    if (internalUpdate.get()) return;
+                    refreshPredicate.run();
+                    refreshFacetChoices.run();
+                });
+                continue;
+            }
+
             ComboBox<String> cb = new ComboBox<>();
             cb.setPromptText(I18n.get("filter.prompt"));
             cb.setEditable(false);
@@ -1603,7 +1634,7 @@ public final class MainController {
                     setText(empty || item == null ? null : item);
                 }
             });
-            filterBoxes.add(cb);
+            filterInputs.add(cb);
             filterRow.getChildren().add(cb);
 
             cb.valueProperty().addListener((obs, o, n) -> {
@@ -1619,7 +1650,10 @@ public final class MainController {
 
         internalUpdate.set(true);
         try {
-            filterBoxes.forEach(cb -> cb.setValue(clearOption));
+            for (int i = 0; i < filterInputs.size(); i++) {
+                if (textFilterColumns.get(i)) ((TextField) filterInputs.get(i)).clear();
+                else ((ComboBox<String>) filterInputs.get(i)).setValue(clearOption);
+            }
         } finally {
             internalUpdate.set(false);
         }
@@ -1634,15 +1668,23 @@ public final class MainController {
     private static <T> boolean rowMatchesAllFilters(
         T row,
         List<TableColumn<T, ?>> leaves,
-        List<ComboBox<String>> filterBoxes,
+        List<javafx.scene.Node> filterInputs,
+        List<Boolean> textFilterColumns,
         String clearOption,
         int ignoredColumn
     ) {
-        for (int i = 0; i < filterBoxes.size(); i++) {
+        for (int i = 0; i < filterInputs.size(); i++) {
             if (i == ignoredColumn) continue;
-            String selected = filterBoxes.get(i).getValue();
+            String cellValue = cellText(row, leaves.get(i));
+            if (textFilterColumns.get(i)) {
+                String query = ((TextField) filterInputs.get(i)).getText();
+                if (query == null || query.isBlank()) continue;
+                if (!cellValue.toLowerCase(Locale.ROOT).contains(query.trim().toLowerCase(Locale.ROOT))) return false;
+                continue;
+            }
+            String selected = ((ComboBox<String>) filterInputs.get(i)).getValue();
             if (selected == null || selected.isBlank() || clearOption.equals(selected)) continue;
-            if (!selected.equals(cellText(row, leaves.get(i)))) return false;
+            if (!selected.equals(cellValue)) return false;
         }
         return true;
     }
