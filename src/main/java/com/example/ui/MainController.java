@@ -110,9 +110,12 @@ public final class MainController {
         private final Map<String, javafx.beans.property.StringProperty> forms = new HashMap<>();
         private final Map<String, javafx.beans.property.StringProperty> glosses = new HashMap<>();
         private final javafx.beans.property.StringProperty gramInfo = new javafx.beans.property.SimpleStringProperty("");
+        /** True once this row has been auto-committed as a new entry, to avoid double-creation. */
+        private final javafx.beans.property.BooleanProperty created = new javafx.beans.property.SimpleBooleanProperty(false);
         public javafx.beans.property.StringProperty formProperty(String lang) { return forms.computeIfAbsent(lang, k -> new javafx.beans.property.SimpleStringProperty("")); }
         public javafx.beans.property.StringProperty glossProperty(String lang) { return glosses.computeIfAbsent(lang, k -> new javafx.beans.property.SimpleStringProperty("")); }
         public javafx.beans.property.StringProperty gramInfoProperty() { return gramInfo; }
+        public javafx.beans.property.BooleanProperty createdProperty() { return created; }
     }
 
     /* ─────────────────────── INITIALIZATION ─────────────────────── */
@@ -776,13 +779,56 @@ public final class MainController {
         giCol.setEditable(true);
         quickEntryTable.getColumns().add(giCol);
 
-        // Seed with empty rows; auto-add new row when last row is edited
+        // Seed with empty rows
         for (int i = 0; i < 5; i++) quickEntryTable.getItems().add(new QuickEntryRow());
 
+        // Auto-create entry when user leaves a filled row (selection changes away from it)
+        LiftFactory factory = getFactory(currentDictionary);
+        quickEntryTable.getSelectionModel().selectedIndexProperty().addListener((obs, oldIdx, newIdx) -> {
+            int prev = oldIdx.intValue();
+            if (prev < 0 || prev >= quickEntryTable.getItems().size()) return;
+            QuickEntryRow row = quickEntryTable.getItems().get(prev);
+            boolean hasContent = objLangs.stream().anyMatch(l -> !row.formProperty(l).get().isBlank())
+                || metaLangs.stream().anyMatch(l -> !row.glossProperty(l).get().isBlank());
+            if (!hasContent || factory == null) return;
+
+            // Check if entry was already auto-created for this row
+            if (Boolean.TRUE.equals(row.createdProperty().get())) return;
+            row.createdProperty().set(true);
+
+            org.xml.sax.helpers.AttributesImpl attrs = new org.xml.sax.helpers.AttributesImpl();
+            attrs.addAttribute("", "id", "id", "CDATA", UUID.randomUUID().toString());
+            LiftEntry entry = factory.createEntry(attrs);
+            for (String l : objLangs) {
+                String v = row.formProperty(l).get();
+                if (!v.isBlank()) entry.getForms().add(new Form(l, v));
+            }
+            LiftSense sense = factory.createSense(new org.xml.sax.helpers.AttributesImpl(), entry);
+            for (String l : metaLangs) {
+                String v = row.glossProperty(l).get();
+                if (!v.isBlank()) sense.addGloss(new Form(l, v));
+            }
+            String gi = row.gramInfoProperty().get();
+            if (!gi.isBlank()) sense.setGrammaticalInfo(gi);
+            baseEntries.add(entry);
+            updateCountLabel(baseEntries.size(), baseEntries.size());
+
+            // Ensure there's always an empty row at the end
+            int lastIdx = quickEntryTable.getItems().size() - 1;
+            QuickEntryRow lastRow = quickEntryTable.getItems().get(lastIdx);
+            boolean lastHasContent = objLangs.stream().anyMatch(l -> !lastRow.formProperty(l).get().isBlank())
+                || metaLangs.stream().anyMatch(l -> !lastRow.glossProperty(l).get().isBlank());
+            if (lastHasContent) quickEntryTable.getItems().add(new QuickEntryRow());
+        });
+
+        // Also append a new row when user clicks on the last row
         quickEntryTable.setOnMouseClicked(e -> {
             int lastIdx = quickEntryTable.getItems().size() - 1;
             if (lastIdx >= 0 && quickEntryTable.getSelectionModel().getSelectedIndex() == lastIdx) {
-                quickEntryTable.getItems().add(new QuickEntryRow());
+                QuickEntryRow lastRow = quickEntryTable.getItems().get(lastIdx);
+                boolean lastHasContent = objLangs.stream().anyMatch(l -> !lastRow.formProperty(l).get().isBlank())
+                    || metaLangs.stream().anyMatch(l -> !lastRow.glossProperty(l).get().isBlank());
+                if (lastHasContent) quickEntryTable.getItems().add(new QuickEntryRow());
             }
         });
 
@@ -1431,12 +1477,35 @@ public final class MainController {
     @FXML private void onViewNoteTypes() { switchView(NAV_NOTE_TYPES); }
 
     /* ─── Configuration menu ─── */
-    @FXML private void onConfigNoteTypes() { showConfigDialog(I18n.get("menu.config.noteTypes"), () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllNotes().stream().map(n -> n.getType().orElse("?")).distinct().sorted().toList()); }
-    @FXML private void onConfigTranslationTypes() { showConfigDialog(I18n.get("menu.config.translationTypes"), () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllExamples().stream().flatMap(ex -> ex.getTranslations().keySet().stream()).distinct().sorted().toList()); }
-    @FXML private void onConfigLanguages() { showConfigDialog(I18n.get("menu.config.languages"), this::getAllLanguages); }
-    @FXML private void onConfigTraitTypes() { showConfigDialog(I18n.get("menu.config.traitTypes"), () -> currentDictionary == null ? List.of() : currentDictionary.getTraitName().stream().sorted().toList()); }
-    @FXML private void onConfigAnnotationTypes() { showConfigDialog(I18n.get("menu.config.annotationTypes"), () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllAnnotations().stream().map(LiftAnnotation::getName).distinct().sorted().toList()); }
-    @FXML private void onConfigFieldTypes() { showConfigDialog(I18n.get("menu.config.fieldTypes"), () -> currentDictionary == null ? List.of() : currentDictionary.getFieldType().stream().sorted().toList()); }
+    @FXML private void onConfigNoteTypes() {
+        showConfigDialog(I18n.get("menu.config.noteTypes"),
+            () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllNotes().stream().map(n -> n.getType().orElse("?")).distinct().sorted().toList(),
+            val -> currentDictionary == null ? 0L : currentDictionary.getLiftDictionaryComponents().getAllNotes().stream().filter(n -> val.equals(n.getType().orElse(""))).count());
+    }
+    @FXML private void onConfigTranslationTypes() {
+        showConfigDialog(I18n.get("menu.config.translationTypes"),
+            () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllExamples().stream().flatMap(ex -> ex.getTranslations().keySet().stream()).distinct().sorted().toList(),
+            val -> currentDictionary == null ? 0L : currentDictionary.getLiftDictionaryComponents().getAllExamples().stream().filter(ex -> ex.getTranslations().containsKey(val)).count());
+    }
+    @FXML private void onConfigLanguages() {
+        showConfigDialog(I18n.get("menu.config.languages"), this::getAllLanguages,
+            val -> currentDictionary == null ? 0L : currentDictionary.getLiftDictionaryComponents().getAllEntries().stream().filter(e -> e.getForms().getForm(val).isPresent()).count());
+    }
+    @FXML private void onConfigTraitTypes() {
+        showConfigDialog(I18n.get("menu.config.traitTypes"),
+            () -> currentDictionary == null ? List.of() : currentDictionary.getTraitName().stream().sorted().toList(),
+            val -> currentDictionary == null ? 0L : currentDictionary.getLiftDictionaryComponents().getAllTraits().stream().filter(t -> val.equals(t.getName())).count());
+    }
+    @FXML private void onConfigAnnotationTypes() {
+        showConfigDialog(I18n.get("menu.config.annotationTypes"),
+            () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllAnnotations().stream().map(LiftAnnotation::getName).distinct().sorted().toList(),
+            val -> currentDictionary == null ? 0L : currentDictionary.getLiftDictionaryComponents().getAllAnnotations().stream().filter(a -> val.equals(a.getName())).count());
+    }
+    @FXML private void onConfigFieldTypes() {
+        showConfigDialog(I18n.get("menu.config.fieldTypes"),
+            () -> currentDictionary == null ? List.of() : currentDictionary.getFieldType().stream().sorted().toList(),
+            val -> currentDictionary == null ? 0L : currentDictionary.getLiftDictionaryComponents().getAllFields().stream().filter(f -> val.equals(f.getName())).count());
+    }
 
     /* ─── Outil menu ─── */
     @FXML private void onValidateDictionary() {
@@ -2513,13 +2582,19 @@ public final class MainController {
         }
     }
 
+    @FunctionalInterface private interface UsageChecker { long count(String value); }
+
     private void showConfigDialog(String title, ListSupplier supplier) {
+        showConfigDialog(title, supplier, val -> 0L);
+    }
+
+    private void showConfigDialog(String title, ListSupplier supplier, UsageChecker usageChecker) {
         List<String> items = supplier.get();
         Dialog<Void> dlg = new Dialog<>();
         dlg.setTitle(I18n.get("config.title", title));
         dlg.setHeaderText(I18n.get("config.header", title, items.size()));
         dlg.setResizable(true);
-        dlg.getDialogPane().setPrefSize(600, 480);
+        dlg.getDialogPane().setPrefSize(620, 480);
         dlg.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
 
         TableView<ConfigRow> configTable = new TableView<>();
@@ -2532,13 +2607,20 @@ public final class MainController {
         abbrCol.setOnEditCommit(e -> e.getRowValue().abbrev().set(e.getNewValue()));
         abbrCol.setPrefWidth(180);
 
+        TableColumn<ConfigRow, String> usageCol = new TableColumn<>(I18n.get("cfg.usageCount"));
+        usageCol.setCellValueFactory(cd -> {
+            long n = usageChecker.count(cd.getValue().abbrev().get());
+            return new javafx.beans.property.ReadOnlyStringWrapper(String.valueOf(n));
+        });
+        usageCol.setPrefWidth(80);
+
         TableColumn<ConfigRow, String> descCol = new TableColumn<>(I18n.get("col.description"));
         descCol.setCellValueFactory(cd -> cd.getValue().description());
         descCol.setCellFactory(TextFieldTableCell.forTableColumn());
         descCol.setOnEditCommit(e -> e.getRowValue().description().set(e.getNewValue()));
-        descCol.setPrefWidth(350);
+        descCol.setPrefWidth(320);
 
-        configTable.getColumns().addAll(abbrCol, descCol);
+        configTable.getColumns().addAll(abbrCol, usageCol, descCol);
         for (String item : items) configTable.getItems().add(new ConfigRow(item, ""));
 
         TextField addAbbrField = new TextField();
@@ -2553,11 +2635,24 @@ public final class MainController {
                 addAbbrField.clear(); addDescField.clear();
             }
         });
+
         Button removeBtn = new Button(I18n.get("btn.delete"));
         removeBtn.setOnAction(e -> {
             ConfigRow sel = configTable.getSelectionModel().getSelectedItem();
-            if (sel != null) configTable.getItems().remove(sel);
+            if (sel == null) return;
+            long usage = usageChecker.count(sel.abbrev().get());
+            if (usage > 0) {
+                Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+                confirm.setTitle(I18n.get("btn.delete"));
+                confirm.setHeaderText(I18n.get("config.deleteWarning", sel.abbrev().get(), usage));
+                confirm.setContentText(I18n.get("config.deleteConfirm"));
+                confirm.showAndWait().filter(r -> r == ButtonType.OK)
+                    .ifPresent(r -> configTable.getItems().remove(sel));
+            } else {
+                configTable.getItems().remove(sel);
+            }
         });
+
         HBox controls = new HBox(8, addAbbrField, addDescField, addBtn, removeBtn);
         controls.setPadding(new Insets(6, 0, 0, 0));
         HBox.setHgrow(addAbbrField, Priority.ALWAYS);
