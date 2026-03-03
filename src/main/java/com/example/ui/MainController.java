@@ -603,7 +603,7 @@ public final class MainController {
         senseTable.getColumns().addAll(idCol, giCol, glossGroup, defGroup);
         senseTable.getItems().addAll(currentDictionary.getLiftDictionaryComponents().getAllSenses());
         senseTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> { if (n != null) populateSenseEditor(n); });
-        tableContainer.getChildren().setAll(wrapTableWithFilters(senseTable));
+        tableContainer.getChildren().setAll(wrapTableWithFilters(senseTable, (f,t) -> updateCountLabel(f,t)));
         updateCountLabel(senseTable.getItems().size(), senseTable.getItems().size());
     }
 
@@ -623,7 +623,7 @@ public final class MainController {
         exampleTable.getColumns().addAll(srcCol, exGroup);
         exampleTable.getItems().addAll(currentDictionary.getLiftDictionaryComponents().getAllExamples());
         exampleTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> { if (n != null) populateExampleEditor(n); });
-        tableContainer.getChildren().setAll(wrapTableWithFilters(exampleTable));
+        tableContainer.getChildren().setAll(wrapTableWithFilters(exampleTable, (f,t2) -> updateCountLabel(f,t2)));
         updateCountLabel(exampleTable.getItems().size(), exampleTable.getItems().size());
     }
 
@@ -644,7 +644,7 @@ public final class MainController {
         noteTable.getColumns().addAll(parentTypeCol, typeCol, textGroup);
         noteTable.getItems().addAll(currentDictionary.getLiftDictionaryComponents().getAllNotes());
         noteTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> { if (n != null) populateNoteEditor(n); });
-        tableContainer.getChildren().setAll(wrapTableWithFilters(noteTable));
+        tableContainer.getChildren().setAll(wrapTableWithFilters(noteTable, (f,t2) -> updateCountLabel(f,t2)));
         updateCountLabel(noteTable.getItems().size(), noteTable.getItems().size());
     }
 
@@ -661,7 +661,7 @@ public final class MainController {
         variantTable.getColumns().addAll(refCol, formGroup);
         variantTable.getItems().addAll(currentDictionary.getLiftDictionaryComponents().getAllVariants());
         variantTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> { if (n != null) populateVariantEditor(n); });
-        tableContainer.getChildren().setAll(wrapTableWithFilters(variantTable));
+        tableContainer.getChildren().setAll(wrapTableWithFilters(variantTable, (f,t2) -> updateCountLabel(f,t2)));
         updateCountLabel(variantTable.getItems().size(), variantTable.getItems().size());
     }
 
@@ -676,7 +676,7 @@ public final class MainController {
         );
         currentDictionary.getLiftDictionaryComponents().getAllEntries().stream()
             .flatMap(e -> e.getEtymologies().stream()).forEach(etyTable.getItems()::add);
-        tableContainer.getChildren().setAll(wrapTableWithFilters(etyTable));
+        tableContainer.getChildren().setAll(wrapTableWithFilters(etyTable, (f,t2) -> updateCountLabel(f,t2)));
         updateCountLabel(etyTable.getItems().size(), etyTable.getItems().size());
     }
 
@@ -731,7 +731,7 @@ public final class MainController {
         langFieldTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
             if (n != null) populateLangFieldEditor(n);
         });
-        tableContainer.getChildren().setAll(wrapTableWithFilters(langFieldTable));
+        tableContainer.getChildren().setAll(wrapTableWithFilters(langFieldTable, (f,t2) -> updateCountLabel(f,t2)));
         updateCountLabel(rows.size(), rows.size());
     }
 
@@ -748,7 +748,8 @@ public final class MainController {
     private void showTraitView() {
         traitTable.setItems(FXCollections.observableArrayList());
         traitTable.getColumns().clear();
-        if (currentDictionary == null) { tableContainer.getChildren().setAll(traitTable); return; }
+        if (currentDictionary == null) { tableContainer.getChildren().setAll(wrapTableWithFilters(traitTable,
+                (filtered, total) -> updateCountLabel(filtered, total))); return; }
 
         List<LiftTrait> allTraits = currentDictionary.getLiftDictionaryComponents().getAllTraits();
 
@@ -767,7 +768,7 @@ public final class MainController {
             if (n != null) populateTraitSummaryEditor(n);
         });
 
-        tableContainer.getChildren().setAll(wrapTableWithFilters(traitTable));
+        tableContainer.getChildren().setAll(wrapTableWithFilters(traitTable, (f,t2) -> updateCountLabel(f,t2)));
         updateCountLabel(allTraits.size(), allTraits.size());
     }
 
@@ -795,7 +796,7 @@ public final class MainController {
             if (n != null) populateAnnotationSummaryEditor(n);
         });
 
-        tableContainer.getChildren().setAll(wrapTableWithFilters(annotationTable));
+        tableContainer.getChildren().setAll(wrapTableWithFilters(annotationTable, (f,t2) -> updateCountLabel(f,t2)));
         updateCountLabel(all.size(), all.size());
     }
 
@@ -814,7 +815,7 @@ public final class MainController {
         fieldTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
             if (n != null) populateFieldSummaryEditor(n);
         });
-        tableContainer.getChildren().setAll(wrapTableWithFilters(fieldTable));
+        tableContainer.getChildren().setAll(wrapTableWithFilters(fieldTable, (f,t2) -> updateCountLabel(f,t2)));
         updateCountLabel(fieldTable.getItems().size(), fieldTable.getItems().size());
     }
 
@@ -1841,8 +1842,7 @@ public final class MainController {
      * Each TextField filters its column; only rows matching ALL column filters are shown.
      */
     @SuppressWarnings("unchecked")
-    private static <T> VBox wrapTableWithFilters(TableView<T> table) {
-        ObservableList<T> sourceItems = FXCollections.observableArrayList(table.getItems());
+    private static <T> VBox wrapTableWithFilters(TableView<T> table, java.util.function.BiConsumer<Integer,Integer> onCountChanged) {        ObservableList<T> sourceItems = FXCollections.observableArrayList(table.getItems());
         FilteredList<T> filtered = new FilteredList<>(sourceItems, t -> true);
         table.setItems(filtered);
 
@@ -1856,9 +1856,13 @@ public final class MainController {
         filterRow.setPadding(new Insets(4, 6, 4, 6));
         filterRow.setStyle("-fx-background-color: #eef2f3;");
 
-        Runnable refreshPredicate = () -> filtered.setPredicate(row ->
-            rowMatchesAllFilters(row, leaves, filterInputs, textFilterColumns, clearOption, -1)
-        );
+        Runnable refreshPredicate = () -> {
+            filtered.setPredicate(row ->
+                    rowMatchesAllFilters(row, leaves, filterInputs, textFilterColumns, clearOption, -1)
+            );
+            if (onCountChanged != null)
+                javafx.application.Platform.runLater(() -> onCountChanged.accept(filtered.size(), sourceItems.size()));
+        };
 
         Runnable refreshFacetChoices = () -> {
             if (internalUpdate.get()) return;
@@ -1991,7 +1995,9 @@ public final class MainController {
         VBox.setVgrow(table, Priority.ALWAYS);
         return wrapper;
     }
-
+    private static <T> VBox wrapTableWithFilters(TableView<T> table) {
+        return wrapTableWithFilters(table, null);
+    }
     private static <T> boolean rowMatchesAllFilters(
         T row,
         List<TableColumn<T, ?>> leaves,
