@@ -31,6 +31,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.prefs.Preferences;
 import java.util.stream.Collectors;
 
 /**
@@ -43,7 +44,52 @@ import java.util.stream.Collectors;
  */
 public final class MainController {
     private static final String FILTER_MODE_TEXT = "text";
+    private static final int MAX_RECENT_FILES = 5;
+    private static final String PREF_RECENT_PREFIX = "recent.file.";
+    private static final Preferences PREFS = Preferences.userNodeForPackage(MainController.class);
+    private void saveRecentFile(File f) {
+        // Décale les fichiers récents et ajoute le nouveau en premier
+        List<String> recents = loadRecentFiles();
+        recents.remove(f.getAbsolutePath());
+        recents.add(0, f.getAbsolutePath());
+        if (recents.size() > MAX_RECENT_FILES) recents = recents.subList(0, MAX_RECENT_FILES);
+        for (int i = 0; i < MAX_RECENT_FILES; i++) {
+            if (i < recents.size()) PREFS.put(PREF_RECENT_PREFIX + i, recents.get(i));
+            else PREFS.remove(PREF_RECENT_PREFIX + i);
+        }
+        refreshRecentMenu();
+    }
 
+    private List<String> loadRecentFiles() {
+        List<String> recents = new ArrayList<>();
+        for (int i = 0; i < MAX_RECENT_FILES; i++) {
+            String path = PREFS.get(PREF_RECENT_PREFIX + i, null);
+            if (path != null) recents.add(path);
+        }
+        return recents;
+    }
+
+    private void refreshRecentMenu() {
+        if (recentMenu == null) return;
+        recentMenu.getItems().clear();
+        List<String> recents = loadRecentFiles();
+        if (recents.isEmpty()) {
+            MenuItem empty = new MenuItem(I18n.get("menu.file.noRecent"));
+            empty.setDisable(true);
+            recentMenu.getItems().add(empty);
+            return;
+        }
+        for (String path : recents) {
+            File f = new File(path);
+            MenuItem item = new MenuItem(f.getName() + "  (" + f.getParent() + ")");
+            item.setOnAction(e -> {
+                try { setDictionary(dictionaryService.loadFromFile(f)); switchView(NAV_ENTRIES); }
+                catch (Exception ex) { showError(I18n.get("error.open"), ex.getMessage()); }
+            });
+            item.setDisable(!f.exists());
+            recentMenu.getItems().add(item);
+        }
+    }
     /* ─── Nav view identifiers (i18n keys) ─── */
     private static final String NAV_ENTRIES     = "nav.entries";
     private static final String NAV_SENSES      = "nav.senses";
@@ -130,6 +176,7 @@ public final class MainController {
         ensureRightPanelVisible();
         setupMenuHover();
         switchView(NAV_ENTRIES);
+        refreshRecentMenu();
     }
 
     private void setupMenuHover() {
@@ -1503,11 +1550,19 @@ public final class MainController {
     @FXML private void onImportLift() {
         FileChooser ch = new FileChooser();
         ch.setTitle(I18n.get("dialog.openLift"));
-        ch.getExtensionFilters().addAll(new FileChooser.ExtensionFilter(I18n.get("dialog.liftFilter"), "*.lift"), new FileChooser.ExtensionFilter(I18n.get("dialog.allFilter"), "*.*"));
+        ch.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter(I18n.get("dialog.liftFilter"), "*.lift"),
+                new FileChooser.ExtensionFilter(I18n.get("dialog.allFilter"), "*.*")
+        );
         File f = ch.showOpenDialog(navTree.getScene().getWindow());
         if (f == null) return;
-        try { setDictionary(dictionaryService.loadFromFile(f)); switchView(NAV_ENTRIES); }
-        catch (Exception e) { showError(I18n.get("error.open"), e.getMessage()); }
+        try {
+            setDictionary(dictionaryService.loadFromFile(f));
+            switchView(NAV_ENTRIES);
+            saveRecentFile(f); // ← ajoute cette ligne
+        } catch (Exception e) {
+            showError(I18n.get("error.open"), e.getMessage());
+        }
     }
 
     @FXML private void onSave() {
