@@ -500,41 +500,88 @@ public final class MainController {
 
     private void configureEntryTableColumns() {
         entryTable.getColumns().clear();
+        entryTable.setEditable(true); // ← active l'édition sur la table
         if (currentDictionary == null) return;
 
+        // ── Colonne Code (trait "code") ──
         TableColumn<LiftEntry, String> codeCol = new TableColumn<>(I18n.get("col.code"));
         codeCol.setPrefWidth(120);
         codeCol.setCellValueFactory(cd -> {
             LiftEntry e = cd.getValue();
             return e == null ? new ReadOnlyStringWrapper("") :
-                Bindings.createStringBinding(() -> getTraitValue(e, "code"), e.traitsProperty());
+                    Bindings.createStringBinding(() -> getTraitValue(e, "code"), e.traitsProperty());
+        });
+        codeCol.setCellFactory(TextFieldTableCell.forTableColumn());
+        codeCol.setOnEditCommit(ev -> {
+            LiftEntry e = ev.getRowValue();
+            if (e == null) return;
+            // Met à jour ou crée le trait "code"
+            e.getTraits().stream().filter(t -> "code".equals(t.getName())).findFirst()
+                    .ifPresentOrElse(
+                            t -> t.setValue(ev.getNewValue()),
+                            () -> {
+                                LiftFactory factory = getFactory(currentDictionary);
+                                if (factory != null) factory.createTrait("code", ev.getNewValue(), e);
+                            }
+                    );
         });
 
+        // ── Colonnes Formes par langue ──
         var formLangs = currentDictionary.getLiftDictionaryComponents().getAllEntries().stream()
-                .flatMap(e -> e.getForms().getLangs().stream()).filter(s -> s != null && !s.isBlank()).distinct().sorted().toList();
+                .flatMap(e -> e.getForms().getLangs().stream())
+                .filter(s -> s != null && !s.isBlank()).distinct().sorted().toList();
+
         TableColumn<LiftEntry, String> formGroup = new TableColumn<>(I18n.get("col.form"));
         for (String lang : formLangs) {
             TableColumn<LiftEntry, String> c = new TableColumn<>(lang);
             c.setPrefWidth(140);
-            c.setCellValueFactory(cd -> cd.getValue() == null ? new ReadOnlyStringWrapper("") : cd.getValue().getForms().formTextProperty(lang));
+            c.setCellValueFactory(cd -> cd.getValue() == null
+                    ? new ReadOnlyStringWrapper("")
+                    : cd.getValue().getForms().formTextProperty(lang));
+            c.setCellFactory(TextFieldTableCell.forTableColumn());
+            c.setOnEditCommit(ev -> {
+                LiftEntry e = ev.getRowValue();
+                if (e == null) return;
+                e.getForms().getForms().stream()
+                        .filter(f -> lang.equals(f.getLang())).findFirst()
+                        .ifPresentOrElse(
+                                f -> f.changeText(ev.getNewValue()),  // ← changeText au lieu de setText
+                                () -> e.getForms().add(new Form(lang, ev.getNewValue()))
+                        );
+            });
             formGroup.getColumns().add(c);
         }
 
+        // ── Colonne morph-type (trait "morph-type") ──
         TableColumn<LiftEntry, String> morphCol = new TableColumn<>(I18n.get("col.morphType"));
         morphCol.setPrefWidth(110);
         morphCol.setCellValueFactory(cd -> {
             LiftEntry e = cd.getValue();
             return e == null ? new ReadOnlyStringWrapper("") :
-                Bindings.createStringBinding(() -> getTraitValue(e, "morph-type"), e.traitsProperty());
+                    Bindings.createStringBinding(() -> getTraitValue(e, "morph-type"), e.traitsProperty());
+        });
+        morphCol.setCellFactory(TextFieldTableCell.forTableColumn());
+        morphCol.setOnEditCommit(ev -> {
+            LiftEntry e = ev.getRowValue();
+            if (e == null) return;
+            e.getTraits().stream().filter(t -> "morph-type".equals(t.getName())).findFirst()
+                    .ifPresentOrElse(
+                            t -> t.setValue(ev.getNewValue()),
+                            () -> {
+                                LiftFactory factory = getFactory(currentDictionary);
+                                if (factory != null) factory.createTrait("morph-type", ev.getNewValue(), e);
+                            }
+                    );
         });
 
+        // ── Colonne Date (lecture seule) ──
         TableColumn<LiftEntry, String> dateCol = new TableColumn<>(I18n.get("col.dateCreated"));
         dateCol.setPrefWidth(130);
-        dateCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue() == null ? "" : cd.getValue().getDateCreated().orElse("")));
+        dateCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(
+                cd.getValue() == null ? "" : cd.getValue().getDateCreated().orElse("")));
 
         entryTable.getColumns().addAll(codeCol, formGroup, morphCol, dateCol);
     }
-
     /* ════════════════════ SENSE VIEW ════════════════════ */
 
     private void showSenseView() {
