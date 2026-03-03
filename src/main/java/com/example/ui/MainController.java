@@ -1630,10 +1630,45 @@ public final class MainController {
     @FXML private void onPreferences() { showPreferencesDialog(); }
     @FXML private void onQuit() { Platform.exit(); }
 
-    @FXML private void onCopy() { copySelectedToClipboard(); }
-    @FXML private void onPaste() { showInfo(I18n.get("menu.edit.paste"), I18n.get("info.paste")); }
-    @FXML private void onCut() { copySelectedToClipboard(); }
+    @FXML private void onCopy() {
+        javafx.scene.Node focused = menuBar.getScene().getFocusOwner();
+        if (focused instanceof TextField tf) {
+            tf.copy();
+        } else {
+            copySelectedToClipboard();
+        }
+    }
+    @FXML private void onPaste() {
+        javafx.scene.Node focused = menuBar.getScene().getFocusOwner();
+        if (focused instanceof TextField tf) {
+            tf.paste();
+        } else {
+            // Colle depuis le presse-papiers comme nouvelle entrée
+            String text = Clipboard.getSystemClipboard().getString();
+            if (text == null || text.isBlank()) return;
+            LiftFactory factory = getFactory(currentDictionary);
+            if (factory == null) return;
+            // Crée une entrée avec le texte collé comme forme
+            org.xml.sax.helpers.AttributesImpl attrs = new org.xml.sax.helpers.AttributesImpl();
+            attrs.addAttribute("", "id", "id", "CDATA", UUID.randomUUID().toString());
+            LiftEntry entry = factory.createEntry(attrs);
+            List<String> objLangs = getObjectLanguages();
+            if (!objLangs.isEmpty()) entry.getForms().add(new Form(objLangs.get(0), text.trim()));
+            baseEntries.add(entry);
+            switchView(NAV_ENTRIES);
+            entryTable.getSelectionModel().select(entry);
+            entryTable.scrollTo(entry);
+        }
+    }
 
+    @FXML private void onCut() {
+        javafx.scene.Node focused = menuBar.getScene().getFocusOwner();
+        if (focused instanceof TextField tf) {
+            tf.cut();
+        } else {
+            copySelectedToClipboard();
+        }
+    }
     private void copySelectedToClipboard() {
         LiftEntry e = entryTable.getSelectionModel().getSelectedItem();
         if (e == null) return;
