@@ -300,6 +300,7 @@ public final class MainController {
             case NAV_CFG_FIELD_DEFS  -> showHeaderFieldDefsView();
             default -> showEntryView();
         }
+        selectNavItem(viewName);
     }
 
     private boolean splitConstraintInstalled = false;
@@ -1161,9 +1162,9 @@ public final class MainController {
             senseTable.getSelectionModel().select(sense);
             senseTable.scrollTo(sense);
         }
-        pinLeftNavigationOnEntries();
+        // ✅ Mettre le focus sur "Sens" dans le menu gauche
+        selectNavItem(NAV_SENSES);
     }
-
     private void navigateToEntryFromSense(LiftEntry entry) {
         if (entry == null) return;
         switchView(NAV_ENTRIES);
@@ -1189,9 +1190,19 @@ public final class MainController {
             exampleTable.getSelectionModel().select(example);
             exampleTable.scrollTo(example);
         }
-        pinLeftNavigationOnEntries();
+        selectNavItem(NAV_EXAMPLES);
     }
-
+    private void selectNavItem(String navKey) {
+        if (navTree == null || navTree.getSelectionModel() == null) return;
+        TreeItem<String> item = findNavItemByKey(navKey);
+        if (item == null) return;
+        ignoreNavSelectionEvents = true;
+        try {
+            navTree.getSelectionModel().select(item);
+        } finally {
+            ignoreNavSelectionEvents = false;
+        }
+    }
     private void clearSearchAndVisibleColumnFilters() {
         if (searchField != null && !searchField.getText().isBlank()) {
             searchField.clear();
