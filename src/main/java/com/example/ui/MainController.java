@@ -1597,6 +1597,10 @@ public final class MainController {
     @FXML private void onImportLift() {
         FileChooser ch = new FileChooser();
         ch.setTitle(I18n.get("dialog.openLift"));
+        // ← Utilise le chemin par défaut sauvegardé
+        String defaultPath = PREFS.get("ui.defaultPath", System.getProperty("user.home"));
+        File defaultDir = new File(defaultPath);
+        if (defaultDir.exists()) ch.setInitialDirectory(defaultDir);
         ch.getExtensionFilters().addAll(
                 new FileChooser.ExtensionFilter(I18n.get("dialog.liftFilter"), "*.lift"),
                 new FileChooser.ExtensionFilter(I18n.get("dialog.allFilter"), "*.*")
@@ -1606,12 +1610,11 @@ public final class MainController {
         try {
             setDictionary(dictionaryService.loadFromFile(f));
             switchView(NAV_ENTRIES);
-            saveRecentFile(f); // ← ajoute cette ligne
+            saveRecentFile(f);
         } catch (Exception e) {
             showError(I18n.get("error.open"), e.getMessage());
         }
     }
-
     @FXML private void onSave() {
         if (currentDictionary == null) { showError(I18n.get("error.save"), I18n.get("error.noDictionary")); return; }
         try { currentDictionary.save(); } catch (Exception e) { showError(I18n.get("error.save"), e.getMessage()); }
@@ -2772,30 +2775,126 @@ public final class MainController {
         Dialog<Void> dlg = new Dialog<>();
         dlg.setTitle(I18n.get("prefs.title"));
         dlg.setHeaderText(I18n.get("prefs.title"));
-        dlg.setResizable(false);
-        dlg.getDialogPane().setPrefSize(400, 200);
-        dlg.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        dlg.setResizable(true);
+        dlg.getDialogPane().setPrefSize(480, 380);
+        dlg.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
+        // ── Langue ──
         Label langLabel = new Label(I18n.get("prefs.language"));
         ComboBox<String> langCombo = new ComboBox<>(FXCollections.observableArrayList("Français", "English"));
         langCombo.setValue("fr".equals(I18n.getLocale().getLanguage()) ? "Français" : "English");
 
-        langCombo.setOnAction(e -> {
-            String sel = langCombo.getValue();
-            Locale newLocale = "Français".equals(sel) ? Locale.FRENCH : Locale.ENGLISH;
-            if (!newLocale.getLanguage().equals(I18n.getLocale().getLanguage())) {
-                I18n.setLocale(newLocale);
-                dlg.close();
-                Platform.runLater(com.example.MainApp::reloadScene);
+        // ── Taille de police ──
+        Label fontLabel = new Label(I18n.get("prefs.fontSize"));
+        Slider fontSlider = new Slider(10, 20, Double.parseDouble(PREFS.get("ui.fontSize", "13")));
+        fontSlider.setShowTickLabels(true);
+        fontSlider.setShowTickMarks(true);
+        fontSlider.setMajorTickUnit(2);
+        fontSlider.setBlockIncrement(1);
+        fontSlider.setSnapToTicks(true);
+        Label fontValueLabel = new Label(String.valueOf((int) fontSlider.getValue()) + "px");
+        fontSlider.valueProperty().addListener((obs, o, n) ->
+                fontValueLabel.setText((int) n.doubleValue() + "px"));
+
+        // ── Thème ──
+        Label themeLabel = new Label(I18n.get("prefs.theme"));
+        ToggleGroup themeGroup = new ToggleGroup();
+        RadioButton lightBtn = new RadioButton(I18n.get("prefs.themeLight"));
+        lightBtn.setToggleGroup(themeGroup);
+        RadioButton darkBtn = new RadioButton(I18n.get("prefs.themeDark"));
+        darkBtn.setToggleGroup(themeGroup);
+        String savedTheme = PREFS.get("ui.theme", "light");
+        if ("dark".equals(savedTheme)) darkBtn.setSelected(true);
+        else lightBtn.setSelected(true);
+
+        // ── Chemin par défaut ──
+        Label pathLabel = new Label(I18n.get("prefs.defaultPath"));
+        TextField pathField = new TextField(PREFS.get("ui.defaultPath", System.getProperty("user.home")));
+        pathField.setPromptText(System.getProperty("user.home"));
+        Button browseBtn = new Button(I18n.get("prefs.browse"));
+        browseBtn.setOnAction(e -> {
+            javafx.stage.DirectoryChooser dc = new javafx.stage.DirectoryChooser();
+            dc.setTitle(I18n.get("prefs.defaultPath"));
+            File dir = dc.showDialog(dlg.getDialogPane().getScene().getWindow());
+            if (dir != null) pathField.setText(dir.getAbsolutePath());
+        });
+        HBox pathBox = new HBox(8, pathField, browseBtn);
+        HBox.setHgrow(pathField, Priority.ALWAYS);
+
+        // ── Layout ──
+        GridPane grid = new GridPane();
+        grid.setHgap(12);
+        grid.setVgap(14);
+        grid.setPadding(new Insets(16));
+
+        grid.add(langLabel, 0, 0);
+        grid.add(langCombo, 1, 0);
+
+        grid.add(fontLabel, 0, 1);
+        HBox fontBox = new HBox(8, fontSlider, fontValueLabel);
+        HBox.setHgrow(fontSlider, Priority.ALWAYS);
+        grid.add(fontBox, 1, 1);
+
+        grid.add(themeLabel, 0, 2);
+        grid.add(new HBox(12, lightBtn, darkBtn), 1, 2);
+
+        grid.add(pathLabel, 0, 3);
+        grid.add(pathBox, 1, 3);
+
+        GridPane.setHgrow(langCombo, Priority.ALWAYS);
+        GridPane.setHgrow(fontBox, Priority.ALWAYS);
+        GridPane.setHgrow(pathBox, Priority.ALWAYS);
+
+        dlg.getDialogPane().setContent(grid);
+
+        dlg.setResultConverter(bt -> {
+            if (bt == ButtonType.OK) {
+                // Sauvegarde taille de police
+                int fontSize = (int) fontSlider.getValue();
+                PREFS.put("ui.fontSize", String.valueOf(fontSize));
+                applyFontSize(fontSize);
+
+                // Sauvegarde thème
+                String theme = darkBtn.isSelected() ? "dark" : "light";
+                PREFS.put("ui.theme", theme);
+                applyTheme(theme);
+
+                // Sauvegarde chemin par défaut
+                PREFS.put("ui.defaultPath", pathField.getText().trim());
+
+                // Applique langue si changée
+                String sel = langCombo.getValue();
+                Locale newLocale = "Français".equals(sel) ? Locale.FRENCH : Locale.ENGLISH;
+                if (!newLocale.getLanguage().equals(I18n.getLocale().getLanguage())) {
+                    I18n.setLocale(newLocale);
+                    Platform.runLater(com.example.MainApp::reloadScene);
+                }
             }
+            return null;
         });
 
-        VBox content = new VBox(12, new HBox(12, langLabel, langCombo));
-        content.setPadding(new Insets(16));
-        dlg.getDialogPane().setContent(content);
         dlg.showAndWait();
     }
 
+    private void applyFontSize(int size) {
+        if (menuBar == null || menuBar.getScene() == null) return;
+        menuBar.getScene().getRoot().setStyle("-fx-font-size: " + size + "px;");
+    }
+
+    private void applyTheme(String theme) {
+        if (menuBar == null || menuBar.getScene() == null) return;
+        javafx.collections.ObservableList<String> sheets = menuBar.getScene().getStylesheets();
+        sheets.removeIf(s -> s.contains("dark") || s.contains("light"));
+        if ("dark".equals(theme)) {
+            String darkCss = com.example.MainApp.class.getResource("/com/example/ui/dark.css") != null
+                    ? com.example.MainApp.class.getResource("/com/example/ui/dark.css").toExternalForm()
+                    : null;
+            if (darkCss != null) sheets.add(darkCss);
+            else menuBar.getScene().getRoot().setStyle(
+                    menuBar.getScene().getRoot().getStyle() +
+                            "; -fx-base: #2b2b2b; -fx-background: #3c3f41; -fx-control-inner-background: #45494a;");
+        }
+    }
     private record ConfigRow(javafx.beans.property.StringProperty abbrev, javafx.beans.property.StringProperty description) {
         ConfigRow(String a, String d) {
             this(new javafx.beans.property.SimpleStringProperty(a), new javafx.beans.property.SimpleStringProperty(d));
