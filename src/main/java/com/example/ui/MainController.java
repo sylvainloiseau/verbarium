@@ -1124,13 +1124,27 @@ public final class MainController {
         editEntryCode.setText(ex.getSource().orElse(""));
         editorContainer.getChildren().clear();
 
-        /*Création lien retour*/
-        if (parentSense != null) {
-            Hyperlink backLink = new Hyperlink("<- Retour au sens");
-            backLink.setOnAction(e -> populateSenseEditor(parentSense));
+        LiftSense resolvedParent = parentSense != null
+                ? parentSense
+                : findParentSense(ex).orElse(null);
+
+        if (resolvedParent != null) {
+            final LiftSense finalParent = resolvedParent;
+            Hyperlink backLink = new Hyperlink(
+                    I18n.get("sense.backToSense", finalParent.getId().orElse("?"))
+            );
+            backLink.setOnAction(e -> {
+                switchView(NAV_SENSES);
+                if (senseTable.getItems().contains(finalParent)) {
+                    senseTable.getSelectionModel().select(finalParent);
+                    senseTable.scrollTo(finalParent);
+                }
+                selectNavItem(NAV_SENSES);
+                populateSenseEditor(finalParent);
+            });
             editorContainer.getChildren().add(backLink);
         }
-        /*Création éditeur*/
+
         ExampleEditor ee = new ExampleEditor();
         ee.setExample(ex, getObjectLanguages(), getMetaLanguages());
         editorContainer.getChildren().add(ee);
