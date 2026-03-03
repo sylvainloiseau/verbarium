@@ -919,6 +919,28 @@ public final class MainController {
         editEntryCode.setText(getTraitValue(entry, "code"));
         editorContainer.getChildren().clear();
 
+            Button deleteBtn = new Button(I18n.get("btn.delete"));
+            deleteBtn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white;");
+            deleteBtn.setOnAction(e -> {
+                Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+                confirm.setTitle(I18n.get("confirm.delete.title"));
+                confirm.setHeaderText(null);
+                confirm.setContentText(I18n.get("confirm.delete.entry",
+                        entry.getForms().getForms().stream().findFirst()
+                                .map(Form::toPlainText).orElse(entry.getId().orElse("?"))));
+                confirm.showAndWait().filter(r -> r == ButtonType.OK).ifPresent(r -> {
+                    // Retire de allEntries dans LiftFactory
+                    LiftFactory factory = getFactory(currentDictionary);
+                    if (factory != null) factory.getAllEntries().remove(entry);
+                    baseEntries.remove(entry);
+                    editorContainer.getChildren().clear();
+                    editEntryTitle.setText(I18n.get("panel.selectElement"));
+                    editEntryCode.setText("");
+                    applyCurrentFilter();
+                });
+            });
+            editorContainer.getChildren().add(deleteBtn);
+
         addSection(editorContainer, I18n.get("editor.forms"), () -> { MultiTextEditor m = new MultiTextEditor(); m.setAvailableLanguages(objLangs); m.setMultiText(entry.getForms()); return m; }, true);
         addListSection(editorContainer, I18n.get("editor.traits"), safeList(entry.getTraits()), t -> {
             TraitEditor te = new TraitEditor();
@@ -1065,6 +1087,24 @@ public final class MainController {
         editEntryCode.setText(sense.getGrammaticalInfo().map(GrammaticalInfo::getValue).orElse(""));
         editorContainer.getChildren().clear();
 
+        Button deleteBtn = new Button(I18n.get("btn.delete"));
+        deleteBtn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white;");
+        deleteBtn.setOnAction(e -> {
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+            confirm.setTitle(I18n.get("confirm.delete.title"));
+            confirm.setHeaderText(null);
+            confirm.setContentText(I18n.get("confirm.delete.sense", sense.getId().orElse("?")));
+            confirm.showAndWait().filter(r -> r == ButtonType.OK).ifPresent(r -> {
+                findParentEntry(sense).ifPresent(parent -> parent.getSenses().remove(sense));
+                LiftFactory factory = getFactory(currentDictionary);
+                if (factory != null) factory.getAllSenses().remove(sense);
+                editorContainer.getChildren().clear();
+                editEntryTitle.setText(I18n.get("panel.selectElement"));
+                editEntryCode.setText("");
+                showSenseView();
+            });
+        });
+        editorContainer.getChildren().add(deleteBtn);
         // Parent link: navigate back to entry view filtered to this sense's parent
         findParentEntry(sense).ifPresent(parentEntry -> {
             Hyperlink backLink = new Hyperlink(I18n.get("sense.backToEntry", parentEntry.getId().orElse("?")));
@@ -1123,6 +1163,24 @@ public final class MainController {
         editEntryTitle.setText(I18n.get("nav.examples"));
         editEntryCode.setText(ex.getSource().orElse(""));
         editorContainer.getChildren().clear();
+        Button deleteBtn = new Button(I18n.get("btn.delete"));
+        deleteBtn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white;");
+        deleteBtn.setOnAction(e -> {
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+            confirm.setTitle(I18n.get("confirm.delete.title"));
+            confirm.setHeaderText(null);
+            confirm.setContentText(I18n.get("confirm.delete.example"));
+            confirm.showAndWait().filter(r -> r == ButtonType.OK).ifPresent(r -> {
+                findParentSense(ex).ifPresent(parent -> parent.getExamples().remove(ex));
+                LiftFactory factory = getFactory(currentDictionary);
+                if (factory != null) factory.getAllExamples().remove(ex);
+                editorContainer.getChildren().clear();
+                editEntryTitle.setText(I18n.get("panel.selectElement"));
+                editEntryCode.setText("");
+                showExampleView();
+            });
+        });
+        editorContainer.getChildren().add(deleteBtn);
 
         LiftSense resolvedParent = parentSense != null
                 ? parentSense
