@@ -2733,7 +2733,8 @@ public final class MainController {
         dlg.setHeaderText(I18n.get("config.header", title, items.size()));
         dlg.setResizable(true);
         dlg.getDialogPane().setPrefSize(620, 480);
-        dlg.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        // ← Remplace CLOSE par OK + CANCEL
+        dlg.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
         TableView<ConfigRow> configTable = new TableView<>();
         configTable.setEditable(true);
@@ -2785,7 +2786,7 @@ public final class MainController {
                 confirm.setHeaderText(I18n.get("config.deleteWarning", sel.abbrev().get(), usage));
                 confirm.setContentText(I18n.get("config.deleteConfirm"));
                 confirm.showAndWait().filter(r -> r == ButtonType.OK)
-                    .ifPresent(r -> configTable.getItems().remove(sel));
+                        .ifPresent(r -> configTable.getItems().remove(sel));
             } else {
                 configTable.getItems().remove(sel);
             }
@@ -2798,7 +2799,64 @@ public final class MainController {
 
         VBox content = new VBox(6, configTable, controls);
         dlg.getDialogPane().setContent(content);
+
+        // ← Sauvegarde dans le header LIFT si OK
+        dlg.setResultConverter(bt -> {
+            if (bt == ButtonType.OK) {
+                persistConfigToHeader(title, configTable.getItems());
+            }
+            return null;
+        });
+
         dlg.showAndWait();
+    }
+    private void persistConfigToHeader(String dialogTitle, List<ConfigRow> rows) {
+        if (currentDictionary == null) return;
+        LiftFactory factory = getFactory(currentDictionary);
+        if (factory == null) return;
+        LiftHeader header = currentDictionary.getLiftDictionaryComponents().getHeader();
+        if (header == null) return;
+
+        // Détermine le rangeId selon le titre du dialogue
+        String rangeId = null;
+        if (dialogTitle.equals(I18n.get("menu.config.noteTypes")))        rangeId = "note-type";
+        else if (dialogTitle.equals(I18n.get("menu.config.translationTypes"))) rangeId = "translation-type";
+        else if (dialogTitle.equals(I18n.get("menu.config.traitTypes")))   rangeId = "grammatical-info";
+
+        if (rangeId != null) {
+            // Trouve ou crée le range
+            final String finalRangeId = rangeId;
+            LiftHeaderRange range = header.getRanges().stream()
+                    .filter(r -> finalRangeId.equals(r.getId())).findFirst()
+                    .orElseGet(() -> factory.createRange(finalRangeId, header));
+
+            // Ajoute les nouveaux éléments manquants
+            Set<String> existing = range.getRangeElements().stream()
+                    .map(LiftHeaderRangeElement::getId).collect(Collectors.toSet());
+            List<String> metaLangs = getMetaLanguages();
+            String descLang = metaLangs.isEmpty() ? "en" : metaLangs.get(0);
+
+            for (ConfigRow row : rows) {
+                String val = row.abbrev().get();
+                if (val == null || val.isBlank()) continue;
+                if (!existing.contains(val)) {
+                    LiftHeaderRangeElement elem = factory.createRangeElement(val, range);
+                    String desc = row.description().get();
+                    if (desc != null && !desc.isBlank()) {
+                        elem.getDescription().add(new Form(descLang, desc));
+                    }
+                }
+            }
+
+            // Retire les éléments supprimés (non utilisés)
+            Set<String> newValues = rows.stream()
+                    .map(r -> r.abbrev().get())
+                    .filter(v -> v != null && !v.isBlank())
+                    .collect(Collectors.toSet());
+            range.getRangeElements().removeIf(re -> !newValues.contains(re.getId()));
+
+            rebuildHeaderCfgChildren();
+        }
     }
 
     private LiftDictionary loadDemoDictionary() {
