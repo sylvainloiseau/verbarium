@@ -41,6 +41,9 @@ public final class TraitEditor extends VBox {
         setStyle("-fx-border-color: #cde; -fx-border-radius: 4; -fx-background-color: #f5f8fc; -fx-background-radius: 4;");
 
         nameCombo.setEditable(false);
+        nameCombo.valueProperty().addListener((obs, oldVal, newVal) -> {
+            validateTraitName(newVal);
+        });
         nameCombo.setMaxWidth(Double.MAX_VALUE);
         nameCombo.setPromptText("nom du trait");
 
@@ -59,6 +62,26 @@ public final class TraitEditor extends VBox {
         annoPane.setAnimated(false);
 
         getChildren().addAll(grid, annoPane);
+    }
+    private List<String> knownTraitNames = new ArrayList<>();
+
+    private void validateTraitName(String name) {
+        if (name == null || name.isBlank()) {
+            nameCombo.setStyle("-fx-border-color: #cde; -fx-border-radius: 4;");
+            nameCombo.setTooltip(null);
+            return;
+        }
+        if (!knownTraitNames.contains(name)) {
+            nameCombo.setStyle(
+                    "-fx-border-color: orange; -fx-border-width: 2; -fx-border-radius: 4;"
+            );
+            Tooltip tip = new Tooltip("⚠ Valeur non documentée dans la configuration du dictionnaire");
+            tip.setStyle("-fx-background-color: #fff3cd; -fx-text-fill: #856404;");
+            nameCombo.setTooltip(tip);
+        } else {
+            nameCombo.setStyle("-fx-border-color: #cde; -fx-border-radius: 4;");
+            nameCombo.setTooltip(null);
+        }
     }
 
     /**
@@ -82,7 +105,8 @@ public final class TraitEditor extends VBox {
         nameCombo.setItems(FXCollections.observableArrayList(
             traitNames instanceof List ? (List<String>) traitNames : new ArrayList<>(traitNames)));
         nameCombo.setValue(t.getName());
-
+        this.knownTraitNames = new ArrayList<>(traitNames);
+        validateTraitName(t.getName());
         valueBox.getChildren().setAll(buildValueWidget(t, definition, valuesForName));
 
         annotationsBox.getChildren().clear();
@@ -173,13 +197,34 @@ public final class TraitEditor extends VBox {
         combo.setEditable(true);
         combo.setMaxWidth(Double.MAX_VALUE);
         Set<String> knownValues = valuesForName != null
-            ? valuesForName.getOrDefault(t.getName(), Set.of()) : Set.of();
+                ? valuesForName.getOrDefault(t.getName(), Set.of()) : Set.of();
         combo.setItems(FXCollections.observableArrayList(new TreeSet<>(knownValues)));
         combo.setValue(t.getValue());
         combo.getEditor().textProperty().bindBidirectional(t.valueProperty());
+
+        // ✅ Validation de la valeur saisie
+        combo.getEditor().textProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal == null || newVal.isBlank() || knownValues.contains(newVal)) {
+                combo.setStyle(null);
+                combo.setTooltip(null);
+            } else {
+                combo.setStyle("-fx-border-color: orange; -fx-border-width: 2; -fx-border-radius: 4;");
+                Tooltip tip = new Tooltip("⚠ Valeur non documentée dans la configuration du dictionnaire");
+                tip.setStyle("-fx-background-color: #fff3cd; -fx-text-fill: #856404;");
+                combo.setTooltip(tip);
+            }
+        });
+
+        // Validation initiale
+        if (!knownValues.isEmpty() && t.getValue() != null && !knownValues.contains(t.getValue())) {
+            combo.setStyle("-fx-border-color: orange; -fx-border-width: 2; -fx-border-radius: 4;");
+            Tooltip tip = new Tooltip("⚠ Valeur non documentée dans la configuration du dictionnaire");
+            tip.setStyle("-fx-background-color: #fff3cd; -fx-text-fill: #856404;");
+            combo.setTooltip(tip);
+        }
+
         return combo;
     }
-
     /**
      * Shows a Dialog with a TreeView of range-elements (using @parent hierarchy).
      * Returns the selected element's abbreviation, or null if cancelled.

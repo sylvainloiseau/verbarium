@@ -26,6 +26,7 @@ public final class FieldEditor extends VBox {
         setStyle("-fx-border-color: #bcd; -fx-border-radius: 4; -fx-background-color: #f0f4f8; -fx-background-radius: 4;");
 
         nameCombo.setEditable(false);
+        nameCombo.valueProperty().addListener((obs, o, n) -> validateFieldType(n));
         nameCombo.setMaxWidth(Double.MAX_VALUE);
         nameCombo.setPromptText("type de champ");
 
@@ -46,7 +47,26 @@ public final class FieldEditor extends VBox {
 
         getChildren().addAll(grid, textPane, extPane);
     }
+    private List<String> knownFieldTypes = new ArrayList<>();
 
+    private void validateFieldType(String type) {
+        if (type == null || type.isBlank()) {
+            nameCombo.setStyle("-fx-border-color: #bcd; -fx-border-radius: 4;");
+            nameCombo.setTooltip(null);
+            return;
+        }
+        if (!knownFieldTypes.contains(type)) {
+            nameCombo.setStyle(
+                    "-fx-border-color: orange; -fx-border-width: 2; -fx-border-radius: 4;"
+            );
+            Tooltip tip = new Tooltip("⚠ Type non documenté dans la configuration du dictionnaire");
+            tip.setStyle("-fx-background-color: #fff3cd; -fx-text-fill: #856404;");
+            nameCombo.setTooltip(tip);
+        } else {
+            nameCombo.setStyle("-fx-border-color: #bcd; -fx-border-radius: 4;");
+            nameCombo.setTooltip(null);
+        }
+    }
     /**
      * @param f               the field to edit
      * @param availableLangs  languages for the MultiTextEditor
@@ -62,6 +82,8 @@ public final class FieldEditor extends VBox {
         nameCombo.setItems(FXCollections.observableArrayList(
             fieldTypes instanceof List ? (List<String>) fieldTypes : new ArrayList<>(fieldTypes)));
         nameCombo.setValue(f.getName());
+        this.knownFieldTypes = new ArrayList<>(fieldTypes);
+        validateFieldType(f.getName());
         textEditor.setAvailableLanguages(availableLangs);
         textEditor.setMultiText(f.getText());
         extensibleEditor.setModel(f, availableLangs);
