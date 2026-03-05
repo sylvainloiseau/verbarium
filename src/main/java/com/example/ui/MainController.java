@@ -289,19 +289,22 @@ public final class MainController {
 
     /**
      * (Re-)builds the children of the "Configuration du dictionnaire" nav node.
-     * Called at startup and each time a new dictionary is loaded, so that
-     * individual ranges appear as separate navigable entries.
+     * Structure: Dictionary description, Field and traits definitions (separated),
+     * then a "Ranges" section grouping all dynamic ranges.
      */
     private void rebuildHeaderCfgChildren() {
         if (headerCfgNode == null) return;
-        // Remove old dynamic items from navKeyMap to avoid stale entries
-        headerCfgNode.getChildren().forEach(child -> navKeyMap.remove(child));
+        // Remove old items from navKeyMap (including nested range children)
+        headerCfgNode.getChildren().forEach(this::removeFromNavKeyMapRecursive);
         headerCfgNode.getChildren().clear();
 
+        // First group: Dictionary description and Field definitions (separated)
         headerCfgNode.getChildren().add(navItem(NAV_CFG_DESC));
         headerCfgNode.getChildren().add(navItem(NAV_CFG_FIELD_DEFS));
 
-        // Dynamic range entries
+        // Second group: Ranges (Taxinomies) - parent node with dynamic range entries as children
+        TreeItem<String> rangesNode = new TreeItem<>(I18n.get("nav.cfgRanges"));
+        rangesNode.setExpanded(true);
         if (currentDictionary != null) {
             LiftHeader header = currentDictionary.getLiftDictionaryComponents().getHeader();
             if (header != null) {
@@ -309,11 +312,17 @@ public final class MainController {
                     String key = NAV_CFG_RANGE_PREFIX + range.getId();
                     String label = range.getLabel().getForms().stream()
                         .findFirst().map(Form::toPlainText).orElse(range.getId());
-                    headerCfgNode.getChildren().add(navItemDynamic(key, label));
+                    rangesNode.getChildren().add(navItemDynamic(key, label));
                 }
             }
         }
+        headerCfgNode.getChildren().add(rangesNode);
         headerCfgNode.setExpanded(true);
+    }
+
+    private void removeFromNavKeyMapRecursive(TreeItem<String> item) {
+        navKeyMap.remove(item);
+        item.getChildren().forEach(this::removeFromNavKeyMapRecursive);
     }
 
     /* ─── View switching ─── */
@@ -332,7 +341,9 @@ public final class MainController {
         addButton.setText(I18n.get("btn.new"));
 
         if (viewName.startsWith(NAV_CFG_RANGE_PREFIX)) {
+            setRightPanelVisible(true);
             showHeaderRangeView(viewName.substring(NAV_CFG_RANGE_PREFIX.length()));
+            selectNavItem(viewName);
             return;
         }
         switch (viewName) {
@@ -352,14 +363,23 @@ public final class MainController {
             case NAV_TRANS_TYPES -> showTranslationTypesView();
             case NAV_NOTE_TYPES  -> showNoteTypesView();
             case NAV_QUICK_ENTRY -> showQuickEntryView();
-            case NAV_CFG_DESC        -> showHeaderDescView();
+            case NAV_CFG_DESC        -> { showHeaderDescView(); setRightPanelVisible(false); }
             case NAV_CFG_FIELD_DEFS  -> showHeaderFieldDefsView();
             default -> showEntryView();
         }
+        if (!NAV_CFG_DESC.equals(viewName)) setRightPanelVisible(true);
         selectNavItem(viewName);
     }
 
     private boolean splitConstraintInstalled = false;
+
+    private void setRightPanelVisible(boolean visible) {
+        if (mainSplit != null && mainSplit.getItems().size() >= 2) {
+            javafx.scene.Node rightPane = mainSplit.getItems().get(1);
+            rightPane.setManaged(visible);
+            rightPane.setVisible(visible);
+        }
+    }
 
     private void ensureRightPanelVisible() {
         if (rightContent != null) {
