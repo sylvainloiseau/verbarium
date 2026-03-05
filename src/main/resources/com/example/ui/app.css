@@ -143,6 +143,13 @@
   -fx-background-color: #43646a;
 }
 
+/* Boutons Supprimer et Retour - même longueur, taille réduite */
+.delete-btn,
+.back-btn {
+  -fx-min-width: 175px;
+  -fx-max-width: 175px;
+}
+
 /* ─── Misc ─── */
 .primary-button {
   -fx-background-color: #2f7eea;
@@ -179,4 +186,11 @@
   -fx-background-color: #e7ecee;
   -fx-text-fill: #56666b;
   -fx-border-color: #c5d0d4;
+}
+
+/* Curseur main (clic) sur tous les boutons au survol */
+.button,
+.button:hover,
+.button:focused {
+  -fx-cursor: hand;
 }

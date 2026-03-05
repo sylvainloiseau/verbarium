@@ -1024,7 +1024,8 @@ public final class MainController {
         editorContainer.getChildren().clear();
 
             Button deleteBtn = new Button(I18n.get("btn.delete"));
-            deleteBtn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white;");
+            deleteBtn.getStyleClass().add("delete-btn");
+            deleteBtn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-background-radius: 6; -fx-padding: 7 12 7 12;");
             deleteBtn.setOnAction(e -> {
                 Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
                 confirm.setTitle(I18n.get("confirm.delete.title"));
@@ -1193,7 +1194,8 @@ public final class MainController {
         editorContainer.getChildren().clear();
 
         Button deleteBtn = new Button(I18n.get("btn.delete"));
-        deleteBtn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white;");
+        deleteBtn.getStyleClass().add("delete-btn");
+        deleteBtn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-background-radius: 6; -fx-padding: 7 12 7 12;");
         deleteBtn.setOnAction(e -> {
             Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
             confirm.setTitle(I18n.get("confirm.delete.title"));
@@ -1210,13 +1212,14 @@ public final class MainController {
             });
         });
         editorContainer.getChildren().add(deleteBtn);
-        // Parent link: navigate back to entry view filtered to this sense's parent
+        // Parent button: navigate back to entry view filtered to this sense's parent
         findParentEntry(sense).ifPresent(parentEntry -> {
             String entryForm = parentEntry.getForms().getForms().stream().findFirst().map(Form::toPlainText).orElse("");
             if (entryForm.isEmpty()) entryForm = "?";
-            Hyperlink backLink = new Hyperlink(I18n.get("sense.backToEntry", entryForm));
-            backLink.setOnAction(e -> navigateToEntryFromSense(parentEntry));
-            editorContainer.getChildren().add(backLink);
+            Button backBtn = new Button(I18n.get("sense.backToEntry", entryForm));
+            backBtn.getStyleClass().addAll("example-add-button", "back-btn");
+            backBtn.setOnAction(e -> navigateToEntryFromSense(parentEntry));
+            editorContainer.getChildren().add(backBtn);
         });
 
         // Links to examples (one per example, showing example number)
@@ -1273,7 +1276,8 @@ public final class MainController {
         editEntryCode.setText(ex.getSource().orElse(""));
         editorContainer.getChildren().clear();
         Button deleteBtn = new Button(I18n.get("btn.delete"));
-        deleteBtn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white;");
+        deleteBtn.getStyleClass().add("delete-btn");
+        deleteBtn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-background-radius: 6; -fx-padding: 7 12 7 12;");
         deleteBtn.setOnAction(e -> {
             Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
             confirm.setTitle(I18n.get("confirm.delete.title"));
@@ -1299,10 +1303,9 @@ public final class MainController {
             final LiftSense finalParent = resolvedParent;
             String senseGloss = finalParent.getGloss().getForms().stream().findFirst().map(Form::toPlainText).orElse("");
             if (senseGloss.isEmpty()) senseGloss = "?";
-            Hyperlink backLink = new Hyperlink(
-                    I18n.get("sense.backToSense", senseGloss)
-            );
-            backLink.setOnAction(e -> {
+            Button backBtn = new Button(I18n.get("sense.backToSense", senseGloss));
+            backBtn.getStyleClass().addAll("example-add-button", "back-btn");
+            backBtn.setOnAction(e -> {
                 switchView(NAV_SENSES);
                 if (senseTable.getItems().contains(finalParent)) {
                     senseTable.getSelectionModel().select(finalParent);
@@ -1311,7 +1314,7 @@ public final class MainController {
                 selectNavItem(NAV_SENSES);
                 populateSenseEditor(finalParent);
             });
-            editorContainer.getChildren().add(backLink);
+            editorContainer.getChildren().add(backBtn);
         }
 
         ExampleEditor ee = new ExampleEditor();
