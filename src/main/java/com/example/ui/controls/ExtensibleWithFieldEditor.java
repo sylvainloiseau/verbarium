@@ -1,3 +1,13 @@
+
+/**
+ 
+* @author Inès GBADAMASSI
+* @author Maryse GOEH-AKUE
+* @author Ermeline BRESSON
+* @author Ayman JARI
+* @author Erij MAZOUZ
+
+**/
 package com.example.ui.controls;
 
 import fr.cnrs.lacito.liftapi.model.AbstractExtensibleWithField;
