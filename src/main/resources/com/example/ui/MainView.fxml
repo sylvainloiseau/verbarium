@@ -131,7 +131,6 @@
             <padding>
               <Insets top="10" right="10" bottom="10" left="10"/>
             </padding>
-            <Label text="%panel.editForm" styleClass="panel-title"/>
             <VBox spacing="2" styleClass="edit-header">
               <Label fx:id="editEntryTitle" text="%panel.selectElement" styleClass="edit-entry-title"/>
               <Label fx:id="editEntryCode" text="" styleClass="edit-entry-code"/>
