@@ -1058,7 +1058,8 @@ public final class MainController {
             addSection(editorContainer, I18n.get("editor.senses") + " (" + senses.size() + ")", () -> {
                 VBox box = new VBox(4);
                 for (LiftSense s : senses) {
-                    String label = s.getId().orElse("?") + " – " + s.getGloss().getForms().stream().findFirst().map(Form::toPlainText).orElse("");
+                    String label = s.getGloss().getForms().stream().findFirst().map(Form::toPlainText).orElse("");
+                    if (label.isEmpty()) label = "?";
                     Hyperlink link = new Hyperlink(label);
                     link.setOnAction(e -> navigateToSenseKeepingEntriesFocus(s));
                     box.getChildren().add(link);
@@ -1211,16 +1212,20 @@ public final class MainController {
         editorContainer.getChildren().add(deleteBtn);
         // Parent link: navigate back to entry view filtered to this sense's parent
         findParentEntry(sense).ifPresent(parentEntry -> {
-            Hyperlink backLink = new Hyperlink(I18n.get("sense.backToEntry", parentEntry.getId().orElse("?")));
+            String entryForm = parentEntry.getForms().getForms().stream().findFirst().map(Form::toPlainText).orElse("");
+            if (entryForm.isEmpty()) entryForm = "?";
+            Hyperlink backLink = new Hyperlink(I18n.get("sense.backToEntry", entryForm));
             backLink.setOnAction(e -> navigateToEntryFromSense(parentEntry));
             editorContainer.getChildren().add(backLink);
         });
 
-        // Link to examples
-        if (!sense.getExamples().isEmpty()) {
-            Hyperlink exLink = new Hyperlink(I18n.get("sense.viewExamples", sense.getExamples().size()));
-            LiftExample firstExample = sense.getExamples().getFirst();
-            exLink.setOnAction(e -> navigateToExampleKeepingEntriesFocus(firstExample));
+        // Links to examples (one per example, showing example number)
+        List<LiftExample> examples = sense.getExamples();
+        for (int i = 0; i < examples.size(); i++) {
+            final int idx = i + 1;
+            final LiftExample ex = examples.get(i);
+            Hyperlink exLink = new Hyperlink(I18n.get("sense.exampleN", idx));
+            exLink.setOnAction(e -> navigateToExampleKeepingEntriesFocus(ex));
             editorContainer.getChildren().add(exLink);
         }
 
@@ -1292,8 +1297,10 @@ public final class MainController {
 
         if (resolvedParent != null) {
             final LiftSense finalParent = resolvedParent;
+            String senseGloss = finalParent.getGloss().getForms().stream().findFirst().map(Form::toPlainText).orElse("");
+            if (senseGloss.isEmpty()) senseGloss = "?";
             Hyperlink backLink = new Hyperlink(
-                    I18n.get("sense.backToSense", finalParent.getId().orElse("?"))
+                    I18n.get("sense.backToSense", senseGloss)
             );
             backLink.setOnAction(e -> {
                 switchView(NAV_SENSES);
