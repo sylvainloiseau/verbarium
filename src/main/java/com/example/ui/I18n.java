@@ -57,4 +57,10 @@ public final class I18n {
     }
 
     public static ResourceBundle getBundle() { return bundle; }
+
+    public static String formatErrorMessage(String errorKey, Exception exception) {
+        String description = get(errorKey);
+        String exceptionInfo = exception.getClass().getSimpleName() + ": " + exception.getMessage();
+        return description + "\n\nDétails techniques: " + exceptionInfo;
+    }
 }
