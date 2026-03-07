@@ -1058,7 +1058,7 @@ public final class MainController {
                 confirm.setHeaderText(null);
                 confirm.setContentText(I18n.get("confirm.delete.entry",
                         entry.getForms().getForms().stream().findFirst()
-                                .map(Form::toPlainText).orElse(entry.getId().orElse("?"))));
+                                .map(Form::toPlainText).filter(t -> t != null && !t.isBlank()).orElse("(sans forme)")));
                 confirm.showAndWait().filter(r -> r == ButtonType.OK).ifPresent(r -> {
                     // Retire de allEntries dans LiftFactory
                     LiftFactory factory = getFactory(currentDictionary);
@@ -1212,10 +1212,26 @@ public final class MainController {
         return map == null ? List.of() : map.values();
     }
 
+    /** Texte d'affichage d'un sens : glose(s) séparées par " / ", sinon définition, sinon "?". */
+    private static String senseDisplayText(LiftSense sense) {
+        if (sense == null) return "?";
+        String gloss = sense.getGloss().getForms().stream()
+                .map(Form::toPlainText)
+                .filter(t -> t != null && !t.isBlank())
+                .collect(Collectors.joining(" / "));
+        if (!gloss.isEmpty()) return gloss;
+        String def = sense.getDefinition().getForms().stream()
+                .map(Form::toPlainText)
+                .filter(t -> t != null && !t.isBlank())
+                .collect(Collectors.joining(" / "));
+        if (!def.isEmpty()) return def;
+        return "?";
+    }
+
     private void populateSenseEditor(LiftSense sense) {
         List<String> metaLangs = getMetaLanguages();
         List<String> objLangs = getObjectLanguages();
-        editEntryTitle.setText(I18n.get("sense.title", sense.getId().orElse("?")));
+        editEntryTitle.setText(senseDisplayText(sense));
         editEntryCode.setText(sense.getGrammaticalInfo().map(GrammaticalInfo::getValue).orElse(""));
         editorContainer.getChildren().clear();
 
@@ -1226,7 +1242,7 @@ public final class MainController {
             Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
             confirm.setTitle(I18n.get("confirm.delete.title"));
             confirm.setHeaderText(null);
-            confirm.setContentText(I18n.get("confirm.delete.sense", sense.getId().orElse("?")));
+            confirm.setContentText(I18n.get("confirm.delete.sense", senseDisplayText(sense)));
             confirm.showAndWait().filter(r -> r == ButtonType.OK).ifPresent(r -> {
                 findParentEntry(sense).ifPresent(parent -> parent.getSenses().remove(sense));
                 LiftFactory factory = getFactory(currentDictionary);
