@@ -18,11 +18,15 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Application logic (dictionary manipulation) will live here.
  */
 public final class DictionaryService {
+
+    private static final Logger LOGGER = Logger.getLogger(DictionaryService.class.getName());
 
     /**
      * Charge un dictionnaire LIFT à partir d'un fichier {@code .lift} via {@code lift-api}.
@@ -59,9 +63,11 @@ public final class DictionaryService {
         try {
             return LiftDictionary.loadDictionaryWithFile(file);
         } catch (LiftDocumentLoadingException e) {
+            LOGGER.log(Level.SEVERE, "Impossible de charger le fichier LIFT: " + file.getAbsolutePath(), e);
             throw new LiftOpenException("Impossible de charger le fichier LIFT: " + e.getMessage(), e);
         } catch (RuntimeException e) {
             // Le parser SAX peut jeter des IllegalStateException si le XML ne correspond pas à la grammaire attendue.
+            LOGGER.log(Level.SEVERE, "Format invalide lors de la lecture du LIFT: " + file.getAbsolutePath(), e);
             throw new LiftOpenException("Format invalide: erreur pendant la lecture du LIFT", e);
         }
     }

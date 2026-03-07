@@ -40,6 +40,8 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 import java.util.stream.Collectors;
 
@@ -52,6 +54,7 @@ import java.util.stream.Collectors;
  *  - Right:  detail editor form for selected table row
  */
 public final class MainController {
+    private static final Logger LOGGER = Logger.getLogger(MainController.class.getName());
     private static final String FILTER_MODE_TEXT = "text";
     private static final int MAX_RECENT_FILES = 5;
     private static final String PREF_RECENT_PREFIX = "recent.file.";
@@ -93,7 +96,10 @@ public final class MainController {
             MenuItem item = new MenuItem(f.getName() + "  (" + f.getParent() + ")");
             item.setOnAction(e -> {
                 try { setDictionary(dictionaryService.loadFromFile(f)); switchView(NAV_ENTRIES); }
-                catch (Exception ex) { showError(I18n.get("error.open"), I18n.formatErrorMessage("error.open.detail", ex)); }
+                catch (Exception ex) {
+                    LOGGER.log(Level.SEVERE, "Ouverture du fichier LIFT (fichier récent)", ex);
+                    showError(I18n.get("error.open"), I18n.formatErrorMessage("error.open.detail", ex));
+                }
             });
             item.setDisable(!f.exists());
             recentMenu.getItems().add(item);
@@ -1652,12 +1658,16 @@ public final class MainController {
             switchView(NAV_ENTRIES);
             saveRecentFile(f);
         } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Ouverture du fichier LIFT", e);
             showError(I18n.get("error.open"), I18n.formatErrorMessage("error.open.detail", e));
         }
     }
     @FXML private void onSave() {
         if (currentDictionary == null) { showError(I18n.get("error.save"), I18n.get("error.noDictionary")); return; }
-        try { currentDictionary.save(); } catch (Exception e) { showError(I18n.get("error.save"), I18n.formatErrorMessage("error.save.detail", e)); }
+        try { currentDictionary.save(); } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Sauvegarde du dictionnaire", e);
+            showError(I18n.get("error.save"), I18n.formatErrorMessage("error.save.detail", e));
+        }
     }
 
     @FXML private void onNewDictionary() { setDictionary(null); switchView(NAV_ENTRIES); }
@@ -1667,7 +1677,13 @@ public final class MainController {
         FileChooser ch = new FileChooser(); ch.setTitle(I18n.get("dialog.saveLift"));
         ch.getExtensionFilters().add(new FileChooser.ExtensionFilter(I18n.get("dialog.liftFilter"), "*.lift"));
         File f = ch.showSaveDialog(navTree.getScene().getWindow());
-        if (f != null) { try { currentDictionary.save(f); } catch (Exception e) { showError(I18n.get("error.saveAs"), I18n.formatErrorMessage("error.saveAs.detail", e)); } }
+        if (f != null) {
+            try { currentDictionary.save(f); }
+            catch (Exception e) {
+                LOGGER.log(Level.SEVERE, "Sauvegarde du dictionnaire sous un autre fichier", e);
+                showError(I18n.get("error.saveAs"), I18n.formatErrorMessage("error.saveAs.detail", e));
+            }
+        }
     }
 
     @FXML private void onPreferences() { showPreferencesDialog(); }
@@ -1792,7 +1808,10 @@ public final class MainController {
                 pw.print(e.getId().orElse("")); for (String l : ol) pw.print("\t" + e.getForms().getForm(l).map(Form::toPlainText).orElse("")); pw.println();
             }
             showInfo(I18n.get("error.export"), I18n.get("info.exportSuccess", f.getAbsolutePath()));
-        } catch (Exception e) { showError(I18n.get("error.export"), I18n.formatErrorMessage("error.export.detail", e)); }
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Export CSV", e);
+            showError(I18n.get("error.export"), I18n.formatErrorMessage("error.export.detail", e));
+        }
     }
 
     @FXML private void onModifyEntry() {
@@ -3091,7 +3110,10 @@ public final class MainController {
             File tmp = Files.createTempFile("dict-demo-", ".lift").toFile(); tmp.deleteOnExit();
             try (FileOutputStream out = new FileOutputStream(tmp)) { in.transferTo(out); }
             return LiftDictionary.loadDictionaryWithFile(tmp);
-        } catch (Exception e) { return null; }
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "Impossible de charger le dictionnaire de démonstration", e);
+            return null;
+        }
     }
 
     private static LiftFactory getFactory(LiftDictionary d) { return d != null && d.getLiftDictionaryComponents() instanceof LiftFactory lf ? lf : null; }

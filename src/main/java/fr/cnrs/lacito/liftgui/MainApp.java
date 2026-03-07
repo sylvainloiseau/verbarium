@@ -15,8 +15,12 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 public final class MainApp extends Application {
 
+    private static final Logger LOGGER = Logger.getLogger(MainApp.class.getName());
     private static Stage primaryStage;
 
     @Override
@@ -28,7 +32,9 @@ public final class MainApp extends Application {
 
     public static void reloadScene() {
         try { loadScene(); }
-        catch (Exception e) { e.printStackTrace(); }
+        catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Erreur au rechargement de la scène", e);
+        }
     }
 
     private static void loadScene() throws Exception {
