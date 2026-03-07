@@ -3086,9 +3086,28 @@ public final class MainController {
     }
 
     private LiftDictionary loadDemoDictionary() {
+        try {
+            java.nio.file.Path tempDir = Files.createTempDirectory("dict-default-");
+            tempDir.toFile().deleteOnExit();
+            File liftFile = tempDir.resolve("20260302.lift").toFile();
+            File rangesFile = tempDir.resolve("20260302.lift-ranges").toFile();
+            try (InputStream inLift = MainController.class.getResourceAsStream("/lift/20260302.lift");
+                 InputStream inRanges = MainController.class.getResourceAsStream("/lift/20260302.lift-ranges")) {
+                if (inLift == null) return loadFallbackDemo();
+                try (FileOutputStream outLift = new FileOutputStream(liftFile)) { inLift.transferTo(outLift); }
+                if (inRanges != null) {
+                    try (FileOutputStream outRanges = new FileOutputStream(rangesFile)) { inRanges.transferTo(outRanges); }
+                }
+            }
+            return LiftDictionary.loadDictionaryWithFile(liftFile);
+        } catch (Exception e) { return loadFallbackDemo(); }
+    }
+
+    private LiftDictionary loadFallbackDemo() {
         try (InputStream in = MainController.class.getResourceAsStream("/lift/demo.lift")) {
             if (in == null) return null;
-            File tmp = Files.createTempFile("dict-demo-", ".lift").toFile(); tmp.deleteOnExit();
+            File tmp = Files.createTempFile("dict-demo-", ".lift").toFile();
+            tmp.deleteOnExit();
             try (FileOutputStream out = new FileOutputStream(tmp)) { in.transferTo(out); }
             return LiftDictionary.loadDictionaryWithFile(tmp);
         } catch (Exception e) { return null; }
