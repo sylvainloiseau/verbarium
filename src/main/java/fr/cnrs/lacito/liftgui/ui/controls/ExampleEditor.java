@@ -12,6 +12,7 @@ package fr.cnrs.lacito.liftgui.ui.controls;
 
 import fr.cnrs.lacito.liftapi.model.LiftExample;
 import fr.cnrs.lacito.liftapi.model.MultiText;
+import javafx.beans.value.ChangeListener;
 import javafx.geometry.Insets;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
@@ -32,6 +33,7 @@ import java.util.Map;
 public final class ExampleEditor extends VBox {
 
     private final TextField sourceField = new TextField();
+    private ChangeListener<String> sourceListener;
     private final MultiTextEditor exampleTextEditor = new MultiTextEditor();
     private final VBox translationsBox = new VBox(6);
     private final NotableEditor notableEditor = new NotableEditor();
@@ -75,11 +77,17 @@ public final class ExampleEditor extends VBox {
 
         if (ex == null) {
             sourceField.setText("");
+            if (sourceListener != null) sourceField.textProperty().removeListener(sourceListener);
+            sourceListener = null;
             exampleTextEditor.setMultiText(null);
             notableEditor.setModel(null, metaLangs);
             return;
         }
         sourceField.setText(ex.getSource().orElse(""));
+        if (sourceListener != null) sourceField.textProperty().removeListener(sourceListener);
+        LiftExample exampleRef = ex;
+        sourceListener = (obs, o, n) -> exampleRef.setSource(n != null ? n : "");
+        sourceField.textProperty().addListener(sourceListener);
         exampleTextEditor.setAvailableLanguages(objLangs);
         exampleTextEditor.setMultiText(ex.getExample());
 

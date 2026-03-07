@@ -39,6 +39,7 @@ public final class SenseEditor extends VBox {
     private final VBox relationsBox = new VBox(6);
     private final VBox reversalsBox = new VBox(6);
     private final VBox subSensesBox = new VBox(6);
+    private final TitledPane subSensesPane;
     private final NotableEditor notableEditor = new NotableEditor();
 
     public SenseEditor() {
@@ -80,15 +81,15 @@ public final class SenseEditor extends VBox {
         revPane.setExpanded(false);
         revPane.setAnimated(false);
 
-        TitledPane subPane = new TitledPane("Sous-sens", subSensesBox);
-        subPane.setExpanded(false);
-        subPane.setAnimated(false);
+        subSensesPane = new TitledPane("Sous-sens", subSensesBox);
+        subSensesPane.setExpanded(false);
+        subSensesPane.setAnimated(false);
 
         TitledPane extPane = new TitledPane("Propriétés héritées (notes, champs, traits, annotations, dates)", notableEditor);
         extPane.setExpanded(false);
         extPane.setAnimated(false);
 
-        getChildren().addAll(grid, defPane, glossPane, exPane, relPane, revPane, subPane, extPane);
+        getChildren().addAll(grid, defPane, glossPane, exPane, relPane, revPane, subSensesPane, extPane);
     }
 
     /**
@@ -147,6 +148,7 @@ public final class SenseEditor extends VBox {
             se.setSense(sub, metaLangs, objLangs);
             subSensesBox.getChildren().add(se);
         }
+        subSensesPane.setExpanded(!sense.getSubSenses().isEmpty());
 
         notableEditor.setModel(sense, metaLangs);
     }

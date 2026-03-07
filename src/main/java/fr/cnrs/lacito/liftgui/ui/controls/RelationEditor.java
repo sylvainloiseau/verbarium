@@ -10,6 +10,7 @@
 package fr.cnrs.lacito.liftgui.ui.controls;
 
 import fr.cnrs.lacito.liftapi.model.LiftRelation;
+import javafx.beans.value.ChangeListener;
 import javafx.geometry.Insets;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
@@ -30,6 +31,8 @@ public final class RelationEditor extends VBox {
     private final TextField typeField = new TextField();
     private final TextField refIdField = new TextField();
     private final TextField orderField = new TextField();
+    private ChangeListener<String> refIdListener;
+    private ChangeListener<String> orderListener;
     private final MultiTextEditor usageEditor = new MultiTextEditor();
     private final ExtensibleWithFieldEditor extensibleEditor = new ExtensibleWithFieldEditor();
 
@@ -73,6 +76,10 @@ public final class RelationEditor extends VBox {
             typeField.setText("");
             refIdField.setText("");
             orderField.setText("");
+            if (refIdListener != null) refIdField.textProperty().removeListener(refIdListener);
+            if (orderListener != null) orderField.textProperty().removeListener(orderListener);
+            refIdListener = null;
+            orderListener = null;
             usageEditor.setMultiText(null);
             extensibleEditor.setModel(null, langs);
             return;
@@ -80,6 +87,17 @@ public final class RelationEditor extends VBox {
         typeField.setText(rel.getType() != null ? rel.getType() : "");
         refIdField.setText(rel.getRefID().orElse(""));
         orderField.setText(rel.getOrder().map(String::valueOf).orElse(""));
+        if (refIdListener != null) refIdField.textProperty().removeListener(refIdListener);
+        if (orderListener != null) orderField.textProperty().removeListener(orderListener);
+        LiftRelation relationRef = rel;
+        refIdListener = (obs, o, n) -> relationRef.setRefId(n != null ? n : "");
+        orderListener = (obs, o, n) -> {
+            if (n != null && !n.isBlank()) {
+                try { relationRef.setOrder(Integer.parseInt(n.trim())); } catch (NumberFormatException ignored) {}
+            }
+        };
+        refIdField.textProperty().addListener(refIdListener);
+        orderField.textProperty().addListener(orderListener);
         usageEditor.setAvailableLanguages(langs);
         usageEditor.setMultiText(rel.getUsage());
         extensibleEditor.setModel(rel, langs);

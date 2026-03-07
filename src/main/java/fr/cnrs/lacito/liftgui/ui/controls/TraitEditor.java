@@ -14,6 +14,7 @@ import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
@@ -57,8 +58,14 @@ public final class TraitEditor extends VBox {
         nameCombo.setPromptText("nom du trait");
 
         GridPane grid = new GridPane();
-        grid.setHgap(8);
-        grid.setVgap(6);
+        grid.setHgap(12);
+        grid.setVgap(8);
+        ColumnConstraints labelCol = new ColumnConstraints();
+        labelCol.setMinWidth(60);
+        ColumnConstraints valueCol = new ColumnConstraints();
+        valueCol.setMinWidth(180);
+        valueCol.setHgrow(Priority.ALWAYS);
+        grid.getColumnConstraints().addAll(labelCol, valueCol);
         grid.add(new Label("Nom"), 0, 0);
         grid.add(nameCombo, 1, 0);
         grid.add(new Label("Valeur"), 0, 1);
