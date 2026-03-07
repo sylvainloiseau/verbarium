@@ -93,7 +93,7 @@ public final class MainController {
             MenuItem item = new MenuItem(f.getName() + "  (" + f.getParent() + ")");
             item.setOnAction(e -> {
                 try { setDictionary(dictionaryService.loadFromFile(f)); switchView(NAV_ENTRIES); }
-                catch (Exception ex) { showError(I18n.get("error.open"), ex.getMessage()); }
+                catch (Exception ex) { showError(I18n.get("error.open"), I18n.formatErrorMessage("error.open.detail", ex)); }
             });
             item.setDisable(!f.exists());
             recentMenu.getItems().add(item);
@@ -1652,12 +1652,12 @@ public final class MainController {
             switchView(NAV_ENTRIES);
             saveRecentFile(f);
         } catch (Exception e) {
-            showError(I18n.get("error.open"), e.getMessage());
+            showError(I18n.get("error.open"), I18n.formatErrorMessage("error.open.detail", e));
         }
     }
     @FXML private void onSave() {
         if (currentDictionary == null) { showError(I18n.get("error.save"), I18n.get("error.noDictionary")); return; }
-        try { currentDictionary.save(); } catch (Exception e) { showError(I18n.get("error.save"), e.getMessage()); }
+        try { currentDictionary.save(); } catch (Exception e) { showError(I18n.get("error.save"), I18n.formatErrorMessage("error.save.detail", e)); }
     }
 
     @FXML private void onNewDictionary() { setDictionary(null); switchView(NAV_ENTRIES); }
@@ -1667,7 +1667,7 @@ public final class MainController {
         FileChooser ch = new FileChooser(); ch.setTitle(I18n.get("dialog.saveLift"));
         ch.getExtensionFilters().add(new FileChooser.ExtensionFilter(I18n.get("dialog.liftFilter"), "*.lift"));
         File f = ch.showSaveDialog(navTree.getScene().getWindow());
-        if (f != null) { try { currentDictionary.save(f); } catch (Exception e) { showError(I18n.get("error.saveAs"), e.getMessage()); } }
+        if (f != null) { try { currentDictionary.save(f); } catch (Exception e) { showError(I18n.get("error.saveAs"), I18n.formatErrorMessage("error.saveAs.detail", e)); } }
     }
 
     @FXML private void onPreferences() { showPreferencesDialog(); }
@@ -1792,7 +1792,7 @@ public final class MainController {
                 pw.print(e.getId().orElse("")); for (String l : ol) pw.print("\t" + e.getForms().getForm(l).map(Form::toPlainText).orElse("")); pw.println();
             }
             showInfo(I18n.get("error.export"), I18n.get("info.exportSuccess", f.getAbsolutePath()));
-        } catch (Exception e) { showError(I18n.get("error.export"), e.getMessage()); }
+        } catch (Exception e) { showError(I18n.get("error.export"), I18n.formatErrorMessage("error.export.detail", e)); }
     }
 
     @FXML private void onModifyEntry() {
