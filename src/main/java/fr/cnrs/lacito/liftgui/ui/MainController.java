@@ -1410,6 +1410,17 @@ public final class MainController {
         }
     }
 
+    /** Navigue vers la fiche du sens (depuis une note ou autre objet enfant). */
+    private void navigateToSenseFromParent(LiftSense sense) {
+        if (sense == null) return;
+        switchView(NAV_SENSES);
+        if (senseTable.getItems().contains(sense)) {
+            senseTable.getSelectionModel().select(sense);
+            senseTable.scrollTo(sense);
+            populateSenseEditor(sense);
+        }
+    }
+
     private void navigateToExampleKeepingEntriesFocus(LiftExample example) {
         if (example == null) return;
         switchView(NAV_EXAMPLES);
@@ -1535,6 +1546,22 @@ public final class MainController {
         editEntryTitle.setText(I18n.get("nav.notes") + " : " + note.getType().orElse("?"));
         editEntryCode.setText("");
         editorContainer.getChildren().clear();
+        AbstractNotable parent = note.getParent();
+        if (parent != null) {
+            if (parent instanceof LiftEntry entry) {
+                String entryForm = entry.getForms().getForms().stream().findFirst().map(Form::toPlainText).orElse("");
+                if (entryForm.isEmpty()) entryForm = "?";
+                Button backBtn = new Button(I18n.get("sense.backToEntry", entryForm));
+                backBtn.getStyleClass().addAll("example-add-button", "back-btn");
+                backBtn.setOnAction(e -> navigateToEntryFromSense(entry));
+                editorContainer.getChildren().add(backBtn);
+            } else if (parent instanceof LiftSense sense) {
+                Button backBtn = new Button(I18n.get("sense.backToSense", senseDisplayText(sense)));
+                backBtn.getStyleClass().addAll("example-add-button", "back-btn");
+                backBtn.setOnAction(e -> navigateToSenseFromParent(sense));
+                editorContainer.getChildren().add(backBtn);
+            }
+        }
         NoteEditor ne = new NoteEditor();
         ne.setNote(note, getMetaLanguages());
         editorContainer.getChildren().add(ne);
@@ -1544,6 +1571,15 @@ public final class MainController {
         editEntryTitle.setText(I18n.get("nav.variants") + " : " + v.getRefId().orElse("?"));
         editEntryCode.setText("");
         editorContainer.getChildren().clear();
+        LiftEntry parentEntry = v.getParent();
+        if (parentEntry != null) {
+            String entryForm = parentEntry.getForms().getForms().stream().findFirst().map(Form::toPlainText).orElse("");
+            if (entryForm.isEmpty()) entryForm = "?";
+            Button backBtn = new Button(I18n.get("sense.backToEntry", entryForm));
+            backBtn.getStyleClass().addAll("example-add-button", "back-btn");
+            backBtn.setOnAction(e -> navigateToEntryFromSense(parentEntry));
+            editorContainer.getChildren().add(backBtn);
+        }
         VariantEditor ve = new VariantEditor();
         ve.setVariant(v, getObjectLanguages(), getMetaLanguages());
         editorContainer.getChildren().add(ve);
