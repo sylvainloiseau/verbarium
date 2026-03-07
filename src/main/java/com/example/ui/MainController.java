@@ -120,6 +120,11 @@ public final class MainController {
     /* ─── Header configuration nav keys ─── */
     private static final String NAV_CFG_DESC        = "nav.cfgDesc";
     private static final String NAV_CFG_FIELD_DEFS  = "nav.cfgFieldDefs";
+    private static final String NAV_CFG_MANAGE_LANGS = "nav.cfgManageLangs";
+    private static final String NAV_CFG_MANAGE_NOTE_TYPES = "nav.cfgManageNoteTypes";
+    private static final String NAV_CFG_MANAGE_TRANS_TYPES = "nav.cfgManageTransTypes";
+    private static final String NAV_CFG_MANAGE_ANNOTATION_TYPES = "nav.cfgManageAnnotationTypes";
+    private static final String NAV_CFG_MANAGE_RELATION_TYPES = "nav.cfgManageRelationTypes";
     private static final String NAV_CFG_RANGE_PREFIX = "cfg.range.";  // + rangeId for dynamic ranges
     private TreeItem<String> headerCfgNode;  // kept for dynamic rebuild
 
@@ -302,6 +307,13 @@ public final class MainController {
         headerCfgNode.getChildren().add(navItem(NAV_CFG_DESC));
         headerCfgNode.getChildren().add(navItem(NAV_CFG_FIELD_DEFS));
 
+        // Manage X entries (open config dialogs)
+        headerCfgNode.getChildren().add(navItem(NAV_CFG_MANAGE_LANGS));
+        headerCfgNode.getChildren().add(navItem(NAV_CFG_MANAGE_NOTE_TYPES));
+        headerCfgNode.getChildren().add(navItem(NAV_CFG_MANAGE_TRANS_TYPES));
+        headerCfgNode.getChildren().add(navItem(NAV_CFG_MANAGE_ANNOTATION_TYPES));
+        headerCfgNode.getChildren().add(navItem(NAV_CFG_MANAGE_RELATION_TYPES));
+
         // Second group: Ranges (Taxinomies) - parent node with dynamic range entries as children
         TreeItem<String> rangesNode = new TreeItem<>(I18n.get("nav.cfgRanges"));
         rangesNode.setExpanded(true);
@@ -365,6 +377,11 @@ public final class MainController {
             case NAV_QUICK_ENTRY -> showQuickEntryView();
             case NAV_CFG_DESC        -> { showHeaderDescView(); setRightPanelVisible(false); }
             case NAV_CFG_FIELD_DEFS  -> showHeaderFieldDefsView();
+            case NAV_CFG_MANAGE_LANGS -> { openManageLanguagesDialog(); showHeaderDescView(); setRightPanelVisible(false); }
+            case NAV_CFG_MANAGE_NOTE_TYPES -> { onConfigNoteTypes(); showHeaderDescView(); setRightPanelVisible(false); }
+            case NAV_CFG_MANAGE_TRANS_TYPES -> { onConfigTranslationTypes(); showHeaderDescView(); setRightPanelVisible(false); }
+            case NAV_CFG_MANAGE_ANNOTATION_TYPES -> { onConfigAnnotationTypes(); showHeaderDescView(); setRightPanelVisible(false); }
+            case NAV_CFG_MANAGE_RELATION_TYPES -> { onConfigRelationTypes(); showHeaderDescView(); setRightPanelVisible(false); }
             default -> showEntryView();
         }
         if (!NAV_CFG_DESC.equals(viewName)) setRightPanelVisible(true);
@@ -1770,6 +1787,50 @@ public final class MainController {
             val -> currentDictionary == null ? 0L : currentDictionary.getLiftDictionaryComponents().getAllFields().stream().filter(f -> val.equals(f.getName())).count());
     }
 
+    private void onConfigRelationTypes() {
+        showConfigDialog(I18n.get("nav.cfgManageRelationTypes"),
+            () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllRelations().stream().map(LiftRelation::getType).distinct().sorted().toList(),
+            val -> currentDictionary == null ? 0L : currentDictionary.getLiftDictionaryComponents().getAllRelations().stream().filter(r -> val.equals(r.getType())).count());
+    }
+
+    /** Dialog for managing languages, with object-languages and meta-languages in separate sections. */
+    private void openManageLanguagesDialog() {
+        if (currentDictionary == null) return;
+        List<String> objLangs = getObjectLanguages();
+        List<String> metaLangs = getMetaLanguages();
+
+        Dialog<Void> dlg = new Dialog<>();
+        dlg.setTitle(I18n.get("config.title", I18n.get("nav.cfgManageLangs")));
+        dlg.setResizable(true);
+        dlg.getDialogPane().setPrefSize(500, 400);
+        dlg.getDialogPane().getButtonTypes().addAll(ButtonType.CLOSE);
+
+        TitledPane objPane = new TitledPane(I18n.get("nav.objectLangs"), buildLanguageListPanel(objLangs));
+        objPane.setExpanded(true);
+        TitledPane metaPane = new TitledPane(I18n.get("nav.metaLangs"), buildLanguageListPanel(metaLangs));
+        metaPane.setExpanded(true);
+
+        VBox content = new VBox(10, objPane, metaPane);
+        content.setPadding(new Insets(12));
+        dlg.getDialogPane().setContent(content);
+        dlg.showAndWait();
+    }
+
+    private VBox buildLanguageListPanel(List<String> langs) {
+        VBox box = new VBox(4);
+        if (langs.isEmpty()) {
+            box.getChildren().add(new Label(I18n.get("placeholder.noData")));
+        } else {
+            for (String lang : langs) {
+                long usage = currentDictionary == null ? 0 : currentDictionary.getLiftDictionaryComponents().getAllEntries().stream()
+                    .filter(e -> e.getForms().getForm(lang).isPresent()).count();
+                Label l = new Label(lang + " (" + usage + " " + I18n.get("cfg.usageCount") + ")");
+                box.getChildren().add(l);
+            }
+        }
+        return box;
+    }
+
     /* ─── Outil menu ─── */
     @FXML private void onValidateDictionary() {
         if (currentDictionary == null) { showError(I18n.get("error.validation"), I18n.get("error.noDictionaryShort")); return; }
@@ -3045,9 +3106,11 @@ public final class MainController {
 
         // Détermine le rangeId selon le titre du dialogue
         String rangeId = null;
-        if (dialogTitle.equals(I18n.get("menu.config.noteTypes")))        rangeId = "note-type";
-        else if (dialogTitle.equals(I18n.get("menu.config.translationTypes"))) rangeId = "translation-type";
+        if (dialogTitle.equals(I18n.get("menu.config.noteTypes")) || dialogTitle.equals(I18n.get("nav.cfgManageNoteTypes")))        rangeId = "note-type";
+        else if (dialogTitle.equals(I18n.get("menu.config.translationTypes")) || dialogTitle.equals(I18n.get("nav.cfgManageTransTypes"))) rangeId = "translation-type";
         else if (dialogTitle.equals(I18n.get("menu.config.traitTypes")))   rangeId = "grammatical-info";
+        else if (dialogTitle.equals(I18n.get("menu.config.annotationTypes")) || dialogTitle.equals(I18n.get("nav.cfgManageAnnotationTypes"))) rangeId = "annotation-type";
+        else if (dialogTitle.equals(I18n.get("nav.cfgManageRelationTypes"))) rangeId = "lexical-relation";
 
         if (rangeId != null) {
             // Trouve ou crée le range

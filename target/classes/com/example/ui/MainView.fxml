@@ -76,16 +76,6 @@
             </Menu>
           </items>
         </Menu>
-        <Menu text="%menu.config">
-          <items>
-            <MenuItem text="%menu.config.noteTypes" onAction="#onConfigNoteTypes"/>
-            <MenuItem text="%menu.config.translationTypes" onAction="#onConfigTranslationTypes"/>
-            <MenuItem text="%menu.config.languages" onAction="#onConfigLanguages"/>
-            <MenuItem text="%menu.config.traitTypes" onAction="#onConfigTraitTypes"/>
-            <MenuItem text="%menu.config.annotationTypes" onAction="#onConfigAnnotationTypes"/>
-            <MenuItem text="%menu.config.fieldTypes" onAction="#onConfigFieldTypes"/>
-          </items>
-        </Menu>
         <Menu text="%menu.tools">
           <items>
             <MenuItem text="%menu.tools.validate" onAction="#onValidateDictionary"/>
