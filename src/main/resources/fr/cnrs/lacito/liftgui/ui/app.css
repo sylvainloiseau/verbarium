@@ -98,6 +98,22 @@
   -fx-font-size: 13px;
 }
 
+/* ─── Filtres de colonnes : ComboBox avec espace pour afficher "Filtrer" sans troncature ─── */
+.filter-combo {
+  -fx-min-width: 85px;
+  -fx-padding: 4 8 4 8;
+}
+.filter-combo .list-cell {
+  -fx-padding: 4 8 4 8;
+  -fx-min-width: 55px;
+}
+/* Réduire la zone de la flèche pour libérer de l'espace pour le texte */
+.filter-combo .arrow-button {
+  -fx-padding: 0 6 0 4;
+  -fx-min-width: 22px;
+  -fx-pref-width: 22px;
+}
+
 /* ─── Table views ─── */
 .table-view .column-header-background {
   -fx-background-color: white;

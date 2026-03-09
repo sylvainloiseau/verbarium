@@ -326,7 +326,7 @@ public final class MainController {
 
         // Second group: Ranges (Taxinomies) - parent node with dynamic range entries as children
         TreeItem<String> rangesNode = new TreeItem<>(I18n.get("nav.cfgRanges"));
-        rangesNode.setExpanded(true);
+        rangesNode.setExpanded(false);
         if (currentDictionary != null) {
             LiftHeader header = currentDictionary.getLiftDictionaryComponents().getHeader();
             if (header != null) {
@@ -496,16 +496,21 @@ public final class MainController {
         row.setHgap(0);
         row.setPadding(new Insets(2, 0, 2, 0));
         row.setStyle("-fx-background-color: #eef2f3;");
+        row.setMinWidth(0);
         String clearOption = I18n.get("filter.clear");
         List<TableColumn<LiftEntry, ?>> leaves = collectLeafColumns(entryTable);
 
         for (int i = 0; i < leaves.size(); i++) {
             TableColumn<LiftEntry, ?> col = leaves.get(i);
             ComboBox<String> cb = new ComboBox<>();
+            cb.getStyleClass().add("filter-combo");
             cb.setPromptText(I18n.get("filter.prompt"));
             cb.setEditable(false);
             cb.setMaxWidth(Double.MAX_VALUE);
-            cb.setStyle("-fx-font-size: 11px; -fx-padding: 0 2 0 2;");
+            cb.setMinWidth(0);
+            cb.setMinHeight(26);
+            cb.setPrefHeight(26);
+            cb.setStyle("-fx-font-size: 11px;");
             cb.setCellFactory(list -> new ListCell<>() {
                 @Override protected void updateItem(String item, boolean empty) {
                     super.updateItem(item, empty);
@@ -552,6 +557,12 @@ public final class MainController {
         } finally {
             entryFilterInternalUpdate = false;
         }
+
+        // Aligner la largeur des filtres sur la zone des colonnes (prend en compte la scrollbar verticale)
+        row.maxWidthProperty().bind(Bindings.createDoubleBinding(
+            () -> leaves.stream().mapToDouble(c -> c.getWidth()).sum(),
+            leaves.stream().<javafx.beans.Observable>map(col -> col.widthProperty()).toArray(javafx.beans.Observable[]::new)
+        ));
         return row;
     }
 
@@ -562,6 +573,7 @@ public final class MainController {
 
         // ── Colonne Code (trait "code") ──
         TableColumn<LiftEntry, String> codeCol = new TableColumn<>(I18n.get("col.code"));
+        codeCol.setMinWidth(85);
         codeCol.setPrefWidth(120);
         codeCol.setCellValueFactory(cd -> {
             LiftEntry e = cd.getValue();
@@ -591,6 +603,7 @@ public final class MainController {
         TableColumn<LiftEntry, String> formGroup = new TableColumn<>(I18n.get("col.form"));
         for (String lang : formLangs) {
             TableColumn<LiftEntry, String> c = new TableColumn<>(lang);
+            c.setMinWidth(85);
             c.setPrefWidth(140);
             c.setCellValueFactory(cd -> cd.getValue() == null
                     ? new ReadOnlyStringWrapper("")
@@ -611,6 +624,7 @@ public final class MainController {
 
         // ── Colonne morph-type (trait "morph-type") ──
         TableColumn<LiftEntry, String> morphCol = new TableColumn<>(I18n.get("col.morphType"));
+        morphCol.setMinWidth(85);
         morphCol.setPrefWidth(110);
         morphCol.setCellValueFactory(cd -> {
             LiftEntry e = cd.getValue();
@@ -633,6 +647,7 @@ public final class MainController {
 
         // ── Colonne Date (lecture seule) ──
         TableColumn<LiftEntry, String> dateCol = new TableColumn<>(I18n.get("col.dateCreated"));
+        dateCol.setMinWidth(85);
         dateCol.setPrefWidth(130);
         dateCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(
                 cd.getValue() == null ? "" : cd.getValue().getDateCreated().orElse("")));
@@ -660,7 +675,7 @@ public final class MainController {
         senseTable.getColumns().addAll(idCol, giCol, glossGroup, defGroup);
         senseTable.getItems().addAll(currentDictionary.getLiftDictionaryComponents().getAllSenses());
         senseTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> { if (n != null) populateSenseEditor(n); });
-        tableContainer.getChildren().setAll(wrapTableWithFilters(senseTable, (f,t) -> updateCountLabel(f,t)));
+        tableContainer.getChildren().setAll(wrapTableWithFilters(senseTable, (f,t) -> updateCountLabel(f,t), searchField != null ? searchField.textProperty() : null));
         updateCountLabel(senseTable.getItems().size(), senseTable.getItems().size());
     }
 
@@ -680,7 +695,7 @@ public final class MainController {
         exampleTable.getColumns().addAll(srcCol, exGroup);
         exampleTable.getItems().addAll(currentDictionary.getLiftDictionaryComponents().getAllExamples());
         exampleTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> { if (n != null) populateExampleEditor(n); });
-        tableContainer.getChildren().setAll(wrapTableWithFilters(exampleTable, (f,t2) -> updateCountLabel(f,t2)));
+        tableContainer.getChildren().setAll(wrapTableWithFilters(exampleTable, (f,t2) -> updateCountLabel(f,t2), searchField != null ? searchField.textProperty() : null));
         updateCountLabel(exampleTable.getItems().size(), exampleTable.getItems().size());
     }
 
@@ -701,7 +716,7 @@ public final class MainController {
         noteTable.getColumns().addAll(parentTypeCol, typeCol, textGroup);
         noteTable.getItems().addAll(currentDictionary.getLiftDictionaryComponents().getAllNotes());
         noteTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> { if (n != null) populateNoteEditor(n); });
-        tableContainer.getChildren().setAll(wrapTableWithFilters(noteTable, (f,t2) -> updateCountLabel(f,t2)));
+        tableContainer.getChildren().setAll(wrapTableWithFilters(noteTable, (f,t2) -> updateCountLabel(f,t2), searchField != null ? searchField.textProperty() : null));
         updateCountLabel(noteTable.getItems().size(), noteTable.getItems().size());
     }
 
@@ -724,7 +739,7 @@ public final class MainController {
         variantTable.getColumns().addAll(parentFormGroup, variantTypeCol, isPrimaryCol, refCol, formGroup);
         variantTable.getItems().addAll(currentDictionary.getLiftDictionaryComponents().getAllVariants());
         variantTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> { if (n != null) populateVariantEditor(n); });
-        tableContainer.getChildren().setAll(wrapTableWithFilters(variantTable, (f,t2) -> updateCountLabel(f,t2)));
+        tableContainer.getChildren().setAll(wrapTableWithFilters(variantTable, (f,t2) -> updateCountLabel(f,t2), searchField != null ? searchField.textProperty() : null));
         updateCountLabel(variantTable.getItems().size(), variantTable.getItems().size());
     }
 
@@ -761,7 +776,7 @@ public final class MainController {
         relationTable.getColumns().addAll(parentFormGroup, typeCol, refFormGroup, usageCol);
         relationTable.getItems().addAll(currentDictionary.getLiftDictionaryComponents().getAllRelations());
         relationTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> { if (n != null) populateRelationEditor(n); });
-        tableContainer.getChildren().setAll(wrapTableWithFilters(relationTable, (f,t2) -> updateCountLabel(f,t2)));
+        tableContainer.getChildren().setAll(wrapTableWithFilters(relationTable, (f,t2) -> updateCountLabel(f,t2), searchField != null ? searchField.textProperty() : null));
         updateCountLabel(relationTable.getItems().size(), relationTable.getItems().size());
     }
 
@@ -867,7 +882,7 @@ public final class MainController {
         langFieldTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
             if (n != null) populateLangFieldEditor(n);
         });
-        tableContainer.getChildren().setAll(wrapTableWithFilters(langFieldTable, (f,t2) -> updateCountLabel(f,t2)));
+        tableContainer.getChildren().setAll(wrapTableWithFilters(langFieldTable, (f,t2) -> updateCountLabel(f,t2), searchField != null ? searchField.textProperty() : null));
         updateCountLabel(rows.size(), rows.size());
     }
 
@@ -885,7 +900,7 @@ public final class MainController {
         traitTable.setItems(FXCollections.observableArrayList());
         traitTable.getColumns().clear();
         if (currentDictionary == null) { tableContainer.getChildren().setAll(wrapTableWithFilters(traitTable,
-                (filtered, total) -> updateCountLabel(filtered, total))); return; }
+                (filtered, total) -> updateCountLabel(filtered, total), searchField != null ? searchField.textProperty() : null)); return; }
 
         List<LiftTrait> allTraits = currentDictionary.getLiftDictionaryComponents().getAllTraits();
 
@@ -904,7 +919,7 @@ public final class MainController {
             if (n != null) populateTraitSummaryEditor(n);
         });
 
-        tableContainer.getChildren().setAll(wrapTableWithFilters(traitTable, (f,t2) -> updateCountLabel(f,t2)));
+        tableContainer.getChildren().setAll(wrapTableWithFilters(traitTable, (f,t2) -> updateCountLabel(f,t2), searchField != null ? searchField.textProperty() : null));
         updateCountLabel(allTraits.size(), allTraits.size());
     }
 
@@ -932,7 +947,7 @@ public final class MainController {
             if (n != null) populateAnnotationSummaryEditor(n);
         });
 
-        tableContainer.getChildren().setAll(wrapTableWithFilters(annotationTable, (f,t2) -> updateCountLabel(f,t2)));
+        tableContainer.getChildren().setAll(wrapTableWithFilters(annotationTable, (f,t2) -> updateCountLabel(f,t2), searchField != null ? searchField.textProperty() : null));
         updateCountLabel(all.size(), all.size());
     }
 
@@ -951,7 +966,7 @@ public final class MainController {
         fieldTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
             if (n != null) populateFieldSummaryEditor(n);
         });
-        tableContainer.getChildren().setAll(wrapTableWithFilters(fieldTable, (f,t2) -> updateCountLabel(f,t2)));
+        tableContainer.getChildren().setAll(wrapTableWithFilters(fieldTable, (f,t2) -> updateCountLabel(f,t2), searchField != null ? searchField.textProperty() : null));
         updateCountLabel(fieldTable.getItems().size(), fieldTable.getItems().size());
     }
 
@@ -2247,9 +2262,12 @@ public final class MainController {
     /**
      * Wraps a TableView in a VBox with a row of TextFields below the headers.
      * Each TextField filters its column; only rows matching ALL column filters are shown.
+     * If searchTextProperty is non-null, the global search bar also filters rows (any visible column).
      */
     @SuppressWarnings("unchecked")
-    private static <T> VBox wrapTableWithFilters(TableView<T> table, java.util.function.BiConsumer<Integer,Integer> onCountChanged) {        ObservableList<T> sourceItems = FXCollections.observableArrayList(table.getItems());
+    private static <T> VBox wrapTableWithFilters(TableView<T> table, java.util.function.BiConsumer<Integer,Integer> onCountChanged,
+            javafx.beans.property.StringProperty searchTextProperty) {
+        ObservableList<T> sourceItems = FXCollections.observableArrayList(table.getItems());
         FilteredList<T> filtered = new FilteredList<>(sourceItems, t -> true);
         table.setItems(filtered);
 
@@ -2261,12 +2279,18 @@ public final class MainController {
 
         GridPane filterRow = new GridPane();
         filterRow.setHgap(0);
-        filterRow.setPadding(new Insets(4, 6, 4, 6));
+        filterRow.setPadding(new Insets(4, 0, 4, 0));
         filterRow.setStyle("-fx-background-color: #eef2f3;");
+        filterRow.setMinWidth(0);
+
+        java.util.function.Supplier<String> searchTextSupplier = () ->
+            searchTextProperty != null ? Optional.ofNullable(searchTextProperty.get()).orElse("").trim().toLowerCase(Locale.ROOT) : "";
 
         Runnable refreshPredicate = () -> {
+            String q = searchTextSupplier.get();
             filtered.setPredicate(row ->
                     rowMatchesAllFilters(row, leaves, filterInputs, textFilterColumns, clearOption, -1)
+                    && rowMatchesSearch(row, leaves, q)
             );
             if (onCountChanged != null)
                 javafx.application.Platform.runLater(() -> onCountChanged.accept(filtered.size(), sourceItems.size()));
@@ -2276,6 +2300,7 @@ public final class MainController {
             if (internalUpdate.get()) return;
             internalUpdate.set(true);
             try {
+                String q = searchTextSupplier.get();
                 for (int i = 0; i < leaves.size(); i++) {
                     if (textFilterColumns.get(i)) continue;
                     ComboBox<String> combo = (ComboBox<String>) filterInputs.get(i);
@@ -2283,7 +2308,8 @@ public final class MainController {
                     final int colIndex = i;
 
                     List<String> values = sourceItems.stream()
-                        .filter(row -> rowMatchesAllFilters(row, leaves, filterInputs, textFilterColumns, clearOption, colIndex))
+                        .filter(row -> rowMatchesAllFilters(row, leaves, filterInputs, textFilterColumns, clearOption, colIndex)
+                                && rowMatchesSearch(row, leaves, q))
                         .map(row -> cellText(row, leaves.get(colIndex)))
                         .filter(s -> s != null && !s.isBlank())
                         .distinct()
@@ -2303,8 +2329,18 @@ public final class MainController {
             }
         };
 
+        if (searchTextProperty != null) {
+            searchTextProperty.addListener((obs, o, n) -> {
+                refreshPredicate.run();
+                refreshFacetChoices.run();
+            });
+        }
+
         Button clearBtn = new Button(I18n.get("filter.resetAll"));
         clearBtn.setOnAction(e -> {
+            if (searchTextProperty != null && !searchTextProperty.get().isBlank()) {
+                searchTextProperty.set("");
+            }
             internalUpdate.set(true);
             try {
                 for (int i = 0; i < filterInputs.size(); i++) {
@@ -2327,6 +2363,7 @@ public final class MainController {
 
         for (int i = 0; i < leaves.size(); i++) {
             TableColumn<T, ?> column = leaves.get(i);
+            column.setMinWidth(85);
             boolean forceText = FILTER_MODE_TEXT.equals(column.getProperties().get("filterMode"));
             final int colIdx = i;
             long distinct = sourceItems.stream()
@@ -2345,7 +2382,10 @@ public final class MainController {
                 TextField tf = new TextField();
                 tf.setPromptText(I18n.get("filter.prompt"));
                 tf.setMaxWidth(Double.MAX_VALUE);
-                tf.setStyle("-fx-font-size: 11px; -fx-padding: 0 2 0 2;");
+                tf.setMinWidth(0);
+                tf.setMinHeight(26);
+                tf.setPrefHeight(26);
+                tf.setStyle("-fx-font-size: 11px; -fx-padding: 4 6 4 6;");
                 filterInputs.add(tf);
                 GridPane.setHgrow(tf, Priority.ALWAYS);
                 filterRow.add(tf, i, 0);
@@ -2358,10 +2398,14 @@ public final class MainController {
             }
 
             ComboBox<String> cb = new ComboBox<>();
+            cb.getStyleClass().add("filter-combo");
             cb.setPromptText(I18n.get("filter.prompt"));
             cb.setEditable(false);
             cb.setMaxWidth(Double.MAX_VALUE);
-            cb.setStyle("-fx-font-size: 11px; -fx-padding: 0 2 0 2;");
+            cb.setMinWidth(0);
+            cb.setMinHeight(26);
+            cb.setPrefHeight(26);
+            cb.setStyle("-fx-font-size: 11px;");
             cb.setCellFactory(list -> new ListCell<>() {
                 @Override protected void updateItem(String item, boolean empty) {
                     super.updateItem(item, empty);
@@ -2412,13 +2456,35 @@ public final class MainController {
         refreshPredicate.run();
         refreshFacetChoices.run();
 
+        // Aligner la largeur des filtres sur la zone des colonnes (prend en compte la scrollbar verticale)
+        filterRow.maxWidthProperty().bind(Bindings.createDoubleBinding(
+            () -> leaves.stream().mapToDouble(c -> c.getWidth()).sum(),
+            leaves.stream().<javafx.beans.Observable>map(TableColumn::widthProperty).toArray(javafx.beans.Observable[]::new)
+        ));
+
         VBox wrapper = new VBox(header, filterRow, table);
+        wrapper.setMinWidth(0);
+        filterRow.setMinWidth(0);
+        table.setMinWidth(0);
         VBox.setVgrow(table, Priority.ALWAYS);
         return wrapper;
     }
     private static <T> VBox wrapTableWithFilters(TableView<T> table) {
-        return wrapTableWithFilters(table, null);
+        return wrapTableWithFilters(table, null, null);
     }
+    private static <T> VBox wrapTableWithFilters(TableView<T> table, java.util.function.BiConsumer<Integer,Integer> onCountChanged) {
+        return wrapTableWithFilters(table, onCountChanged, null);
+    }
+    private static <T> boolean rowMatchesSearch(T row, List<TableColumn<T, ?>> leaves, String searchText) {
+        if (searchText == null || searchText.isEmpty()) return true;
+        StringBuilder sb = new StringBuilder();
+        for (TableColumn<T, ?> col : leaves) {
+            String ct = cellText(row, col);
+            if (ct != null) sb.append(" ").append(ct);
+        }
+        return sb.toString().toLowerCase(Locale.ROOT).contains(searchText);
+    }
+
     private static <T> boolean rowMatchesAllFilters(
         T row,
         List<TableColumn<T, ?>> leaves,
