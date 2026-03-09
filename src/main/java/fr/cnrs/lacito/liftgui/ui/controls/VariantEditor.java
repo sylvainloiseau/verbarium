@@ -13,6 +13,7 @@ package fr.cnrs.lacito.liftgui.ui.controls;
 import fr.cnrs.lacito.liftapi.model.LiftPronunciation;
 import fr.cnrs.lacito.liftapi.model.LiftRelation;
 import fr.cnrs.lacito.liftapi.model.LiftVariant;
+import fr.cnrs.lacito.liftapi.model.MultiText;
 import javafx.geometry.Insets;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
@@ -31,6 +32,7 @@ import java.util.Collection;
 public final class VariantEditor extends VBox {
 
     private final TextField refIdField = new TextField();
+    private final MultiTextEditor parentEntryFormsEditor = new MultiTextEditor();
     private final MultiTextEditor formsEditor = new MultiTextEditor();
     private final VBox pronunciationsBox = new VBox(6);
     private final VBox relationsBox = new VBox(6);
@@ -42,6 +44,10 @@ public final class VariantEditor extends VBox {
         setStyle("-fx-border-color: #bbc; -fx-border-radius: 4; -fx-background-color: #f6f6fa; -fx-background-radius: 4;");
 
         refIdField.setPromptText("ref ID");
+
+        TitledPane parentFormsPane = new TitledPane("Entrée parent (lexical-unit)", parentEntryFormsEditor);
+        parentFormsPane.setExpanded(true);
+        parentFormsPane.setAnimated(false);
 
         GridPane grid = new GridPane();
         grid.setHgap(8);
@@ -66,7 +72,7 @@ public final class VariantEditor extends VBox {
         extPane.setExpanded(false);
         extPane.setAnimated(false);
 
-        getChildren().addAll(grid, formsPane, pronPane, relPane, extPane);
+        getChildren().addAll(parentFormsPane, grid, formsPane, pronPane, relPane, extPane);
     }
 
     /**
@@ -80,13 +86,20 @@ public final class VariantEditor extends VBox {
 
         if (v == null) {
             refIdField.setText("");
+            parentEntryFormsEditor.setMultiText(null);
             formsEditor.setMultiText(null);
             extensibleEditor.setModel(null, metaLangs);
             return;
         }
         refIdField.setText(v.getRefId().orElse(""));
+        LiftVariant variant = v;
+        MultiText parentForms = variant.getParent() != null ? variant.getParent().getForms() : null;
+        parentEntryFormsEditor.setAvailableLanguages(objLangs);
+        parentEntryFormsEditor.setMultiText(parentForms);
+        parentEntryFormsEditor.setReadOnly(true);
         formsEditor.setAvailableLanguages(objLangs);
         formsEditor.setMultiText(v.getForms());
+        formsEditor.setReadOnly(true);
 
         for (LiftPronunciation p : v.getPronunciations()) {
             PronunciationEditor pe = new PronunciationEditor();

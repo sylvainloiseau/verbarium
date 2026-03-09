@@ -41,6 +41,7 @@ public final class MultiTextEditor extends VBox {
     private final ObservableList<String> allLanguages = FXCollections.observableArrayList();
 
     private MultiText multiText;
+    private boolean readOnly;
 
     public MultiTextEditor() {
         super(8);
@@ -84,6 +85,18 @@ public final class MultiTextEditor extends VBox {
         rebuild();
     }
 
+    /** When true, displays content as read-only (grayed, non-editable). */
+    public void setReadOnly(boolean readOnly) {
+        this.readOnly = readOnly;
+        addLangCombo.setVisible(!readOnly);
+        addLangCombo.setManaged(!readOnly);
+        if (readOnly) setStyle("-fx-background-color: #e8e8e8; -fx-opacity: 0.9;");
+        else setStyle("");
+        for (var node : rowsBox.getChildren()) {
+            if (node instanceof Row r) r.applyReadOnly(readOnly);
+        }
+    }
+
     private void rebuild() {
         rowsBox.getChildren().clear();
         if (multiText == null) { refreshAddLangChoices(); rebuildAnnotations(); return; }
@@ -94,7 +107,9 @@ public final class MultiTextEditor extends VBox {
         allLanguages.sort(Comparator.naturalOrder());
 
         for (String lang : sorted(multiText.getLangs())) {
-            rowsBox.getChildren().add(new Row(lang));
+            Row row = new Row(lang);
+            rowsBox.getChildren().add(row);
+            if (readOnly) row.applyReadOnly(true);
         }
         refreshAddLangChoices();
         rebuildAnnotations();
@@ -203,6 +218,15 @@ public final class MultiTextEditor extends VBox {
             getChildren().addAll(langLabel, textField, removeButton, editButton);
 
             bindToLang(safeTrim(lang));
+        }
+
+        void applyReadOnly(boolean ro) {
+            textField.setEditable(!ro);
+            textField.setStyle(ro ? "-fx-background-color: #e0e0e0; -fx-text-fill: #555;" : "");
+            removeButton.setVisible(!ro);
+            removeButton.setManaged(!ro);
+            editButton.setVisible(!ro);
+            editButton.setManaged(!ro);
         }
 
         private void removeRow() {

@@ -712,10 +712,16 @@ public final class MainController {
         variantTable.getColumns().clear();
         if (currentDictionary == null) { tableContainer.getChildren().setAll(variantTable); return; }
         List<String> objLangs = getObjectLanguages();
+        TableColumn<LiftVariant, String> parentFormGroup = new TableColumn<>(I18n.get("col.parentEntry"));
+        for (String l : objLangs) {
+            parentFormGroup.getColumns().add(col(l, v -> v.getParent() != null ? v.getParent().getForms().getForm(l).map(Form::toPlainText).orElse("") : ""));
+        }
+        TableColumn<LiftVariant, String> variantTypeCol = col("variant-type", v -> getTraitValueFor(v, "variant-type"));
+        TableColumn<LiftVariant, String> isPrimaryCol = col("is-primary", v -> getTraitValueFor(v, "is-primary"));
         TableColumn<LiftVariant, String> refCol = col(I18n.get("col.ref"), v -> v.getRefId().orElse(""));
         TableColumn<LiftVariant, String> formGroup = new TableColumn<>(I18n.get("col.forms"));
         for (String l : objLangs) formGroup.getColumns().add(col(l, v -> v.getForms().getForm(l).map(Form::toPlainText).orElse("")));
-        variantTable.getColumns().addAll(refCol, formGroup);
+        variantTable.getColumns().addAll(parentFormGroup, variantTypeCol, isPrimaryCol, refCol, formGroup);
         variantTable.getItems().addAll(currentDictionary.getLiftDictionaryComponents().getAllVariants());
         variantTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> { if (n != null) populateVariantEditor(n); });
         tableContainer.getChildren().setAll(wrapTableWithFilters(variantTable, (f,t2) -> updateCountLabel(f,t2)));
@@ -728,18 +734,31 @@ public final class MainController {
         relationTable.setItems(FXCollections.observableArrayList());
         relationTable.getColumns().clear();
         if (currentDictionary == null) { tableContainer.getChildren().setAll(relationTable); return; }
+        List<String> objLangs = getObjectLanguages();
         List<String> metaLangs = getMetaLanguages();
-        relationTable.getColumns().addAll(
-            col(I18n.get("col.type"), (LiftRelation r) -> r.getType() != null ? r.getType() : ""),
-            col(I18n.get("col.ref"), (LiftRelation r) -> r.getRefID().orElse("")),
-            col(I18n.get("col.parentType"), (LiftRelation r) -> describeParentType(r.getParent())),
-            col(I18n.get("col.parent"), (LiftRelation r) -> describeParent(r.getParent()))
-        );
+        var entryById = currentDictionary.getLiftDictionaryComponents().getEntryById();
+        TableColumn<LiftRelation, String> parentFormGroup = new TableColumn<>(I18n.get("col.parentEntry"));
+        for (String l : objLangs) {
+            parentFormGroup.getColumns().add(col(l, r -> {
+                MultiText forms = getParentEntryForms(r);
+                return forms != null ? forms.getForm(l).map(Form::toPlainText).orElse("") : "";
+            }));
+        }
+        TableColumn<LiftRelation, String> typeCol = col(I18n.get("col.type"), (LiftRelation r) -> r.getType() != null ? r.getType() : "");
+        TableColumn<LiftRelation, String> refFormGroup = new TableColumn<>(I18n.get("col.ref") + " (form)");
+        for (String l : objLangs) {
+            refFormGroup.getColumns().add(col(l, r -> {
+                String refId = r.getRefID().orElse("");
+                if (refId.isBlank()) return "";
+                LiftEntry pointed = entryById != null ? entryById.get(refId) : null;
+                return pointed != null ? pointed.getForms().getForm(l).map(Form::toPlainText).orElse("") : "";
+            }));
+        }
         TableColumn<LiftRelation, String> usageCol = new TableColumn<>(I18n.get("col.usage"));
         for (String l : metaLangs) {
             usageCol.getColumns().add(col(l, r -> r.getUsage().getForm(l).map(Form::toPlainText).orElse("")));
         }
-        relationTable.getColumns().add(usageCol);
+        relationTable.getColumns().addAll(parentFormGroup, typeCol, refFormGroup, usageCol);
         relationTable.getItems().addAll(currentDictionary.getLiftDictionaryComponents().getAllRelations());
         relationTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> { if (n != null) populateRelationEditor(n); });
         tableContainer.getChildren().setAll(wrapTableWithFilters(relationTable, (f,t2) -> updateCountLabel(f,t2)));
@@ -785,10 +804,12 @@ public final class MainController {
     private void showEtymologyView() {
         TableView<LiftEtymology> etyTable = new TableView<>();
         if (currentDictionary == null) { tableContainer.getChildren().setAll(etyTable); return; }
-        etyTable.getColumns().addAll(
-            col(I18n.get("col.type"), (LiftEtymology e) -> e.getType() != null ? e.getType() : ""),
-            col(I18n.get("col.source"), (LiftEtymology e) -> e.getSource() != null ? e.getSource() : "")
-        );
+        List<String> objLangs = getObjectLanguages();
+        TableColumn<LiftEtymology, String> typeCol = col(I18n.get("col.type"), (LiftEtymology e) -> e.getType() != null ? e.getType() : "");
+        TableColumn<LiftEtymology, String> sourceCol = col(I18n.get("col.source"), (LiftEtymology e) -> e.getSource() != null ? e.getSource() : "");
+        TableColumn<LiftEtymology, String> formGroup = new TableColumn<>(I18n.get("col.forms"));
+        for (String l : objLangs) formGroup.getColumns().add(col(l, e -> e.getForms().getForm(l).map(Form::toPlainText).orElse("")));
+        etyTable.getColumns().addAll(typeCol, sourceCol, formGroup);
         currentDictionary.getLiftDictionaryComponents().getAllEntries().stream()
             .flatMap(e -> e.getEtymologies().stream()).forEach(etyTable.getItems()::add);
         tableContainer.getChildren().setAll(wrapTableWithFilters(etyTable, (f,t2) -> updateCountLabel(f,t2)));
@@ -3044,6 +3065,17 @@ public final class MainController {
 
     private static String getTraitValue(LiftEntry e, String name) {
         return e == null ? "" : e.getTraits().stream().filter(t -> name.equals(t.getName())).findFirst().map(LiftTrait::getValue).orElse("");
+    }
+    private static String getTraitValueFor(LiftVariant v, String name) {
+        return v == null || v.getTraits() == null ? "" : v.getTraits().stream().filter(t -> name.equals(t.getName())).findFirst().map(LiftTrait::getValue).orElse("");
+    }
+    private MultiText getParentEntryForms(LiftRelation r) {
+        if (r == null || r.getParent() == null) return null;
+        AbstractExtensibleWithoutField p = r.getParent();
+        if (p instanceof LiftEntry e) return e.getForms();
+        if (p instanceof LiftSense s) return findParentEntry(s).map(LiftEntry::getForms).orElse(null);
+        if (p instanceof LiftVariant v) return v.getParent() != null ? v.getParent().getForms() : null;
+        return null;
     }
 
     private static String buildSearchText(LiftEntry entry) {
