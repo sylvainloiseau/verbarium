@@ -947,7 +947,6 @@ public final class MainController {
 
         traitTable.getColumns().addAll(
             col(I18n.get("col.parentType"), (LiftTrait t) -> describeParentType(t.getParent())),
-            col(I18n.get("col.parent"), (LiftTrait t) -> describeParent(t.getParent())),
             col(I18n.get("col.name"), LiftTrait::getName),
             col(I18n.get("col.value"), LiftTrait::getValue),
             col(I18n.get("col.frequency"), t -> {
