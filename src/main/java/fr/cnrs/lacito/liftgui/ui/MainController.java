@@ -124,7 +124,6 @@ public final class MainController {
     private static final String NAV_ANNOTATIONS = "nav.annotations";
     private static final String NAV_FIELDS      = "nav.fields";
     private static final String NAV_GRAM_INFO   = "nav.gramInfo";
-    private static final String NAV_POS         = "nav.pos";
     private static final String NAV_TRANS_TYPES = "nav.transTypes";
     private static final String NAV_NOTE_TYPES  = "nav.noteTypes";
     private static final String NAV_QUICK_ENTRY = "nav.quickEntry";
@@ -285,7 +284,7 @@ public final class MainController {
         TreeItem<String> cats = new TreeItem<>(I18n.get("nav.categories"));
         cats.setExpanded(true);
         cats.getChildren().addAll(
-            navItem(NAV_GRAM_INFO), navItem(NAV_POS),
+            navItem(NAV_GRAM_INFO),
             navItem(NAV_TRAITS), navItem(NAV_ANNOTATIONS),
             navItem(NAV_TRANS_TYPES), navItem(NAV_NOTE_TYPES),
             navItem(NAV_FIELDS)
@@ -420,7 +419,6 @@ public final class MainController {
             case NAV_ANNOTATIONS -> showAnnotationView();
             case NAV_FIELDS      -> showFieldView();
             case NAV_GRAM_INFO   -> showGramInfoView();
-            case NAV_POS         -> showPosView();
             case NAV_TRANS_TYPES -> showTranslationTypesView();
             case NAV_NOTE_TYPES  -> showNoteTypesView();
             case NAV_QUICK_ENTRY -> showQuickEntryView();
@@ -2128,7 +2126,6 @@ public final class MainController {
     @FXML private void onViewAnnotations() { switchView(NAV_ANNOTATIONS); }
     @FXML private void onViewFields() { switchView(NAV_FIELDS); }
     @FXML private void onViewGramInfo() { switchView(NAV_GRAM_INFO); }
-    @FXML private void onViewPos() { switchView(NAV_POS); }
     @FXML private void onViewTransTypes() { switchView(NAV_TRANS_TYPES); }
     @FXML private void onViewNoteTypes() { switchView(NAV_NOTE_TYPES); }
 
@@ -2282,23 +2279,6 @@ public final class MainController {
             s.getGrammaticalInfo().ifPresent(gi -> counts.merge(gi.getValue(), 1L, Long::sum));
         }
         showCategoryTable(I18n.get("nav.gramInfo"), I18n.get("col.value"), counts);
-    }
-
-    /* ════════════════════ POS VIEW ════════════════════ */
-
-    private void showPosView() {
-        if (currentDictionary == null) { tableContainer.getChildren().setAll(new Label(I18n.get("placeholder.noDictionary"))); return; }
-        Map<String, Long> counts = new LinkedHashMap<>();
-        for (LiftTrait t : currentDictionary.getLiftDictionaryComponents().getAllTraits()) {
-            if ("from-part-of-speech".equals(t.getName()) || "POS".equalsIgnoreCase(t.getName())) {
-                counts.merge(t.getValue(), 1L, Long::sum);
-            }
-        }
-        // Also count grammatical-info values as POS
-        for (LiftSense s : currentDictionary.getLiftDictionaryComponents().getAllSenses()) {
-            s.getGrammaticalInfo().ifPresent(gi -> counts.merge(gi.getValue(), 1L, Long::sum));
-        }
-        showCategoryTable(I18n.get("nav.pos"), I18n.get("col.category"), counts);
     }
 
     /* ════════════════════ TRANSLATION TYPES VIEW ════════════════════ */
