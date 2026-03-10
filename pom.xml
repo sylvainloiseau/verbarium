@@ -20,7 +20,7 @@
     <javafx.version>21</javafx.version>
   </properties>
 
-  <dependencies>
+    <dependencies>
     <dependency>
       <groupId>fr.cnrs.lacito</groupId>
       <artifactId>lift-api</artifactId>

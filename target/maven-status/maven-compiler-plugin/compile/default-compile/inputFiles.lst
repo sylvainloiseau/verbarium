@@ -18,5 +18,11 @@ C:\Users\leila\cgp-dico\multilingual-dictionary-editor\dictionary-editor-fx\src\
 C:\Users\leila\cgp-dico\multilingual-dictionary-editor\dictionary-editor-fx\src\main\java\fr\cnrs\lacito\liftgui\ui\controls\TraitEditor.java
 C:\Users\leila\cgp-dico\multilingual-dictionary-editor\dictionary-editor-fx\src\main\java\fr\cnrs\lacito\liftgui\ui\controls\VariantEditor.java
 C:\Users\leila\cgp-dico\multilingual-dictionary-editor\dictionary-editor-fx\src\main\java\fr\cnrs\lacito\liftgui\ui\I18n.java
+C:\Users\leila\cgp-dico\multilingual-dictionary-editor\dictionary-editor-fx\src\main\java\fr\cnrs\lacito\liftgui\ui\Icons.java
 C:\Users\leila\cgp-dico\multilingual-dictionary-editor\dictionary-editor-fx\src\main\java\fr\cnrs\lacito\liftgui\ui\MainController.java
 C:\Users\leila\cgp-dico\multilingual-dictionary-editor\dictionary-editor-fx\src\main\java\fr\cnrs\lacito\liftgui\ui\model\SenseRow.java
+C:\Users\leila\cgp-dico\multilingual-dictionary-editor\dictionary-editor-fx\src\main\java\fr\cnrs\lacito\liftgui\undo\DeleteEntryCommand.java
+C:\Users\leila\cgp-dico\multilingual-dictionary-editor\dictionary-editor-fx\src\main\java\fr\cnrs\lacito\liftgui\undo\DeleteExampleCommand.java
+C:\Users\leila\cgp-dico\multilingual-dictionary-editor\dictionary-editor-fx\src\main\java\fr\cnrs\lacito\liftgui\undo\DeleteSenseCommand.java
+C:\Users\leila\cgp-dico\multilingual-dictionary-editor\dictionary-editor-fx\src\main\java\fr\cnrs\lacito\liftgui\undo\UndoableCommand.java
+C:\Users\leila\cgp-dico\multilingual-dictionary-editor\dictionary-editor-fx\src\main\java\fr\cnrs\lacito\liftgui\undo\UndoManager.java

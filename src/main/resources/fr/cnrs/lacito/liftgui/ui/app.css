@@ -3,6 +3,28 @@
   -fx-background-color: #f4f6f7;
 }
 
+/* ─── Barre du haut (menu + flèches Undo/Redo à droite) ─── */
+.top-bar {
+  -fx-background-color: #4c6f76;
+}
+.toolbar-inline {
+  -fx-background-color: transparent;
+}
+.toolbar-button {
+  -fx-background-color: transparent;
+  -fx-min-width: 32px;
+  -fx-min-height: 32px;
+  -fx-padding: 4;
+}
+.toolbar-button:hover {
+  -fx-background-color: rgba(255, 255, 255, 0.18);
+  -fx-cursor: hand;
+}
+.toolbar-button:disabled {
+  -fx-opacity: 0.4;
+  -fx-cursor: default;
+}
+
 /* ─── Top menu bar ─── */
 .top-menu {
   -fx-background-color: #4c6f76;

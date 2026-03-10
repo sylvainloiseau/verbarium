@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
+<?import javafx.geometry.Pos?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.Menu?>
@@ -13,6 +14,7 @@
 <?import javafx.scene.control.TreeView?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Priority?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
@@ -22,7 +24,8 @@
             styleClass="root">
 
   <top>
-    <MenuBar fx:id="menuBar" BorderPane.alignment="CENTER" styleClass="top-menu">
+    <HBox alignment="CENTER_LEFT" styleClass="top-bar">
+      <MenuBar fx:id="menuBar" styleClass="top-menu" HBox.hgrow="ALWAYS">
       <menus>
         <Menu text="%menu.file">
           <items>
@@ -40,6 +43,9 @@
         </Menu>
         <Menu text="%menu.edit">
           <items>
+            <MenuItem fx:id="undoMenuItem" text="%menu.edit.undo" onAction="#onUndo"/>
+            <MenuItem fx:id="redoMenuItem" text="%menu.edit.redo" onAction="#onRedo"/>
+            <SeparatorMenuItem/>
             <MenuItem text="%menu.edit.copy" onAction="#onCopy"/>
             <MenuItem text="%menu.edit.paste" onAction="#onPaste"/>
             <MenuItem text="%menu.edit.cut" onAction="#onCut"/>
@@ -84,6 +90,14 @@
         </Menu>
       </menus>
     </MenuBar>
+      <HBox styleClass="toolbar-inline" spacing="4" alignment="CENTER_RIGHT">
+        <padding>
+          <Insets top="4" right="12" bottom="4" left="8"/>
+        </padding>
+        <Button fx:id="undoButton" styleClass="toolbar-button" onAction="#onUndo"/>
+        <Button fx:id="redoButton" styleClass="toolbar-button" onAction="#onRedo"/>
+      </HBox>
+    </HBox>
   </top>
 
   <left>

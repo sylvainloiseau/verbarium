@@ -12,6 +12,7 @@ package fr.cnrs.lacito.liftgui.ui;
 import fr.cnrs.lacito.liftgui.core.DictionaryService;
 import fr.cnrs.lacito.liftgui.core.LiftOpenException;
 import fr.cnrs.lacito.liftgui.ui.controls.*;
+import fr.cnrs.lacito.liftgui.undo.*;
 import fr.cnrs.lacito.liftapi.LiftDictionary;
 import fr.cnrs.lacito.liftapi.model.*;
 import javafx.collections.FXCollections;
@@ -32,6 +33,9 @@ import javafx.stage.FileChooser;
 import javafx.application.Platform;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
 import javafx.scene.control.TextInputDialog;
 import javafx.util.Pair;
 
@@ -156,6 +160,13 @@ public final class MainController {
     @FXML private MenuBar menuBar;
     @FXML private SplitPane mainSplit;
     @FXML private Button addButton;
+    @FXML private Button undoButton;
+    @FXML private Button redoButton;
+    @FXML private MenuItem undoMenuItem;
+    @FXML private MenuItem redoMenuItem;
+
+    /* ─── Undo/Redo ─── */
+    private final UndoManager undoManager = new UndoManager();
 
     /* ─── Entry table (main view) ─── */
     private final TableView<LiftEntry> entryTable = new TableView<>();
@@ -200,6 +211,33 @@ public final class MainController {
         setupMenuHover();
         switchView(NAV_ENTRIES);
         refreshRecentMenu();
+        setupUndoRedo();
+    }
+
+    private void setupUndoRedo() {
+        if (undoButton != null) {
+            undoButton.setGraphic(Icons.undoIcon());
+            undoButton.setTooltip(new Tooltip(I18n.get("menu.edit.undo") + " (Ctrl+Z)"));
+        }
+        if (redoButton != null) {
+            redoButton.setGraphic(Icons.redoIcon());
+            redoButton.setTooltip(new Tooltip(I18n.get("menu.edit.redo") + " (Ctrl+Y)"));
+        }
+        if (undoButton != null) undoButton.disableProperty().bind(undoManager.canUndoProperty().not());
+        if (redoButton != null) redoButton.disableProperty().bind(undoManager.canRedoProperty().not());
+        if (undoMenuItem != null) undoMenuItem.disableProperty().bind(undoManager.canUndoProperty().not());
+        if (redoMenuItem != null) redoMenuItem.disableProperty().bind(undoManager.canRedoProperty().not());
+        if (menuBar != null) {
+            menuBar.sceneProperty().addListener((obs, oldScene, newScene) -> {
+                if (newScene != null) installUndoRedoAccelerators(newScene);
+            });
+            if (menuBar.getScene() != null) installUndoRedoAccelerators(menuBar.getScene());
+        }
+    }
+
+    private void installUndoRedoAccelerators(javafx.scene.Scene scene) {
+        scene.getAccelerators().put(new KeyCodeCombination(KeyCode.Z, KeyCombination.CONTROL_DOWN), this::onUndo);
+        scene.getAccelerators().put(new KeyCodeCombination(KeyCode.Y, KeyCombination.CONTROL_DOWN), this::onRedo);
     }
 
     private void setupMenuHover() {
@@ -397,6 +435,14 @@ public final class MainController {
         }
         if (!NAV_CFG_DESC.equals(viewName)) setRightPanelVisible(true);
         selectNavItem(viewName);
+    }
+
+    @FXML private void onUndo() {
+        undoManager.undo();
+    }
+
+    @FXML private void onRedo() {
+        undoManager.redo();
     }
 
     private boolean splitConstraintInstalled = false;
@@ -1178,14 +1224,17 @@ public final class MainController {
                         entry.getForms().getForms().stream().findFirst()
                                 .map(Form::toPlainText).filter(t -> t != null && !t.isBlank()).orElse("(sans forme)")));
                 confirm.showAndWait().filter(r -> r == ButtonType.OK).ifPresent(r -> {
-                    // Retire de allEntries dans LiftFactory
-                    LiftFactory factory = getFactory(currentDictionary);
-                    if (factory != null) factory.getAllEntries().remove(entry);
-                    baseEntries.remove(entry);
-                    editorContainer.getChildren().clear();
-                    editEntryTitle.setText(I18n.get("panel.selectElement"));
-                    editEntryCode.setText("");
-                    applyCurrentFilter();
+                    int idx = baseEntries.indexOf(entry);
+                    Runnable refresh = () -> {
+                        editorContainer.getChildren().clear();
+                        editEntryTitle.setText(I18n.get("panel.selectElement"));
+                        editEntryCode.setText("");
+                        applyCurrentFilter();
+                    };
+                    DeleteEntryCommand cmd = new DeleteEntryCommand(entry, idx,
+                        () -> getFactory(currentDictionary), baseEntries, refresh, refresh);
+                    cmd.redo();
+                    undoManager.execute(cmd);
                 });
             });
             editorContainer.getChildren().add(deleteBtn);
@@ -1399,13 +1448,20 @@ public final class MainController {
             confirm.setHeaderText(null);
             confirm.setContentText(I18n.get("confirm.delete.sense", senseDisplayText(sense)));
             confirm.showAndWait().filter(r -> r == ButtonType.OK).ifPresent(r -> {
-                findParentEntry(sense).ifPresent(parent -> parent.getSenses().remove(sense));
-                LiftFactory factory = getFactory(currentDictionary);
-                if (factory != null) factory.getAllSenses().remove(sense);
-                editorContainer.getChildren().clear();
-                editEntryTitle.setText(I18n.get("panel.selectElement"));
-                editEntryCode.setText("");
-                showSenseView();
+                findParentSenseListAndIndex(sense).ifPresent(pair -> {
+                    java.util.List<LiftSense> parentList = pair.getKey();
+                    int idx = pair.getValue();
+                    Runnable refresh = () -> {
+                        editorContainer.getChildren().clear();
+                        editEntryTitle.setText(I18n.get("panel.selectElement"));
+                        editEntryCode.setText("");
+                        showSenseView();
+                    };
+                    DeleteSenseCommand cmd = new DeleteSenseCommand(sense, parentList, idx,
+                        () -> getFactory(currentDictionary), refresh, refresh);
+                    cmd.redo();
+                    undoManager.execute(cmd);
+                });
             });
         });
         editorContainer.getChildren().add(deleteBtn);
@@ -1545,8 +1601,35 @@ public final class MainController {
     private Optional<LiftEntry> findParentEntry(LiftSense sense) {
         if (currentDictionary == null) return Optional.empty();
         return currentDictionary.getLiftDictionaryComponents().getAllEntries().stream()
-            .filter(e -> e.getSenses().contains(sense))
+            .filter(e -> containsSense(e.getSenses(), sense))
             .findFirst();
+    }
+
+    private boolean containsSense(List<LiftSense> list, LiftSense target) {
+        if (list.contains(target)) return true;
+        for (LiftSense s : list) {
+            if (containsSense(s.getSubSenses(), target)) return true;
+        }
+        return false;
+    }
+
+    private Optional<Pair<List<LiftSense>, Integer>> findParentSenseListAndIndex(LiftSense sense) {
+        if (currentDictionary == null) return Optional.empty();
+        for (LiftEntry e : currentDictionary.getLiftDictionaryComponents().getAllEntries()) {
+            var found = findInList(e.getSenses(), sense);
+            if (found != null) return Optional.of(found);
+        }
+        return Optional.empty();
+    }
+
+    private Pair<List<LiftSense>, Integer> findInList(List<LiftSense> list, LiftSense target) {
+        int idx = list.indexOf(target);
+        if (idx >= 0) return new Pair<>(list, idx);
+        for (LiftSense s : list) {
+            var sub = findInList(s.getSubSenses(), target);
+            if (sub != null) return sub;
+        }
+        return null;
     }
 
     private void populateExampleEditor(LiftSense parentSense, LiftExample ex) {
@@ -1562,13 +1645,20 @@ public final class MainController {
             confirm.setHeaderText(null);
             confirm.setContentText(I18n.get("confirm.delete.example"));
             confirm.showAndWait().filter(r -> r == ButtonType.OK).ifPresent(r -> {
-                findParentSense(ex).ifPresent(parent -> parent.getExamples().remove(ex));
-                LiftFactory factory = getFactory(currentDictionary);
-                if (factory != null) factory.getAllExamples().remove(ex);
-                editorContainer.getChildren().clear();
-                editEntryTitle.setText(I18n.get("panel.selectElement"));
-                editEntryCode.setText("");
-                showExampleView();
+                findParentSense(ex).ifPresent(parent -> {
+                    java.util.List<LiftExample> parentList = parent.getExamples();
+                    int idx = parentList.indexOf(ex);
+                    Runnable refresh = () -> {
+                        editorContainer.getChildren().clear();
+                        editEntryTitle.setText(I18n.get("panel.selectElement"));
+                        editEntryCode.setText("");
+                        showExampleView();
+                    };
+                    DeleteExampleCommand cmd = new DeleteExampleCommand(ex, parent, idx,
+                        () -> getFactory(currentDictionary), refresh, refresh);
+                    cmd.redo();
+                    undoManager.execute(cmd);
+                });
             });
         });
         editorContainer.getChildren().add(deleteBtn);
@@ -1915,6 +2005,7 @@ public final class MainController {
 
     private void setDictionary(LiftDictionary dictionary) {
         this.currentDictionary = dictionary;
+        undoManager.clear();
         baseEntries.clear();
         if (dictionary == null) { updateCountLabel(0, 0); return; }
         ensureHeaderComplete();
