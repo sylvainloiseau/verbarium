@@ -177,7 +177,9 @@ public final class MainController {
     private final TableView<LiftExample> exampleTable = new TableView<>();
     private final TableView<LiftVariant> variantTable = new TableView<>();
     private final TableView<LiftRelation> relationTable = new TableView<>();
-    private final TableView<LiftTrait> traitTable = new TableView<>();
+    private final TableView<TraitRow> traitTable = new TableView<>();
+
+    private record TraitRow(String parentType, String name, String value, long frequency) {}
     private final TableView<LiftAnnotation> annotationTable = new TableView<>();
     private final TableView<LiftField> fieldTable = new TableView<>();
     private final TableView<MultiTextField> langFieldTable = new TableView<>();
@@ -943,24 +945,29 @@ public final class MainController {
         if (currentDictionary == null) { tableContainer.getChildren().setAll(wrapTableWithFilters(traitTable,
                 (filtered, total) -> updateCountLabel(filtered, total), searchField != null ? searchField.textProperty() : null)); return; }
 
-        List<LiftTrait> allTraits = currentDictionary.getLiftDictionaryComponents().getAllTraits();
+        Map<String, TraitRow> counts = new LinkedHashMap<>();
+        for (LiftTrait t : currentDictionary.getLiftDictionaryComponents().getAllTraits()) {
+            String pt = describeParentType(t.getParent());
+            String key = pt + "|" + t.getName() + "|" + t.getValue();
+            counts.compute(key, (k, row) -> {
+                if (row == null) return new TraitRow(pt, t.getName(), t.getValue(), 1);
+                return new TraitRow(pt, row.name, row.value, row.frequency + 1);
+            });
+        }
 
         traitTable.getColumns().addAll(
-            col(I18n.get("col.parentType"), (LiftTrait t) -> describeParentType(t.getParent())),
-            col(I18n.get("col.name"), LiftTrait::getName),
-            col(I18n.get("col.value"), LiftTrait::getValue),
-            col(I18n.get("col.frequency"), t -> {
-                long c = allTraits.stream().filter(x -> x.getName().equals(t.getName()) && x.getValue().equals(t.getValue())).count();
-                return String.valueOf(c);
-            })
+            col(I18n.get("col.parentType"), (TraitRow r) -> r.parentType()),
+            col(I18n.get("col.name"), (TraitRow r) -> r.name()),
+            col(I18n.get("col.value"), (TraitRow r) -> r.value()),
+            col(I18n.get("col.frequency"), r -> String.valueOf(r.frequency()))
         );
-        traitTable.getItems().addAll(allTraits);
+        traitTable.getItems().addAll(counts.values());
         traitTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
             if (n != null) populateTraitSummaryEditor(n);
         });
 
         tableContainer.getChildren().setAll(wrapTableWithFilters(traitTable, (f,t2) -> updateCountLabel(f,t2), searchField != null ? searchField.textProperty() : null));
-        updateCountLabel(allTraits.size(), allTraits.size());
+        updateCountLabel(traitTable.getItems().size(), traitTable.getItems().size());
     }
 
     private void showAnnotationView() {
@@ -1813,12 +1820,12 @@ public final class MainController {
         populateSummaryEditor(I18n.get(currentView), "", values);
     }
 
-    private void populateTraitSummaryEditor(LiftTrait trait) {
+    private void populateTraitSummaryEditor(TraitRow row) {
         LinkedHashMap<String, String> values = new LinkedHashMap<>();
-        values.put(I18n.get("col.parentType"), describeParentType(trait.getParent()));
-        values.put(I18n.get("col.parent"), describeParent(trait.getParent()));
-        values.put(I18n.get("col.name"), trait.getName());
-        values.put(I18n.get("col.value"), trait.getValue());
+        values.put(I18n.get("col.parentType"), row.parentType());
+        values.put(I18n.get("col.name"), row.name());
+        values.put(I18n.get("col.value"), row.value());
+        values.put(I18n.get("col.frequency"), String.valueOf(row.frequency()));
         populateSummaryEditor(I18n.get("nav.traits"), "", values);
     }
 
