@@ -890,7 +890,7 @@ public final class MainController {
         List<MultiTextField> rows = new ArrayList<>();
         for (LiftEntry entry : currentDictionary.getLiftDictionaryComponents().getAllEntries()) {
             if (objectLangs) {
-                collectMtRows(rows, "form", entry.getId().orElse("?"), entry.getForms(), langs);
+                collectMtRows(rows, I18n.get("nav.entries"), entry.getId().orElse("?"), entry.getForms(), langs);
                 for (LiftVariant v : entry.getVariants()) collectMtRows(rows, "variante", v.getRefId().orElse("?"), v.getForms(), langs);
                 for (LiftPronunciation p : entry.getPronunciations()) collectMtRows(rows, "pron", entry.getId().orElse("?"), p.getProunciation(), langs);
                 for (LiftSense s : entry.getSenses()) {
