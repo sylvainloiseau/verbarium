@@ -72,7 +72,6 @@
             <Menu text="%menu.view.categories">
               <items>
                 <MenuItem text="%nav.gramInfo" onAction="#onViewGramInfo"/>
-                <MenuItem text="%nav.pos" onAction="#onViewPos"/>
                 <MenuItem text="%nav.traits" onAction="#onViewTraits"/>
                 <MenuItem text="%nav.annotations" onAction="#onViewAnnotations"/>
                 <MenuItem text="%nav.transTypes" onAction="#onViewTransTypes"/>

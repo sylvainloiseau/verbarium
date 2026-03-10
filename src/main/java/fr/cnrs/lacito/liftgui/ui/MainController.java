@@ -124,7 +124,6 @@ public final class MainController {
     private static final String NAV_ANNOTATIONS = "nav.annotations";
     private static final String NAV_FIELDS      = "nav.fields";
     private static final String NAV_GRAM_INFO   = "nav.gramInfo";
-    private static final String NAV_POS         = "nav.pos";
     private static final String NAV_TRANS_TYPES = "nav.transTypes";
     private static final String NAV_NOTE_TYPES  = "nav.noteTypes";
     private static final String NAV_QUICK_ENTRY = "nav.quickEntry";
@@ -178,7 +177,9 @@ public final class MainController {
     private final TableView<LiftExample> exampleTable = new TableView<>();
     private final TableView<LiftVariant> variantTable = new TableView<>();
     private final TableView<LiftRelation> relationTable = new TableView<>();
-    private final TableView<LiftTrait> traitTable = new TableView<>();
+    private final TableView<TraitRow> traitTable = new TableView<>();
+
+    private record TraitRow(String parentType, String name, String value, long frequency) {}
     private final TableView<LiftAnnotation> annotationTable = new TableView<>();
     private final TableView<LiftField> fieldTable = new TableView<>();
     private final TableView<MultiTextField> langFieldTable = new TableView<>();
@@ -285,7 +286,7 @@ public final class MainController {
         TreeItem<String> cats = new TreeItem<>(I18n.get("nav.categories"));
         cats.setExpanded(true);
         cats.getChildren().addAll(
-            navItem(NAV_GRAM_INFO), navItem(NAV_POS),
+            navItem(NAV_GRAM_INFO),
             navItem(NAV_TRAITS), navItem(NAV_ANNOTATIONS),
             navItem(NAV_TRANS_TYPES), navItem(NAV_NOTE_TYPES),
             navItem(NAV_FIELDS)
@@ -420,7 +421,6 @@ public final class MainController {
             case NAV_ANNOTATIONS -> showAnnotationView();
             case NAV_FIELDS      -> showFieldView();
             case NAV_GRAM_INFO   -> showGramInfoView();
-            case NAV_POS         -> showPosView();
             case NAV_TRANS_TYPES -> showTranslationTypesView();
             case NAV_NOTE_TYPES  -> showNoteTypesView();
             case NAV_QUICK_ENTRY -> showQuickEntryView();
@@ -890,7 +890,7 @@ public final class MainController {
         List<MultiTextField> rows = new ArrayList<>();
         for (LiftEntry entry : currentDictionary.getLiftDictionaryComponents().getAllEntries()) {
             if (objectLangs) {
-                collectMtRows(rows, "form", entry.getId().orElse("?"), entry.getForms(), langs);
+                collectMtRows(rows, I18n.get("nav.entries"), entry.getId().orElse("?"), entry.getForms(), langs);
                 for (LiftVariant v : entry.getVariants()) collectMtRows(rows, "variante", v.getRefId().orElse("?"), v.getForms(), langs);
                 for (LiftPronunciation p : entry.getPronunciations()) collectMtRows(rows, "pron", entry.getId().orElse("?"), p.getProunciation(), langs);
                 for (LiftSense s : entry.getSenses()) {
@@ -911,9 +911,6 @@ public final class MainController {
         TableColumn<MultiTextField, String> parentTypeCol = new TableColumn<>(I18n.get("col.parentType"));
         parentTypeCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue().parentType()));
         parentTypeCol.setPrefWidth(100);
-        TableColumn<MultiTextField, String> parentIdCol = new TableColumn<>(I18n.get("col.parent"));
-        parentIdCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue().parentId()));
-        parentIdCol.setPrefWidth(120);
 
         TableColumn<MultiTextField, String> langGroup = new TableColumn<>(I18n.get("nav.languages"));
         for (String l : langs) {
@@ -923,7 +920,7 @@ public final class MainController {
             langGroup.getColumns().add(c);
         }
 
-        langFieldTable.getColumns().addAll(parentTypeCol, parentIdCol, langGroup);
+        langFieldTable.getColumns().addAll(parentTypeCol, langGroup);
         langFieldTable.getItems().addAll(rows);
         langFieldTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
             if (n != null) populateLangFieldEditor(n);
@@ -932,10 +929,10 @@ public final class MainController {
         updateCountLabel(rows.size(), rows.size());
     }
 
-    private static void collectMtRows(List<MultiTextField> rows, String type, String parentId, MultiText mt, List<String> langs) {
+    private static void collectMtRows(List<MultiTextField> rows, String parentType, String parentId, MultiText mt, List<String> langs) {
         for (Form f : mt.getForms()) {
             if (langs.contains(f.getLang())) {
-                rows.add(new MultiTextField(type, parentId, f.getLang(), f.toPlainText()));
+                rows.add(new MultiTextField(parentType, parentId, f.getLang(), f.toPlainText()));
             }
         }
     }
@@ -948,25 +945,29 @@ public final class MainController {
         if (currentDictionary == null) { tableContainer.getChildren().setAll(wrapTableWithFilters(traitTable,
                 (filtered, total) -> updateCountLabel(filtered, total), searchField != null ? searchField.textProperty() : null)); return; }
 
-        List<LiftTrait> allTraits = currentDictionary.getLiftDictionaryComponents().getAllTraits();
+        Map<String, TraitRow> counts = new LinkedHashMap<>();
+        for (LiftTrait t : currentDictionary.getLiftDictionaryComponents().getAllTraits()) {
+            String pt = describeParentType(t.getParent());
+            String key = pt + "|" + t.getName() + "|" + t.getValue();
+            counts.compute(key, (k, row) -> {
+                if (row == null) return new TraitRow(pt, t.getName(), t.getValue(), 1);
+                return new TraitRow(pt, row.name, row.value, row.frequency + 1);
+            });
+        }
 
         traitTable.getColumns().addAll(
-            col(I18n.get("col.parentType"), (LiftTrait t) -> describeParentType(t.getParent())),
-            col(I18n.get("col.parent"), (LiftTrait t) -> describeParent(t.getParent())),
-            col(I18n.get("col.name"), LiftTrait::getName),
-            col(I18n.get("col.value"), LiftTrait::getValue),
-            col(I18n.get("col.frequency"), t -> {
-                long c = allTraits.stream().filter(x -> x.getName().equals(t.getName()) && x.getValue().equals(t.getValue())).count();
-                return String.valueOf(c);
-            })
+            col(I18n.get("col.parentType"), (TraitRow r) -> r.parentType()),
+            col(I18n.get("col.name"), (TraitRow r) -> r.name()),
+            col(I18n.get("col.value"), (TraitRow r) -> r.value()),
+            col(I18n.get("col.frequency"), r -> String.valueOf(r.frequency()))
         );
-        traitTable.getItems().addAll(allTraits);
+        traitTable.getItems().addAll(counts.values());
         traitTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
             if (n != null) populateTraitSummaryEditor(n);
         });
 
         tableContainer.getChildren().setAll(wrapTableWithFilters(traitTable, (f,t2) -> updateCountLabel(f,t2), searchField != null ? searchField.textProperty() : null));
-        updateCountLabel(allTraits.size(), allTraits.size());
+        updateCountLabel(traitTable.getItems().size(), traitTable.getItems().size());
     }
 
     private void showAnnotationView() {
@@ -1819,12 +1820,12 @@ public final class MainController {
         populateSummaryEditor(I18n.get(currentView), "", values);
     }
 
-    private void populateTraitSummaryEditor(LiftTrait trait) {
+    private void populateTraitSummaryEditor(TraitRow row) {
         LinkedHashMap<String, String> values = new LinkedHashMap<>();
-        values.put(I18n.get("col.parentType"), describeParentType(trait.getParent()));
-        values.put(I18n.get("col.parent"), describeParent(trait.getParent()));
-        values.put(I18n.get("col.name"), trait.getName());
-        values.put(I18n.get("col.value"), trait.getValue());
+        values.put(I18n.get("col.parentType"), row.parentType());
+        values.put(I18n.get("col.name"), row.name());
+        values.put(I18n.get("col.value"), row.value());
+        values.put(I18n.get("col.frequency"), String.valueOf(row.frequency()));
         populateSummaryEditor(I18n.get("nav.traits"), "", values);
     }
 
@@ -2131,7 +2132,6 @@ public final class MainController {
     @FXML private void onViewAnnotations() { switchView(NAV_ANNOTATIONS); }
     @FXML private void onViewFields() { switchView(NAV_FIELDS); }
     @FXML private void onViewGramInfo() { switchView(NAV_GRAM_INFO); }
-    @FXML private void onViewPos() { switchView(NAV_POS); }
     @FXML private void onViewTransTypes() { switchView(NAV_TRANS_TYPES); }
     @FXML private void onViewNoteTypes() { switchView(NAV_NOTE_TYPES); }
 
@@ -2285,23 +2285,6 @@ public final class MainController {
             s.getGrammaticalInfo().ifPresent(gi -> counts.merge(gi.getValue(), 1L, Long::sum));
         }
         showCategoryTable(I18n.get("nav.gramInfo"), I18n.get("col.value"), counts);
-    }
-
-    /* ════════════════════ POS VIEW ════════════════════ */
-
-    private void showPosView() {
-        if (currentDictionary == null) { tableContainer.getChildren().setAll(new Label(I18n.get("placeholder.noDictionary"))); return; }
-        Map<String, Long> counts = new LinkedHashMap<>();
-        for (LiftTrait t : currentDictionary.getLiftDictionaryComponents().getAllTraits()) {
-            if ("from-part-of-speech".equals(t.getName()) || "POS".equalsIgnoreCase(t.getName())) {
-                counts.merge(t.getValue(), 1L, Long::sum);
-            }
-        }
-        // Also count grammatical-info values as POS
-        for (LiftSense s : currentDictionary.getLiftDictionaryComponents().getAllSenses()) {
-            s.getGrammaticalInfo().ifPresent(gi -> counts.merge(gi.getValue(), 1L, Long::sum));
-        }
-        showCategoryTable(I18n.get("nav.pos"), I18n.get("col.category"), counts);
     }
 
     /* ════════════════════ TRANSLATION TYPES VIEW ════════════════════ */
