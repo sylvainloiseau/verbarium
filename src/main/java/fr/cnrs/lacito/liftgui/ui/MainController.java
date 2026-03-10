@@ -911,9 +911,6 @@ public final class MainController {
         TableColumn<MultiTextField, String> parentTypeCol = new TableColumn<>(I18n.get("col.parentType"));
         parentTypeCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue().parentType()));
         parentTypeCol.setPrefWidth(100);
-        TableColumn<MultiTextField, String> parentIdCol = new TableColumn<>(I18n.get("col.parent"));
-        parentIdCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue().parentId()));
-        parentIdCol.setPrefWidth(120);
 
         TableColumn<MultiTextField, String> langGroup = new TableColumn<>(I18n.get("nav.languages"));
         for (String l : langs) {
@@ -923,7 +920,7 @@ public final class MainController {
             langGroup.getColumns().add(c);
         }
 
-        langFieldTable.getColumns().addAll(parentTypeCol, parentIdCol, langGroup);
+        langFieldTable.getColumns().addAll(parentTypeCol, langGroup);
         langFieldTable.getItems().addAll(rows);
         langFieldTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
             if (n != null) populateLangFieldEditor(n);
@@ -932,10 +929,10 @@ public final class MainController {
         updateCountLabel(rows.size(), rows.size());
     }
 
-    private static void collectMtRows(List<MultiTextField> rows, String type, String parentId, MultiText mt, List<String> langs) {
+    private static void collectMtRows(List<MultiTextField> rows, String parentType, String parentId, MultiText mt, List<String> langs) {
         for (Form f : mt.getForms()) {
             if (langs.contains(f.getLang())) {
-                rows.add(new MultiTextField(type, parentId, f.getLang(), f.toPlainText()));
+                rows.add(new MultiTextField(parentType, parentId, f.getLang(), f.toPlainText()));
             }
         }
     }
