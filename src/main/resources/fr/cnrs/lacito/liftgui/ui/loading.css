@@ -1,0 +1,27 @@
+/* Écran de chargement */
+.loading-root {
+  -fx-background-color: #4c6f76;
+}
+
+.loading-title {
+  -fx-text-fill: white;
+  -fx-font-size: 32px;
+  -fx-font-weight: bold;
+}
+
+.loading-progress {
+  -fx-pref-height: 6px;
+  -fx-pref-width: 380px;
+}
+
+.loading-progress > .track {
+  -fx-background-color: rgba(255, 255, 255, 0.3);
+  -fx-background-radius: 3;
+}
+
+.loading-progress > .bar {
+  -fx-background-color: white;
+  -fx-background-radius: 3;
+  -fx-background-insets: 0;
+  -fx-padding: 0;
+}
