@@ -2172,27 +2172,113 @@ public final class MainController {
             val -> currentDictionary == null ? 0L : currentDictionary.getLiftDictionaryComponents().getAllRelations().stream().filter(r -> val.equals(r.getType())).count());
     }
 
-    /** Dialog for managing languages, with object-languages and meta-languages in separate sections. */
+    /** Dialog for managing languages, with object-languages and meta-languages in separate sections.
+     *  Supports add/delete. Deleted languages are removed from all multitexts and no longer appear in dropdowns. */
     private void openManageLanguagesDialog() {
         if (currentDictionary == null) return;
-        List<String> objLangs = getObjectLanguages();
-        List<String> metaLangs = getMetaLanguages();
+        var ldc = currentDictionary.getLiftDictionaryComponents();
+        List<String> objLangs = new ArrayList<>(getObjectLanguages());
+        List<String> metaLangs = new ArrayList<>(getMetaLanguages());
 
         Dialog<Void> dlg = new Dialog<>();
         dlg.setTitle(I18n.get("config.title", I18n.get("nav.cfgManageLangs")));
         dlg.setResizable(true);
-        dlg.getDialogPane().setPrefSize(500, 400);
+        dlg.getDialogPane().setPrefSize(520, 480);
         dlg.getDialogPane().getButtonTypes().addAll(ButtonType.CLOSE);
 
-        TitledPane objPane = new TitledPane(I18n.get("nav.objectLangs"), buildLanguageListPanel(objLangs));
+        TitledPane objPane = new TitledPane(I18n.get("nav.objectLangs"),
+            buildEditableLanguagePanel(objLangs, true, ldc.getAllObjectLanguagesMultiText()));
         objPane.setExpanded(true);
-        TitledPane metaPane = new TitledPane(I18n.get("nav.metaLangs"), buildLanguageListPanel(metaLangs));
+        TitledPane metaPane = new TitledPane(I18n.get("nav.metaLangs"),
+            buildEditableLanguagePanel(metaLangs, false, ldc.getAllMetaLanguagesMultiText()));
         metaPane.setExpanded(true);
 
         VBox content = new VBox(10, objPane, metaPane);
         content.setPadding(new Insets(12));
         dlg.getDialogPane().setContent(content);
         dlg.showAndWait();
+    }
+
+    /** Builds an editable panel for a language list (object or meta) with add/delete. */
+    private VBox buildEditableLanguagePanel(List<String> langs, boolean isObject, List<MultiText> multiTexts) {
+        TableView<String> table = new TableView<>(FXCollections.observableArrayList(langs));
+        table.setPrefHeight(140);
+        TableColumn<String, String> langCol = new TableColumn<>(I18n.get("col.code"));
+        langCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue()));
+        langCol.setPrefWidth(120);
+        TableColumn<String, String> usageCol = new TableColumn<>(I18n.get("cfg.usageCount"));
+        usageCol.setCellValueFactory(cd -> {
+            long n = countLanguageUsage(cd.getValue(), multiTexts);
+            return new ReadOnlyStringWrapper(String.valueOf(n));
+        });
+        usageCol.setPrefWidth(80);
+        table.getColumns().addAll(langCol, usageCol);
+
+        TextField addField = new TextField();
+        addField.setPromptText(I18n.get("config.addAbbr"));
+        Button addBtn = new Button(I18n.get("btn.add"));
+        addBtn.setOnAction(e -> {
+            String code = addField.getText().trim();
+            if (code.isEmpty()) return;
+            if (langs.contains(code)) return;
+            if (addLanguageToDictionary(code, isObject)) {
+                langs.add(code);
+                langs.sort(Comparator.naturalOrder());
+                table.setItems(FXCollections.observableArrayList(langs));
+                addField.clear();
+            }
+        });
+        Button removeBtn = new Button(I18n.get("btn.delete"));
+        removeBtn.setOnAction(e -> {
+            String sel = table.getSelectionModel().getSelectedItem();
+            if (sel == null) return;
+            long usage = countLanguageUsage(sel, multiTexts);
+            if (usage > 0) {
+                Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+                confirm.setTitle(I18n.get("btn.delete"));
+                confirm.setHeaderText(I18n.get("config.deleteWarning", sel, usage));
+                confirm.setContentText(I18n.get("config.deleteConfirm"));
+                if (confirm.showAndWait().filter(r -> r == ButtonType.OK).isEmpty()) return;
+            }
+            removeLanguageFromMultiTexts(sel, multiTexts);
+            langs.remove(sel);
+            table.setItems(FXCollections.observableArrayList(langs));
+        });
+
+        HBox controls = new HBox(8, addField, addBtn, removeBtn);
+        controls.setPadding(new Insets(6, 0, 0, 0));
+        HBox.setHgrow(addField, Priority.ALWAYS);
+        return new VBox(6, table, controls);
+    }
+
+    private long countLanguageUsage(String lang, List<MultiText> multiTexts) {
+        if (lang == null || lang.isBlank() || multiTexts == null) return 0;
+        return multiTexts.stream().filter(mt -> mt.getForm(lang).isPresent()).count();
+    }
+
+    private void removeLanguageFromMultiTexts(String lang, List<MultiText> multiTexts) {
+        if (lang == null || lang.isBlank() || multiTexts == null) return;
+        for (MultiText mt : multiTexts) {
+            if (mt.getForm(lang).isPresent() && !mt.isEmpty()) {
+                try { mt.removeForm(lang); } catch (Exception ignored) {}
+            }
+        }
+    }
+
+    /** Adds a language by inserting an empty form in the first available multitext of the appropriate type. */
+    private boolean addLanguageToDictionary(String lang, boolean isObject) {
+        if (currentDictionary == null || lang == null || lang.isBlank()) return false;
+        var ldc = currentDictionary.getLiftDictionaryComponents();
+        List<MultiText> targets = isObject ? ldc.getAllObjectLanguagesMultiText() : ldc.getAllMetaLanguagesMultiText();
+        for (MultiText mt : targets) {
+            if (!mt.getForm(lang).isPresent()) {
+                try {
+                    mt.add(new Form(lang, ""));
+                    return true;
+                } catch (Exception ignored) {}
+            }
+        }
+        return false;
     }
 
     private void showAddEtymologyDialog(LiftEntry entry, LiftFactory factory) {
@@ -2224,21 +2310,6 @@ public final class MainController {
             factory.createEtymology(attrs, entry);
             populateEntryEditor(entry);
         });
-    }
-
-    private VBox buildLanguageListPanel(List<String> langs) {
-        VBox box = new VBox(4);
-        if (langs.isEmpty()) {
-            box.getChildren().add(new Label(I18n.get("placeholder.noData")));
-        } else {
-            for (String lang : langs) {
-                long usage = currentDictionary == null ? 0 : currentDictionary.getLiftDictionaryComponents().getAllEntries().stream()
-                    .filter(e -> e.getForms().getForm(lang).isPresent()).count();
-                Label l = new Label(lang + " (" + usage + " " + I18n.get("cfg.usageCount") + ")");
-                box.getChildren().add(l);
-            }
-        }
-        return box;
     }
 
     /* ─── Outil menu ─── */
