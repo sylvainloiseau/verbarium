@@ -10,6 +10,7 @@ fr\cnrs\lacito\liftgui\ui\controls\TraitEditor$3.class
 fr\cnrs\lacito\liftgui\undo\UndoManager.class
 fr\cnrs\lacito\liftgui\ui\MainController$QuickEntryRow.class
 fr\cnrs\lacito\liftgui\ui\MainController$3.class
+fr\cnrs\lacito\liftgui\ui\MainController$NoteTypeRow.class
 fr\cnrs\lacito\liftgui\MainApp.class
 fr\cnrs\lacito\liftgui\ui\controls\VariantEditor.class
 fr\cnrs\lacito\liftgui\ui\controls\ExtensibleWithFieldEditor.class

@@ -76,6 +76,7 @@
                 <MenuItem text="%nav.annotations" onAction="#onViewAnnotations"/>
                 <MenuItem text="%nav.transTypes" onAction="#onViewTransTypes"/>
                 <MenuItem text="%nav.noteTypes" onAction="#onViewNoteTypes"/>
+                <MenuItem text="%nav.relationTypes" onAction="#onViewRelationTypes"/>
                 <MenuItem text="%nav.fields" onAction="#onViewFields"/>
               </items>
             </Menu>
@@ -139,8 +140,8 @@
               <Label fx:id="editEntryCode" text="" styleClass="edit-entry-code"/>
             </VBox>
             <VBox fx:id="editorContainer" spacing="8"/>
-            <HBox alignment="CENTER_RIGHT">
-              <Button text="%btn.modifyEntry" onAction="#onModifyEntry" styleClass="example-add-button"
+            <HBox fx:id="modifyButtonRow" alignment="CENTER_RIGHT">
+              <Button fx:id="modifyButton" text="%btn.modifyEntry" onAction="#onModifyEntry" styleClass="example-add-button"
                       maxWidth="1.7976931348623157E308" HBox.hgrow="ALWAYS"/>
             </HBox>
           </VBox>

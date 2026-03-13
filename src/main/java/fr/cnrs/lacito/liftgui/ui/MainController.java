@@ -125,8 +125,9 @@ public final class MainController {
     private static final String NAV_FIELDS      = "nav.fields";
     private static final String NAV_GRAM_INFO   = "nav.gramInfo";
     private static final String NAV_TRANS_TYPES = "nav.transTypes";
-    private static final String NAV_NOTE_TYPES  = "nav.noteTypes";
-    private static final String NAV_QUICK_ENTRY = "nav.quickEntry";
+    private static final String NAV_NOTE_TYPES    = "nav.noteTypes";
+    private static final String NAV_RELATION_TYPES = "nav.relationTypes";
+    private static final String NAV_QUICK_ENTRY  = "nav.quickEntry";
 
     /* ─── Header configuration nav keys ─── */
     private static final String NAV_CFG_DESC        = "nav.cfgDesc";
@@ -159,6 +160,8 @@ public final class MainController {
     @FXML private MenuBar menuBar;
     @FXML private SplitPane mainSplit;
     @FXML private Button addButton;
+    @FXML private HBox modifyButtonRow;
+    @FXML private Button modifyButton;
     @FXML private Button undoButton;
     @FXML private Button redoButton;
     @FXML private MenuItem undoMenuItem;
@@ -289,6 +292,7 @@ public final class MainController {
             navItem(NAV_GRAM_INFO),
             navItem(NAV_TRAITS), navItem(NAV_ANNOTATIONS),
             navItem(NAV_TRANS_TYPES), navItem(NAV_NOTE_TYPES),
+            navItem(NAV_RELATION_TYPES),
             navItem(NAV_FIELDS)
         );
 
@@ -408,22 +412,23 @@ public final class MainController {
             return;
         }
         switch (viewName) {
-            case NAV_ENTRIES     -> showEntryView();
-            case NAV_SENSES      -> showSenseView();
-            case NAV_EXAMPLES    -> showExampleView();
-            case NAV_NOTES       -> showNoteView();
-            case NAV_VARIANTS    -> showVariantView();
-            case NAV_ETYMOLOGIES -> showEtymologyView();
-            case NAV_RELATIONS   -> showRelationView();
-            case NAV_OBJ_LANGS   -> showLangFieldView(true);
-            case NAV_META_LANGS  -> showLangFieldView(false);
-            case NAV_TRAITS      -> showTraitView();
-            case NAV_ANNOTATIONS -> showAnnotationView();
-            case NAV_FIELDS      -> showFieldView();
-            case NAV_GRAM_INFO   -> showGramInfoView();
-            case NAV_TRANS_TYPES -> showTranslationTypesView();
-            case NAV_NOTE_TYPES  -> showNoteTypesView();
-            case NAV_QUICK_ENTRY -> showQuickEntryView();
+            case NAV_ENTRIES     -> { setModifyButtonVisible(true); showEntryView(); }
+            case NAV_SENSES      -> { setModifyButtonVisible(false); showSenseView(); }
+            case NAV_EXAMPLES    -> { setModifyButtonVisible(false); showExampleView(); }
+            case NAV_NOTES       -> { setModifyButtonVisible(false); showNoteView(); }
+            case NAV_VARIANTS    -> { setModifyButtonVisible(false); showVariantView(); }
+            case NAV_ETYMOLOGIES -> { setModifyButtonVisible(false); showEtymologyView(); }
+            case NAV_RELATIONS   -> { setModifyButtonVisible(false); showRelationView(); }
+            case NAV_OBJ_LANGS   -> { setModifyButtonVisible(false); showLangFieldView(true); }
+            case NAV_META_LANGS  -> { setModifyButtonVisible(false); showLangFieldView(false); }
+            case NAV_TRAITS      -> { setModifyButtonVisible(false); showTraitView(); }
+            case NAV_ANNOTATIONS -> { setModifyButtonVisible(false); showAnnotationView(); }
+            case NAV_FIELDS      -> { setModifyButtonVisible(false); showFieldView(); }
+            case NAV_GRAM_INFO   -> { setModifyButtonVisible(false); showGramInfoView(); }
+            case NAV_TRANS_TYPES -> { setModifyButtonVisible(false); showTranslationTypesView(); }
+            case NAV_NOTE_TYPES    -> { setModifyButtonVisible(false); showNoteTypesView(); }
+            case NAV_RELATION_TYPES -> { setModifyButtonVisible(false); showRelationTypesView(); }
+            case NAV_QUICK_ENTRY  -> showQuickEntryView();
             case NAV_CFG_DESC        -> { showHeaderDescView(); setRightPanelVisible(false); }
             case NAV_CFG_FIELD_DEFS  -> showHeaderFieldDefsView();
             case NAV_CFG_MANAGE_LANGS -> { openManageLanguagesDialog(); showHeaderDescView(); setRightPanelVisible(false); }
@@ -947,21 +952,19 @@ public final class MainController {
 
         Map<String, TraitRow> counts = new LinkedHashMap<>();
         for (LiftTrait t : currentDictionary.getLiftDictionaryComponents().getAllTraits()) {
-            String pt = describeParentType(t.getParent());
-            String key = pt + "|" + t.getName() + "|" + t.getValue();
+            String key = t.getName() + "|" + t.getValue();
             counts.compute(key, (k, row) -> {
-                if (row == null) return new TraitRow(pt, t.getName(), t.getValue(), 1);
-                return new TraitRow(pt, row.name, row.value, row.frequency + 1);
+                if (row == null) return new TraitRow("", t.getName(), t.getValue(), 1);
+                return new TraitRow("", row.name, row.value, row.frequency + 1);
             });
         }
 
         traitTable.getColumns().addAll(
-            col(I18n.get("col.parentType"), (TraitRow r) -> r.parentType()),
             col(I18n.get("col.name"), (TraitRow r) -> r.name()),
             col(I18n.get("col.value"), (TraitRow r) -> r.value()),
             col(I18n.get("col.frequency"), r -> String.valueOf(r.frequency()))
         );
-        traitTable.getItems().addAll(counts.values());
+        traitTable.getItems().addAll(counts.values().stream().sorted(Comparator.comparingLong(TraitRow::frequency).reversed()).toList());
         traitTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
             if (n != null) populateTraitSummaryEditor(n);
         });
@@ -1199,6 +1202,7 @@ public final class MainController {
     /* ─── Editor population helpers ─── */
 
     private void populateEntryEditor(LiftEntry entry) {
+        setModifyButtonVisible(true);
         try {
         List<String> objLangs = getObjectLanguages();
         List<String> metaLangs = getMetaLanguages();
@@ -1821,37 +1825,190 @@ public final class MainController {
     }
 
     private void populateTraitSummaryEditor(TraitRow row) {
+        setModifyButtonVisible(false);
         LinkedHashMap<String, String> values = new LinkedHashMap<>();
-        values.put(I18n.get("col.parentType"), row.parentType());
         values.put(I18n.get("col.name"), row.name());
         values.put(I18n.get("col.value"), row.value());
         values.put(I18n.get("col.frequency"), String.valueOf(row.frequency()));
         populateSummaryEditor(I18n.get("nav.traits"), "", values);
+        Button accessBtn = new Button(I18n.get("btn.accessObjects"));
+        accessBtn.getStyleClass().add("example-add-button");
+        accessBtn.setMaxWidth(Double.MAX_VALUE);
+        accessBtn.setOnAction(e -> showObjectsWithTrait(row.name(), row.value()));
+        editorContainer.getChildren().add(accessBtn);
+    }
+
+    private void populateNoteTypeSummaryEditor(NoteTypeRow row) {
+        setModifyButtonVisible(false);
+        LinkedHashMap<String, String> values = new LinkedHashMap<>();
+        values.put(I18n.get("col.type"), row.type());
+        values.put(I18n.get("col.parentType"), row.parentType());
+        values.put(I18n.get("col.frequency"), String.valueOf(row.frequency()));
+        populateSummaryEditor(I18n.get("nav.noteTypes"), "", values);
+        Button accessBtn = new Button(I18n.get("btn.accessObjects"));
+        accessBtn.getStyleClass().add("example-add-button");
+        accessBtn.setMaxWidth(Double.MAX_VALUE);
+        accessBtn.setOnAction(e -> showObjectsWithNoteType(row.type()));
+        editorContainer.getChildren().add(accessBtn);
+    }
+
+    private void setModifyButtonVisible(boolean visible) {
+        if (modifyButtonRow != null) modifyButtonRow.setVisible(visible);
+    }
+
+    private void showObjectsWithTrait(String traitName, String traitValue) {
+        if (currentDictionary == null) return;
+        List<Object> matches = new ArrayList<>();
+        var comps = currentDictionary.getLiftDictionaryComponents();
+        for (LiftEntry e : comps.getAllEntries()) {
+            if (e.getTraits().stream().anyMatch(t -> traitName.equals(t.getName()) && traitValue.equals(t.getValue())))
+                matches.add(e);
+        }
+        for (LiftSense s : comps.getAllSenses()) {
+            if (s.getTraits().stream().anyMatch(t -> traitName.equals(t.getName()) && traitValue.equals(t.getValue())))
+                matches.add(s);
+        }
+        for (LiftExample ex : comps.getAllExamples()) {
+            if (ex.getTraits().stream().anyMatch(t -> traitName.equals(t.getName()) && traitValue.equals(t.getValue())))
+                matches.add(ex);
+        }
+        for (LiftVariant v : comps.getAllVariants()) {
+            if (v.getTraits() != null && v.getTraits().stream().anyMatch(t -> traitName.equals(t.getName()) && traitValue.equals(t.getValue())))
+                matches.add(v);
+        }
+        for (LiftEtymology et : comps.getAllEntries().stream().flatMap(e -> e.getEtymologies().stream()).toList()) {
+            if (et.getTraits().stream().anyMatch(t -> traitName.equals(t.getName()) && traitValue.equals(t.getValue())))
+                matches.add(et);
+        }
+        showFilteredObjectsTable(matches, I18n.get("nav.traits") + ": " + traitName + " = " + traitValue);
+    }
+
+    private void showObjectsWithNoteType(String noteType) {
+        if (currentDictionary == null) return;
+        List<Object> matches = new ArrayList<>();
+        for (LiftNote n : currentDictionary.getLiftDictionaryComponents().getAllNotes()) {
+            if (noteType.equals(n.getType().orElse(""))) matches.add(n);
+        }
+        showFilteredObjectsTable(matches, I18n.get("nav.noteTypes") + ": " + noteType);
+    }
+
+    private void showFilteredObjectsTable(List<Object> matches, String title) {
+        TableView<Object> table = new TableView<>(FXCollections.observableArrayList(matches));
+        table.getColumns().add(col("Type", o -> o.getClass().getSimpleName()));
+        table.getColumns().add(col(I18n.get("col.id"), o -> {
+            if (o instanceof LiftEntry e) return e.getId().orElse("");
+            if (o instanceof LiftSense s) return s.getId().orElse("");
+            if (o instanceof LiftExample ex) return ex.getExample().getForms().stream().findFirst().map(Form::toPlainText).orElse("(example)");
+            if (o instanceof LiftNote n) return n.getParent() != null ? describeParent(n.getParent()) : "";
+            if (o instanceof LiftVariant v) return v.getRefId().orElse("");
+            if (o instanceof LiftEtymology et) return et.getType() != null ? et.getType() : "";
+            if (o instanceof LiftRelation r) return (r.getType() != null ? r.getType() : "") + " @ " + describeParent(r.getParent());
+            return "";
+        }));
+        table.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
+            if (n != null) navigateToObject(n);
+        });
+        viewTitle.setText(title);
+        tableContainer.getChildren().setAll(wrapTableWithFilters(table));
+        updateCountLabel(matches.size(), matches.size());
+    }
+
+    private void navigateToObject(Object obj) {
+        if (obj instanceof LiftEntry e) { switchView(NAV_ENTRIES); selectEntryInTable(e); populateEntryEditor(e); }
+        else if (obj instanceof LiftSense s) { findParentEntry(s).ifPresent(entry -> { switchView(NAV_ENTRIES); selectEntryInTable(entry); populateEntryEditor(entry); }); }
+        else if (obj instanceof LiftExample ex) { findParentSense(ex).ifPresent(sense -> { findParentEntry(sense).ifPresent(entry -> { switchView(NAV_ENTRIES); selectEntryInTable(entry); populateEntryEditor(entry); }); }); }
+        else if (obj instanceof LiftNote n) { AbstractNotable p = n.getParent(); if (p instanceof LiftEntry e) { switchView(NAV_ENTRIES); selectEntryInTable(e); populateEntryEditor(e); } else if (p instanceof LiftSense s) { findParentEntry(s).ifPresent(entry -> { switchView(NAV_ENTRIES); selectEntryInTable(entry); populateEntryEditor(entry); }); } }
+        else if (obj instanceof LiftVariant v) { if (v.getParent() != null) { switchView(NAV_ENTRIES); selectEntryInTable(v.getParent()); populateEntryEditor(v.getParent()); } }
+        else if (obj instanceof LiftEtymology et) { LiftEntry entry = et.getParent(); if (entry != null) { switchView(NAV_ENTRIES); selectEntryInTable(entry); populateEntryEditor(entry); } }
+        else if (obj instanceof LiftRelation r) {
+            AbstractExtensibleWithoutField p = r.getParent();
+            if (p instanceof LiftEntry e) { switchView(NAV_ENTRIES); selectEntryInTable(e); populateEntryEditor(e); }
+            else if (p instanceof LiftSense s) { findParentEntry(s).ifPresent(entry -> { switchView(NAV_ENTRIES); selectEntryInTable(entry); populateEntryEditor(entry); }); }
+            else if (p instanceof LiftVariant v) { if (v.getParent() != null) { switchView(NAV_ENTRIES); selectEntryInTable(v.getParent()); populateEntryEditor(v.getParent()); } }
+        }
+    }
+
+    private void selectEntryInTable(LiftEntry entry) {
+        entryTable.getSelectionModel().select(entry);
     }
 
     private void populateAnnotationSummaryEditor(LiftAnnotation annotation) {
+        setModifyButtonVisible(false);
         LinkedHashMap<String, String> values = new LinkedHashMap<>();
         values.put(I18n.get("col.parentType"), describeParentType(annotation.getParent()));
-        values.put(I18n.get("col.parent"), describeParent(annotation.getParent()));
         values.put(I18n.get("col.name"), annotation.getName());
         values.put(I18n.get("col.value"), annotation.getValue().orElse(""));
         values.put(I18n.get("col.who"), annotation.getWho().orElse(""));
         values.put(I18n.get("col.when"), annotation.getWhen().orElse(""));
         populateSummaryEditor(I18n.get("nav.annotations"), "", values);
+        addGoToParentButton(annotation.getParent());
     }
 
     private void populateFieldSummaryEditor(LiftField field) {
+        setModifyButtonVisible(false);
         LinkedHashMap<String, String> values = new LinkedHashMap<>();
+        values.put(I18n.get("col.parentType"), describeParentType(field.getParent()));
         values.put(I18n.get("col.type"), field.getName());
         values.put(I18n.get("col.text"), field.getText().getForms().stream().findFirst().map(Form::toPlainText).orElse(""));
         populateSummaryEditor(I18n.get("nav.fields"), "", values);
+        addGoToParentButton(field.getParent());
+    }
+
+    private void addGoToParentButton(Object parent) {
+        if (parent == null) return;
+        Button goBtn = new Button(I18n.get("btn.goToParent"));
+        goBtn.getStyleClass().add("example-add-button");
+        goBtn.setMaxWidth(Double.MAX_VALUE);
+        goBtn.setOnAction(e -> navigateToObject(parent));
+        editorContainer.getChildren().add(goBtn);
     }
 
     private void populateCategorySummaryEditor(String title, CategoryRow row) {
+        populateCategorySummaryEditor(title, row, null);
+    }
+
+    private void populateCategorySummaryEditor(String title, CategoryRow row, String categoryKind) {
+        setModifyButtonVisible(false);
         LinkedHashMap<String, String> values = new LinkedHashMap<>();
         values.put(I18n.get("col.value"), row.value());
         values.put(I18n.get("col.frequency"), String.valueOf(row.frequency()));
         populateSummaryEditor(title, "", values);
+        if (categoryKind != null) {
+            Button accessBtn = new Button(I18n.get("btn.accessObjects"));
+            accessBtn.getStyleClass().add("example-add-button");
+            accessBtn.setMaxWidth(Double.MAX_VALUE);
+            final String val = row.value();
+            accessBtn.setOnAction(e -> {
+                if ("grammatical-info".equals(categoryKind)) showObjectsWithGramInfo(val);
+                else if ("translation-type".equals(categoryKind)) showObjectsWithTranslationType(val);
+                else if ("relation-type".equals(categoryKind)) showObjectsWithRelationType(val);
+            });
+            editorContainer.getChildren().add(accessBtn);
+        }
+    }
+
+    private void showObjectsWithGramInfo(String gramInfoValue) {
+        if (currentDictionary == null) return;
+        List<Object> matches = currentDictionary.getLiftDictionaryComponents().getAllSenses().stream()
+            .filter(s -> s.getGrammaticalInfo().map(g -> gramInfoValue.equals(g.getValue())).orElse(false))
+            .collect(Collectors.toList());
+        showFilteredObjectsTable(matches, I18n.get("nav.gramInfo") + ": " + gramInfoValue);
+    }
+
+    private void showObjectsWithTranslationType(String transType) {
+        if (currentDictionary == null) return;
+        List<Object> matches = currentDictionary.getLiftDictionaryComponents().getAllExamples().stream()
+            .filter(ex -> ex.getTranslations().containsKey(transType))
+            .collect(Collectors.toList());
+        showFilteredObjectsTable(matches, I18n.get("nav.transTypes") + ": " + transType);
+    }
+
+    private void showObjectsWithRelationType(String relationType) {
+        if (currentDictionary == null) return;
+        List<Object> matches = currentDictionary.getLiftDictionaryComponents().getAllRelations().stream()
+            .filter(r -> relationType.equals(r.getType()))
+            .collect(Collectors.toList());
+        showFilteredObjectsTable(matches, I18n.get("nav.relationTypes") + ": " + relationType);
     }
 
     private void populateSummaryEditor(String title, String code, LinkedHashMap<String, String> values) {
@@ -2134,6 +2291,7 @@ public final class MainController {
     @FXML private void onViewGramInfo() { switchView(NAV_GRAM_INFO); }
     @FXML private void onViewTransTypes() { switchView(NAV_TRANS_TYPES); }
     @FXML private void onViewNoteTypes() { switchView(NAV_NOTE_TYPES); }
+    @FXML private void onViewRelationTypes() { switchView(NAV_RELATION_TYPES); }
 
     /* ─── Configuration menu ─── */
     @FXML private void onConfigNoteTypes() {
@@ -2355,7 +2513,7 @@ public final class MainController {
         for (LiftSense s : currentDictionary.getLiftDictionaryComponents().getAllSenses()) {
             s.getGrammaticalInfo().ifPresent(gi -> counts.merge(gi.getValue(), 1L, Long::sum));
         }
-        showCategoryTable(I18n.get("nav.gramInfo"), I18n.get("col.value"), counts);
+        showCategoryTable(I18n.get("nav.gramInfo"), I18n.get("col.value"), counts, "grammatical-info");
     }
 
     /* ════════════════════ TRANSLATION TYPES VIEW ════════════════════ */
@@ -2366,24 +2524,60 @@ public final class MainController {
         for (LiftExample ex : currentDictionary.getLiftDictionaryComponents().getAllExamples()) {
             for (String type : ex.getTranslations().keySet()) counts.merge(type, 1L, Long::sum);
         }
-        showCategoryTable(I18n.get("nav.transTypes"), I18n.get("col.type"), counts);
+        showCategoryTable(I18n.get("nav.transTypes"), I18n.get("col.type"), counts, "translation-type");
     }
 
     /* ════════════════════ NOTE TYPES VIEW ════════════════════ */
 
+    private record NoteTypeRow(String type, String parentType, long frequency) {}
+
     private void showNoteTypesView() {
         if (currentDictionary == null) { tableContainer.getChildren().setAll(new Label(I18n.get("placeholder.noDictionary"))); return; }
-        Map<String, Long> counts = new LinkedHashMap<>();
+        Map<String, NoteTypeRow> counts = new LinkedHashMap<>();
         for (LiftNote n : currentDictionary.getLiftDictionaryComponents().getAllNotes()) {
-            counts.merge(n.getType().orElse(I18n.get("placeholder.noType")), 1L, Long::sum);
+            String type = n.getType().orElse(I18n.get("placeholder.noType"));
+            String pt = describeParentType(n.getParent());
+            String key = type + "|" + pt;
+            counts.compute(key, (k, row) -> {
+                if (row == null) return new NoteTypeRow(type, pt, 1);
+                return new NoteTypeRow(type, pt, row.frequency + 1);
+            });
         }
-        showCategoryTable(I18n.get("nav.noteTypes"), I18n.get("col.type"), counts);
+        TableView<NoteTypeRow> table = new TableView<>();
+        table.getColumns().addAll(
+            col(I18n.get("col.type"), NoteTypeRow::type),
+            col(I18n.get("col.parentType"), NoteTypeRow::parentType),
+            col(I18n.get("col.frequency"), r -> String.valueOf(r.frequency()))
+        );
+        counts.values().stream().sorted(Comparator.comparingLong(NoteTypeRow::frequency).reversed())
+            .forEach(table.getItems()::add);
+        table.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
+            if (n != null) populateNoteTypeSummaryEditor(n);
+        });
+        VBox wrapper = wrapTableWithFilters(table, (f, t) -> updateCountLabel(f, t), searchField != null ? searchField.textProperty() : null);
+        tableContainer.getChildren().setAll(wrapper);
+        updateCountLabel(table.getItems().size(), table.getItems().size());
+    }
+
+    /* ════════════════════ RELATION TYPES VIEW ════════════════════ */
+
+    private void showRelationTypesView() {
+        if (currentDictionary == null) { tableContainer.getChildren().setAll(new Label(I18n.get("placeholder.noDictionary"))); return; }
+        Map<String, Long> counts = new LinkedHashMap<>();
+        for (LiftRelation r : currentDictionary.getLiftDictionaryComponents().getAllRelations()) {
+            counts.merge(r.getType() != null ? r.getType() : I18n.get("placeholder.noType"), 1L, Long::sum);
+        }
+        showCategoryTable(I18n.get("nav.relationTypes"), I18n.get("col.type"), counts, "relation-type");
     }
 
     /** Shared helper: show a simple value + frequency table for category views. */
     private record CategoryRow(String value, long frequency) {}
 
     private void showCategoryTable(String title, String colLabel, Map<String, Long> counts) {
+        showCategoryTable(title, colLabel, counts, null);
+    }
+
+    private void showCategoryTable(String title, String colLabel, Map<String, Long> counts, String categoryKind) {
         TableView<CategoryRow> table = new TableView<>();
         TableColumn<CategoryRow, String> valCol = new TableColumn<>(colLabel);
         valCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue().value()));
@@ -2395,7 +2589,7 @@ public final class MainController {
         counts.entrySet().stream().sorted(Map.Entry.<String, Long>comparingByValue().reversed())
             .forEach(e -> table.getItems().add(new CategoryRow(e.getKey(), e.getValue())));
         table.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
-            if (n != null) populateCategorySummaryEditor(title, n);
+            if (n != null) populateCategorySummaryEditor(title, n, categoryKind);
         });
         VBox wrapper = wrapTableWithFilters(table);
         tableContainer.getChildren().setAll(wrapper);
