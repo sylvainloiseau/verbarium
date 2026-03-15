@@ -3465,7 +3465,14 @@ public final class MainController {
         dp.getStyleClass().add("read-only-meta-picker");
     }
 
-    private void updateCountLabel(int shown, int total) { if (tableCountLabel != null) tableCountLabel.setText(shown + " / " + total); }
+    private void updateCountLabel(int shown, int total) {
+        if (tableCountLabel == null) return;
+        if (shown == total) {
+            tableCountLabel.setText(I18n.get("table.count.total", shown));
+            return;
+        }
+        tableCountLabel.setText(I18n.get("table.count.filtered", shown, total));
+    }
 
     private static DatePicker buildDatePicker(String isoDate) {
         DatePicker dp = new DatePicker();
