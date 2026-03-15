@@ -1,12 +1,3 @@
-/**
- 
-* @author Inès GBADAMASSI
-* @author Maryse GOEH-AKUE
-* @author Ermeline BRESSON
-* @author Ayman JARI
-* @author Erij MAZOUZ
-
-**/
 package fr.cnrs.lacito.liftgui.ui;
 
 import java.text.MessageFormat;
@@ -40,15 +31,20 @@ public final class I18n {
     private I18n() {}
 
     public static String get(String key) {
-        try { return bundle.getString(key); }
-        catch (java.util.MissingResourceException e) { return "!" + key + "!"; }
+        try {
+            return bundle.getString(key);
+        } catch (java.util.MissingResourceException e) {
+            return "!" + key + "!";
+        }
     }
 
     public static String get(String key, Object... args) {
         return MessageFormat.format(get(key), args);
     }
 
-    public static Locale getLocale() { return currentLocale; }
+    public static Locale getLocale() {
+        return currentLocale;
+    }
 
     public static void setLocale(Locale locale) {
         currentLocale = locale;
@@ -56,11 +52,41 @@ public final class I18n {
         PREFS.put(PREF_KEY, locale.getLanguage());
     }
 
-    public static ResourceBundle getBundle() { return bundle; }
+    public static ResourceBundle getBundle() {
+        return bundle;
+    }
 
     public static String formatErrorMessage(String errorKey, Exception exception) {
         String description = get(errorKey);
-        String exceptionInfo = exception.getClass().getSimpleName() + ": " + exception.getMessage();
-        return description + "\n\nDétails techniques: " + exceptionInfo;
+        Throwable rootCause = rootCause(exception);
+        StringBuilder details = new StringBuilder(throwableDetails(exception));
+
+        if (rootCause != null && rootCause != exception) {
+            String rootDetails = throwableDetails(rootCause);
+            if (!rootDetails.equals(details.toString())) {
+                details.append("\n")
+                    .append(get("error.rootCause"))
+                    .append(" ")
+                    .append(rootDetails);
+            }
+        }
+
+        return description + "\n\n" + get("error.technicalDetails") + " " + details;
+    }
+
+    private static Throwable rootCause(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null && current.getCause() != null && current.getCause() != current) {
+            current = current.getCause();
+        }
+        return current;
+    }
+
+    private static String throwableDetails(Throwable throwable) {
+        String message = throwable.getMessage();
+        if (message == null || message.isBlank()) {
+            return throwable.getClass().getSimpleName();
+        }
+        return throwable.getClass().getSimpleName() + ": " + message;
     }
 }
