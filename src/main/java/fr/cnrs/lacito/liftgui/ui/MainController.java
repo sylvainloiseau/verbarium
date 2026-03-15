@@ -439,6 +439,12 @@ public final class MainController {
             default -> showEntryView();
         }
         if (!NAV_CFG_DESC.equals(viewName)) setRightPanelVisible(true);
+        // Hide search field in quick entry view (not needed there)
+        if (searchField != null) {
+            boolean showSearch = !NAV_QUICK_ENTRY.equals(viewName);
+            searchField.setVisible(showSearch);
+            searchField.setManaged(showSearch);
+        }
         selectNavItem(viewName);
     }
 
@@ -1100,7 +1106,9 @@ public final class MainController {
                 String v = row.formProperty(l).get();
                 if (!v.isBlank()) entry.getForms().add(new Form(l, v));
             }
-            LiftSense sense = factory.createSense(new org.xml.sax.helpers.AttributesImpl(), entry);
+            org.xml.sax.helpers.AttributesImpl senseAttrs = new org.xml.sax.helpers.AttributesImpl();
+            senseAttrs.addAttribute("", "id", "id", "CDATA", UUID.randomUUID().toString());
+            LiftSense sense = factory.createSense(senseAttrs, entry);
             for (String l : metaLangs) {
                 String v = row.glossProperty(l).get();
                 if (!v.isBlank()) sense.addGloss(new Form(l, v));
@@ -1148,7 +1156,9 @@ public final class MainController {
             case NAV_SENSES -> {
                 LiftEntry selEntry = entryTable.getSelectionModel().getSelectedItem();
                 if (selEntry == null) { showError(I18n.get("error.creation"), I18n.get("info.selectEntryForSense")); return; }
-                factory.createSense(new org.xml.sax.helpers.AttributesImpl(), selEntry);
+                org.xml.sax.helpers.AttributesImpl senseAttrs = new org.xml.sax.helpers.AttributesImpl();
+                senseAttrs.addAttribute("", "id", "id", "CDATA", UUID.randomUUID().toString());
+                factory.createSense(senseAttrs, selEntry);
                 switchView(NAV_SENSES);
             }
             case NAV_RELATIONS, NAV_EXAMPLES, NAV_NOTES, NAV_VARIANTS, NAV_ETYMOLOGIES ->
@@ -1182,7 +1192,9 @@ public final class MainController {
                 String v = row.formProperty(l).get();
                 if (!v.isBlank()) entry.getForms().add(new Form(l, v));
             }
-            LiftSense sense = factory.createSense(new org.xml.sax.helpers.AttributesImpl(), entry);
+            org.xml.sax.helpers.AttributesImpl senseAttrs = new org.xml.sax.helpers.AttributesImpl();
+            senseAttrs.addAttribute("", "id", "id", "CDATA", UUID.randomUUID().toString());
+            LiftSense sense = factory.createSense(senseAttrs, entry);
             for (String l : metaLangs) {
                 String v = row.glossProperty(l).get();
                 if (!v.isBlank()) sense.addGloss(new Form(l, v));
