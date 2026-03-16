@@ -190,7 +190,11 @@ public final class MainController {
     private final TableView<QuickEntryRow> quickEntryTable = new TableView<>();
 
     /* ─── Wrapper for language field view ─── */
-    public record MultiTextField(String parentType, String parentId, String lang, String text) {}
+    public record MultiTextField(String parentType, String parentId, String lang, String text, Object parentObject, MultiText multiText) {
+        public MultiTextField(String parentType, String parentId, String lang, String text) {
+            this(parentType, parentId, lang, text, null, null);
+        }
+    }
     public static class QuickEntryRow {
         private final Map<String, javafx.beans.property.StringProperty> forms = new HashMap<>();
         private final Map<String, javafx.beans.property.StringProperty> glosses = new HashMap<>();
@@ -697,13 +701,14 @@ public final class MainController {
 
         List<String> objLangs = getObjectLanguages();
         List<String> metaLangs = getMetaLanguages();
+        Map<LiftSense, LiftEntry> senseToEntry = buildSenseToEntryMap();
         // Colonne "Entrée parente" : forme(s) de l'entrée dont c'est le sens
         TableColumn<LiftSense, String> parentEntryGroup = new TableColumn<>(I18n.get("col.parentEntry"));
         for (String l : objLangs) {
             final String lang = l;
             TableColumn<LiftSense, String> c = col(l, s -> {
-                Optional<LiftEntry> parent = findParentEntry(s);
-                return parent.map(e -> e.getForms().getForm(lang).map(Form::toPlainText).orElse("")).orElse("");
+                LiftEntry parent = senseToEntry.get(s);
+                return parent != null ? parent.getForms().getForm(lang).map(Form::toPlainText).orElse("") : "";
             });
             c.setPrefWidth(120);
             parentEntryGroup.getColumns().add(c);
@@ -928,21 +933,21 @@ public final class MainController {
         List<MultiTextField> rows = new ArrayList<>();
         for (LiftEntry entry : currentDictionary.getLiftDictionaryComponents().getAllEntries()) {
             if (objectLangs) {
-                collectMtRows(rows, I18n.get("nav.entries"), entry.getId().orElse("?"), entry.getForms(), langs);
-                for (LiftVariant v : entry.getVariants()) collectMtRows(rows, "variante", v.getRefId().orElse("?"), v.getForms(), langs);
-                for (LiftPronunciation p : entry.getPronunciations()) collectMtRows(rows, "pron", entry.getId().orElse("?"), p.getProunciation(), langs);
+                collectMtRows(rows, I18n.get("nav.entries"), entry.getId().orElse("?"), entry, entry.getForms(), langs);
+                for (LiftVariant v : entry.getVariants()) collectMtRows(rows, "variante", v.getRefId().orElse("?"), v, v.getForms(), langs);
+                for (LiftPronunciation p : entry.getPronunciations()) collectMtRows(rows, "pron", entry.getId().orElse("?"), p, p.getProunciation(), langs);
                 for (LiftSense s : entry.getSenses()) {
-                    for (LiftExample ex : s.getExamples()) collectMtRows(rows, "exemple", s.getId().orElse("?"), ex.getExample(), langs);
+                    for (LiftExample ex : s.getExamples()) collectMtRows(rows, "exemple", s.getId().orElse("?"), ex, ex.getExample(), langs);
                 }
             } else {
                 for (LiftSense s : entry.getSenses()) {
-                    collectMtRows(rows, "définition", s.getId().orElse("?"), s.getDefinition(), langs);
-                    collectMtRows(rows, "gloss", s.getId().orElse("?"), s.getGloss(), langs);
+                    collectMtRows(rows, "définition", s.getId().orElse("?"), s, s.getDefinition(), langs);
+                    collectMtRows(rows, "gloss", s.getId().orElse("?"), s, s.getGloss(), langs);
                     for (LiftExample ex : s.getExamples()) {
-                        for (MultiText tr : ex.getTranslations().values()) collectMtRows(rows, "traduction", s.getId().orElse("?"), tr, langs);
+                        for (MultiText tr : ex.getTranslations().values()) collectMtRows(rows, "traduction", s.getId().orElse("?"), ex, tr, langs);
                     }
                 }
-                for (LiftNote n : entry.getNotes().values()) collectMtRows(rows, "note", entry.getId().orElse("?"), n.getText(), langs);
+                for (LiftNote n : entry.getNotes().values()) collectMtRows(rows, "note", entry.getId().orElse("?"), n, n.getText(), langs);
             }
         }
 
@@ -955,6 +960,7 @@ public final class MainController {
             TableColumn<MultiTextField, String> c = new TableColumn<>(l);
             c.setCellValueFactory(cd -> new ReadOnlyStringWrapper(l.equals(cd.getValue().lang()) ? cd.getValue().text() : ""));
             c.setPrefWidth(160);
+            c.getProperties().put("filterMode", FILTER_MODE_TEXT);
             langGroup.getColumns().add(c);
         }
 
@@ -967,10 +973,10 @@ public final class MainController {
         updateCountLabel(rows.size(), rows.size());
     }
 
-    private static void collectMtRows(List<MultiTextField> rows, String parentType, String parentId, MultiText mt, List<String> langs) {
+    private static void collectMtRows(List<MultiTextField> rows, String parentType, String parentId, Object parentObject, MultiText mt, List<String> langs) {
         for (Form f : mt.getForms()) {
             if (langs.contains(f.getLang())) {
-                rows.add(new MultiTextField(parentType, parentId, f.getLang(), f.toPlainText()));
+                rows.add(new MultiTextField(parentType, parentId, f.getLang(), f.toPlainText(), parentObject, mt));
             }
         }
     }
@@ -1655,6 +1661,23 @@ public final class MainController {
             .findFirst();
     }
 
+    /** Precomputed map sense -> entry for fast lookup in sense table (avoids O(n) per cell). */
+    private Map<LiftSense, LiftEntry> buildSenseToEntryMap() {
+        Map<LiftSense, LiftEntry> map = new HashMap<>();
+        if (currentDictionary == null) return map;
+        for (LiftEntry e : currentDictionary.getLiftDictionaryComponents().getAllEntries()) {
+            fillSenseToEntry(map, e.getSenses(), e);
+        }
+        return map;
+    }
+
+    private void fillSenseToEntry(Map<LiftSense, LiftEntry> map, List<LiftSense> senses, LiftEntry entry) {
+        for (LiftSense s : senses) {
+            map.put(s, entry);
+            fillSenseToEntry(map, s.getSubSenses(), entry);
+        }
+    }
+
     private boolean containsSense(List<LiftSense> list, LiftSense target) {
         if (list.contains(target)) return true;
         for (LiftSense s : list) {
@@ -1865,12 +1888,47 @@ public final class MainController {
     }
 
     private void populateLangFieldEditor(MultiTextField row) {
-        LinkedHashMap<String, String> values = new LinkedHashMap<>();
-        values.put(I18n.get("col.parentType"), row.parentType());
-        values.put(I18n.get("col.parent"), row.parentId());
-        values.put(I18n.get("nav.languages"), row.lang());
-        values.put(I18n.get("col.text"), row.text());
-        populateSummaryEditor(I18n.get(currentView), "", values);
+        setModifyButtonVisible(false);
+        editEntryTitle.setText(I18n.get(currentView));
+        editEntryCode.setText("");
+        editorContainer.getChildren().clear();
+
+        GridPane g = new GridPane();
+        g.setHgap(8);
+        g.setVgap(6);
+        int r = 0;
+        addReadOnlyRow(g, r++, I18n.get("col.parentType"), row.parentType());
+        g.add(new Label(I18n.get("col.parent")), 0, r);
+        if (row.parentObject() != null) {
+            Button parentLink = new Button(row.parentId());
+            parentLink.getStyleClass().add("hyperlink");
+            parentLink.setOnAction(e -> navigateToObject(row.parentObject()));
+            GridPane.setHgrow(parentLink, Priority.ALWAYS);
+            g.add(parentLink, 1, r);
+        } else {
+            TextField tf = new TextField(row.parentId());
+            styleReadOnlyTextField(tf);
+            GridPane.setHgrow(tf, Priority.ALWAYS);
+            g.add(tf, 1, r);
+        }
+        r++;
+        addReadOnlyRow(g, r++, I18n.get("nav.languages"), row.lang());
+
+        if (row.multiText() != null) {
+            editorContainer.getChildren().add(g);
+            MultiTextEditor mte = new MultiTextEditor();
+            List<String> availLangs = NAV_OBJ_LANGS.equals(currentView) ? getObjectLanguages() : getMetaLanguages();
+            mte.setAvailableLanguages(availLangs.isEmpty() ? List.of(row.lang()) : availLangs);
+            mte.setMultiText(row.multiText());
+            VBox textSection = new VBox(6);
+            textSection.getChildren().add(new Label(I18n.get("col.text")));
+            textSection.getChildren().add(mte);
+            VBox.setVgrow(mte, Priority.ALWAYS);
+            editorContainer.getChildren().add(textSection);
+        } else {
+            addReadOnlyRow(g, r, I18n.get("col.text"), row.text());
+            editorContainer.getChildren().add(g);
+        }
     }
 
     private void populateTraitSummaryEditor(TraitRow row) {
