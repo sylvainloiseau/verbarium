@@ -628,30 +628,6 @@ public final class MainController {
         entryTable.setEditable(true); // ← active l'édition sur la table
         if (currentDictionary == null) return;
 
-        // ── Colonne Code (trait "code") ──
-        TableColumn<LiftEntry, String> codeCol = new TableColumn<>(I18n.get("col.code"));
-        codeCol.setMinWidth(85);
-        codeCol.setPrefWidth(120);
-        codeCol.setCellValueFactory(cd -> {
-            LiftEntry e = cd.getValue();
-            return e == null ? new ReadOnlyStringWrapper("") :
-                    Bindings.createStringBinding(() -> getTraitValue(e, "code"), e.traitsProperty());
-        });
-        codeCol.setCellFactory(TextFieldTableCell.forTableColumn());
-        codeCol.setOnEditCommit(ev -> {
-            LiftEntry e = ev.getRowValue();
-            if (e == null) return;
-            // Met à jour ou crée le trait "code"
-            e.getTraits().stream().filter(t -> "code".equals(t.getName())).findFirst()
-                    .ifPresentOrElse(
-                            t -> t.setValue(ev.getNewValue()),
-                            () -> {
-                                LiftFactory factory = getFactory(currentDictionary);
-                                if (factory != null) factory.createTrait("code", ev.getNewValue(), e);
-                            }
-                    );
-        });
-
         // ── Colonnes Formes par langue ──
         var formLangs = currentDictionary.getLiftDictionaryComponents().getAllEntries().stream()
                 .flatMap(e -> e.getForms().getLangs().stream())
@@ -709,7 +685,7 @@ public final class MainController {
         dateCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(
                 cd.getValue() == null ? "" : cd.getValue().getDateCreated().orElse("")));
 
-        entryTable.getColumns().addAll(codeCol, formGroup, morphCol, dateCol);
+        entryTable.getColumns().addAll(formGroup, morphCol, dateCol);
     }
     /* ════════════════════ SENSE VIEW ════════════════════ */
 
@@ -718,8 +694,19 @@ public final class MainController {
         senseTable.getColumns().clear();
         if (currentDictionary == null) { tableContainer.getChildren().setAll(senseTable); return; }
 
+        List<String> objLangs = getObjectLanguages();
         List<String> metaLangs = getMetaLanguages();
-        TableColumn<LiftSense, String> idCol = col(I18n.get("col.id"), s -> s.getId().orElse(""));
+        // Colonne "Entrée parente" : forme(s) de l'entrée dont c'est le sens
+        TableColumn<LiftSense, String> parentEntryGroup = new TableColumn<>(I18n.get("col.parentEntry"));
+        for (String l : objLangs) {
+            final String lang = l;
+            TableColumn<LiftSense, String> c = col(l, s -> {
+                Optional<LiftEntry> parent = findParentEntry(s);
+                return parent.map(e -> e.getForms().getForm(lang).map(Form::toPlainText).orElse("")).orElse("");
+            });
+            c.setPrefWidth(120);
+            parentEntryGroup.getColumns().add(c);
+        }
         TableColumn<LiftSense, String> giCol = col(I18n.get("col.gramInfo"), s -> s.getGrammaticalInfo().map(GrammaticalInfo::getValue).orElse(""));
         TableColumn<LiftSense, String> glossGroup = new TableColumn<>(I18n.get("col.gloss"));
         for (String l : metaLangs) {
@@ -729,7 +716,7 @@ public final class MainController {
         for (String l : metaLangs) {
             defGroup.getColumns().add(col(l, s -> s.getDefinition().getForm(l).map(Form::toPlainText).orElse("")));
         }
-        senseTable.getColumns().addAll(idCol, giCol, glossGroup, defGroup);
+        senseTable.getColumns().addAll(parentEntryGroup, giCol, glossGroup, defGroup);
         senseTable.getItems().addAll(currentDictionary.getLiftDictionaryComponents().getAllSenses());
         senseTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> { if (n != null) populateSenseEditor(n); });
         tableContainer.getChildren().setAll(wrapTableWithFilters(senseTable, (f,t) -> updateCountLabel(f,t), searchField != null ? searchField.textProperty() : null));
@@ -1313,7 +1300,9 @@ public final class MainController {
 
             Button addSenseBtn = new Button(I18n.get("btn.addSense"));
             addSenseBtn.setOnAction(e -> {
-                factory.createSense(new org.xml.sax.helpers.AttributesImpl(), entry);
+                org.xml.sax.helpers.AttributesImpl senseAttrs = new org.xml.sax.helpers.AttributesImpl();
+                senseAttrs.addAttribute("", "id", "id", "CDATA", UUID.randomUUID().toString());
+                factory.createSense(senseAttrs, entry);
                 populateEntryEditor(entry);
             });
 
@@ -1561,7 +1550,9 @@ public final class MainController {
 
             Button addSubSenseBtn = new Button(I18n.get("btn.addSubSense"));
             addSubSenseBtn.setOnAction(e -> {
-                factory.createSense(new org.xml.sax.helpers.AttributesImpl(), sense);
+                org.xml.sax.helpers.AttributesImpl senseAttrs = new org.xml.sax.helpers.AttributesImpl();
+                senseAttrs.addAttribute("", "id", "id", "CDATA", UUID.randomUUID().toString());
+                factory.createSense(senseAttrs, sense);
                 populateSenseEditor(sense);
             });
 

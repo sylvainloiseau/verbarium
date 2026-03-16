@@ -11,6 +11,7 @@
 package fr.cnrs.lacito.liftgui.ui.controls;
 
 import fr.cnrs.lacito.liftapi.model.*;
+import fr.cnrs.lacito.liftgui.ui.I18n;
 import javafx.geometry.Insets;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
@@ -33,6 +34,7 @@ public final class SenseEditor extends VBox {
 
     private final TextField idField = new TextField();
     private final TextField grammaticalInfoField = new TextField();
+    private final GridPane identityBlock = new GridPane();
     private final MultiTextEditor definitionEditor = new MultiTextEditor();
     private final MultiTextEditor glossEditor = new MultiTextEditor();
     private final VBox examplesBox = new VBox(6);
@@ -47,18 +49,13 @@ public final class SenseEditor extends VBox {
         setPadding(new Insets(4));
         setStyle("-fx-border-color: #aab; -fx-border-radius: 4; -fx-background-color: #f4f4fa; -fx-background-radius: 4;");
 
-        idField.setEditable(false);
-        idField.setPromptText("id");
         grammaticalInfoField.setPromptText("info grammaticale");
 
         GridPane grid = new GridPane();
         grid.setHgap(8);
         grid.setVgap(6);
-        grid.add(new Label("ID"), 0, 0);
-        grid.add(idField, 1, 0);
-        grid.add(new Label("Gram. Info"), 0, 1);
-        grid.add(grammaticalInfoField, 1, 1);
-        GridPane.setHgrow(idField, Priority.ALWAYS);
+        grid.add(new Label("Gram. Info"), 0, 0);
+        grid.add(grammaticalInfoField, 1, 0);
         GridPane.setHgrow(grammaticalInfoField, Priority.ALWAYS);
 
         TitledPane defPane = new TitledPane("Définition (MultiText)", definitionEditor);
@@ -89,7 +86,14 @@ public final class SenseEditor extends VBox {
         extPane.setExpanded(false);
         extPane.setAnimated(false);
 
-        getChildren().addAll(grid, defPane, glossPane, exPane, relPane, revPane, subSensesPane, extPane);
+        identityBlock.setHgap(8);
+        identityBlock.setVgap(6);
+        identityBlock.setStyle("-fx-background-color: #e8e8e8; -fx-padding: 8; -fx-background-radius: 4;");
+        TitledPane identityPane = new TitledPane(I18n.get("editor.identity"), identityBlock);
+        identityPane.setExpanded(true);
+        identityPane.setAnimated(false);
+
+        getChildren().addAll(grid, defPane, glossPane, exPane, relPane, revPane, subSensesPane, extPane, identityPane);
     }
 
     /**
@@ -105,15 +109,35 @@ public final class SenseEditor extends VBox {
         subSensesBox.getChildren().clear();
 
         if (sense == null) {
-            idField.setText("");
             grammaticalInfoField.setText("");
             definitionEditor.setMultiText(null);
             glossEditor.setMultiText(null);
             notableEditor.setModel(null, metaLangs);
+            identityBlock.getChildren().clear();
             return;
         }
-        idField.setText(sense.getId().orElse(""));
         grammaticalInfoField.setText(sense.getGrammaticalInfo().map(GrammaticalInfo::getValue).orElse(""));
+
+        // Bloc identity en bas : ID, dates (gris, comme Entries)
+        identityBlock.getChildren().clear();
+        idField.setText(sense.getId().orElse(""));
+        idField.setEditable(false);
+        idField.setStyle("-fx-text-fill: #666; -fx-background-color: #f0f0f0;");
+        identityBlock.add(new Label(I18n.get("field.id")), 0, 0);
+        identityBlock.add(idField, 1, 0);
+        identityBlock.add(new Label(I18n.get("field.dateCreated")), 0, 1);
+        TextField dateCreatedField = new TextField(sense.getDateCreated().orElse(""));
+        dateCreatedField.setEditable(false);
+        dateCreatedField.setStyle("-fx-text-fill: #666; -fx-background-color: #f0f0f0;");
+        identityBlock.add(dateCreatedField, 1, 1);
+        identityBlock.add(new Label(I18n.get("field.dateModified")), 0, 2);
+        TextField dateModifiedField = new TextField(sense.getDateModified().orElse(""));
+        dateModifiedField.setEditable(false);
+        dateModifiedField.setStyle("-fx-text-fill: #666; -fx-background-color: #f0f0f0;");
+        identityBlock.add(dateModifiedField, 1, 2);
+        GridPane.setHgrow(idField, Priority.ALWAYS);
+        GridPane.setHgrow(dateCreatedField, Priority.ALWAYS);
+        GridPane.setHgrow(dateModifiedField, Priority.ALWAYS);
 
         definitionEditor.setAvailableLanguages(metaLangs);
         definitionEditor.setMultiText(sense.getDefinition());
