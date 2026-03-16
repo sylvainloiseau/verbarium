@@ -1289,6 +1289,7 @@ public final class MainController {
             });
             editorContainer.getChildren().add(deleteBtn);
 
+        addSectionTitle(editorContainer, "editor.section.lexicalContent");
         addSection(editorContainer, I18n.get("editor.forms"), () -> { MultiTextEditor m = new MultiTextEditor(); m.setAvailableLanguages(objLangs); m.setMultiText(entry.getForms()); return m; }, true);
         addListSection(editorContainer, I18n.get("editor.traits"), safeList(entry.getTraits()), t -> {
             TraitEditor te = new TraitEditor();
@@ -1311,9 +1312,11 @@ public final class MainController {
                 return box;
             }, true);
         }
+        addSectionTitle(editorContainer, "editor.section.variantsRelations");
         addListSection(editorContainer, I18n.get("editor.variants"), safeList(entry.getVariants()), v -> { VariantEditor ve = new VariantEditor(); ve.setVariant(v, objLangs, metaLangs); return ve; }, false);
         addListSection(editorContainer, I18n.get("editor.relations"), safeList(entry.getRelations()), r -> { RelationEditor re = new RelationEditor(); re.setRelation(r, metaLangs); return re; }, false);
         addListSection(editorContainer, I18n.get("editor.etymologies"), safeList(entry.getEtymologies()), et -> { EtymologyEditor ee = new EtymologyEditor(); ee.setEtymology(et, objLangs, metaLangs); return ee; }, false);
+        addSectionTitle(editorContainer, "editor.section.annotationsFields");
         addListSection(editorContainer, I18n.get("editor.annotations"), safeList(entry.getAnnotations()), a -> {
             AnnotationEditor ae = new AnnotationEditor(); ae.setAnnotation(a, metaLangs, annotationNames); return ae;
         }, false);
@@ -1321,6 +1324,7 @@ public final class MainController {
         addListSection(editorContainer, I18n.get("editor.fields"), safeList(entry.getFields()), f -> {
             FieldEditor fe = new FieldEditor(); fe.setField(f, metaLangs, fieldTypes); return fe;
         }, false);
+        addSectionTitle(editorContainer, "editor.section.metadata");
         addSection(editorContainer, I18n.get("editor.identity"), () -> {
             GridPane g = new GridPane(); g.setHgap(8); g.setVgap(6);
             addReadOnlyRow(g, 0, I18n.get("field.id"), entry.getId().orElse(""));
@@ -3546,6 +3550,12 @@ public final class MainController {
         c.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue() == null ? "" : extractor.apply(cd.getValue())));
         c.setPrefWidth(140);
         return c;
+    }
+
+    private static void addSectionTitle(VBox container, String i18nKey) {
+        Label lbl = new Label(I18n.get(i18nKey));
+        lbl.getStyleClass().add("editor-section-title");
+        container.getChildren().add(lbl);
     }
 
     private static void addSection(VBox container, String title, NodeFactory factory, boolean expanded) {

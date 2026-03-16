@@ -53,12 +53,18 @@ public final class SenseEditor extends VBox {
 
         grammaticalInfoField.setPromptText("info grammaticale");
 
+        Label gramTitle = new Label(I18n.get("editor.section.gramInfo"));
+        gramTitle.getStyleClass().add("editor-section-title");
+
         GridPane grid = new GridPane();
         grid.setHgap(8);
         grid.setVgap(6);
         grid.add(new Label("Gram. Info"), 0, 0);
         grid.add(grammaticalInfoField, 1, 0);
         GridPane.setHgrow(grammaticalInfoField, Priority.ALWAYS);
+
+        Label semanticTitle = new Label(I18n.get("editor.section.semanticContent"));
+        semanticTitle.getStyleClass().add("editor-section-title");
 
         TitledPane defPane = new TitledPane("Définition (MultiText)", definitionEditor);
         defPane.setExpanded(true);
@@ -67,6 +73,9 @@ public final class SenseEditor extends VBox {
         TitledPane glossPane = new TitledPane("Gloss (MultiText)", glossEditor);
         glossPane.setExpanded(true);
         glossPane.setAnimated(false);
+
+        Label examplesTitle = new Label(I18n.get("editor.section.examplesRelations"));
+        examplesTitle.getStyleClass().add("editor-section-title");
 
         TitledPane exPane = new TitledPane("Exemples", examplesBox);
         exPane.setExpanded(true);
@@ -84,6 +93,9 @@ public final class SenseEditor extends VBox {
         subSensesPane.setExpanded(false);
         subSensesPane.setAnimated(false);
 
+        Label metadataTitle = new Label(I18n.get("editor.section.metadata"));
+        metadataTitle.getStyleClass().add("editor-section-title");
+
         TitledPane extPane = new TitledPane("Propriétés héritées (notes, champs, traits, annotations, dates)", notableEditor);
         extPane.setExpanded(false);
         extPane.setAnimated(false);
@@ -95,7 +107,7 @@ public final class SenseEditor extends VBox {
         identityPane.setExpanded(true);
         identityPane.setAnimated(false);
 
-        getChildren().addAll(grid, defPane, glossPane, exPane, relPane, revPane, subSensesPane, extPane, identityPane);
+        getChildren().addAll(gramTitle, grid, semanticTitle, defPane, glossPane, examplesTitle, exPane, relPane, revPane, subSensesPane, metadataTitle, extPane, identityPane);
     }
 
     /**

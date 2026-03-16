@@ -164,6 +164,14 @@
   -fx-font-weight: bold;
   -fx-text-fill: black;
 }
+
+/* Section titles in right panel editors (between collapsible groups) */
+.editor-section-title {
+  -fx-font-size: 12px;
+  -fx-font-weight: bold;
+  -fx-text-fill: #4c6f76;
+  -fx-padding: 8 0 4 0;
+}
 .edit-entry-code {
   -fx-font-size: 13px;
   -fx-text-fill: #66767a;
