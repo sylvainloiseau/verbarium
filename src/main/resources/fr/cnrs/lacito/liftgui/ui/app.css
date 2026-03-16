@@ -162,7 +162,7 @@
 .edit-entry-title {
   -fx-font-size: 18px;
   -fx-font-weight: bold;
-  -fx-text-fill: #324a50;
+  -fx-text-fill: black;
 }
 .edit-entry-code {
   -fx-font-size: 13px;

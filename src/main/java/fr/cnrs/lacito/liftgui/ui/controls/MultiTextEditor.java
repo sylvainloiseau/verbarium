@@ -20,6 +20,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
 import java.util.*;
+import java.util.function.BiConsumer;
 
 /**
  * Reusable editor for a {@link MultiText} (section 5.6 of the specification).
@@ -42,6 +43,8 @@ public final class MultiTextEditor extends VBox {
 
     private MultiText multiText;
     private boolean readOnly;
+    private BiConsumer<String, MultiText> onAddAnnotation;
+    private List<String> knownAnnotationNames = List.of();
 
     public MultiTextEditor() {
         super(8);
@@ -49,7 +52,7 @@ public final class MultiTextEditor extends VBox {
 
         addLangCombo.setPromptText("Ajouter une langue…");
         addLangCombo.setPrefWidth(200);
-        addLangCombo.setEditable(true);
+        addLangCombo.setEditable(false);
         addLangCombo.setOnAction(e -> {
             String sel = safeTrim(addLangCombo.getValue());
             if (!sel.isBlank()) {
@@ -61,8 +64,16 @@ public final class MultiTextEditor extends VBox {
 
         annotationsPane.setExpanded(false);
         annotationsPane.setAnimated(false);
+        annotationsBox.setPadding(new Insets(8, 16, 8, 16));
 
         getChildren().addAll(rowsBox, addLangCombo, annotationsPane);
+    }
+
+    /** Optional: when set, enables "add annotation" button in the Annotations pane. Callback receives (name, multiText). */
+    public void setOnAddAnnotation(BiConsumer<String, MultiText> callback, Collection<String> annotationNames) {
+        this.onAddAnnotation = callback;
+        this.knownAnnotationNames = annotationNames == null ? List.of() : new ArrayList<>(annotationNames);
+        rebuildAnnotations();
     }
 
     public void setAvailableLanguages(Collection<String> langs) {
@@ -140,10 +151,38 @@ public final class MultiTextEditor extends VBox {
     private void rebuildAnnotations() {
         annotationsBox.getChildren().clear();
         List<LiftAnnotation> annotations = getAnnotationsSafe();
-        if (annotations.isEmpty()) {
+
+        if (onAddAnnotation != null && multiText != null) {
+            Button addBtn = new Button("+ Annotation");
+            addBtn.getStyleClass().add("example-add-button");
+            addBtn.setOnAction(e -> {
+                String name = null;
+                if (knownAnnotationNames.isEmpty()) {
+                    TextInputDialog dlg = new TextInputDialog("");
+                    dlg.setTitle("Ajouter une annotation");
+                    dlg.setHeaderText("Nom du type d'annotation");
+                    dlg.setContentText("Nom :");
+                    name = dlg.showAndWait().orElse(null);
+                } else {
+                    ChoiceDialog<String> dlg = new ChoiceDialog<>(
+                        knownAnnotationNames.get(0), knownAnnotationNames);
+                    dlg.setTitle("Ajouter une annotation");
+                    dlg.setHeaderText("Type d'annotation");
+                    name = dlg.showAndWait().orElse(null);
+                }
+                if (name != null && !name.trim().isBlank()) {
+                    onAddAnnotation.accept(name.trim(), multiText);
+                    rebuildAnnotations();
+                }
+            });
+            annotationsBox.getChildren().add(addBtn);
+        }
+
+        if (annotations.isEmpty() && (onAddAnnotation == null || multiText == null)) {
             annotationsBox.getChildren().add(new Label("(aucune annotation)"));
             return;
         }
+        if (annotations.isEmpty()) return;
 
         List<String> knownNames = annotations.stream()
             .map(LiftAnnotation::getName)

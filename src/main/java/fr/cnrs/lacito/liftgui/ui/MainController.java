@@ -44,6 +44,7 @@ import java.nio.file.Files;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.*;
+import java.util.function.BiConsumer;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -731,12 +732,51 @@ public final class MainController {
         if (currentDictionary == null) { tableContainer.getChildren().setAll(exampleTable); return; }
 
         List<String> objLangs = getObjectLanguages();
+        List<String> metaLangs = getMetaLanguages();
+        Set<String> transTypes = currentDictionary.getTranslationType();
+
+        // 1. Sens parent (multitexte : glose du sens parent)
+        TableColumn<LiftExample, String> parentSenseGroup = new TableColumn<>(I18n.get("col.parentSense"));
+        for (String l : metaLangs) {
+            final String lang = l;
+            parentSenseGroup.getColumns().add(col(l, ex -> {
+                LiftSense parent = ex.getParent() != null ? ex.getParent() : findParentSense(ex).orElse(null);
+                if (parent == null) return "";
+                // Gloss = forme principale du sens ; sinon première forme disponible
+                MultiText gloss = parent.getGloss();
+                return gloss.getForm(lang).map(Form::toPlainText)
+                    .or(() -> gloss.getForms().stream().findFirst().map(Form::toPlainText))
+                    .orElse("");
+            }));
+        }
+        exampleTable.getColumns().add(parentSenseGroup);
+
+        // 2. Source
         TableColumn<LiftExample, String> srcCol = col(I18n.get("col.source"), ex -> ex.getSource().orElse(""));
+        exampleTable.getColumns().add(srcCol);
+
+        // 3. Exemple (langues objet)
         TableColumn<LiftExample, String> exGroup = new TableColumn<>(I18n.get("col.example"));
         for (String l : objLangs) {
             exGroup.getColumns().add(col(l, ex -> ex.getExample().getForm(l).map(Form::toPlainText).orElse("")));
         }
-        exampleTable.getColumns().addAll(srcCol, exGroup);
+        exampleTable.getColumns().add(exGroup);
+
+        // 4. Traductions : un groupe par type de traduction, sous-colonnes par langue méta
+        for (String transType : transTypes.stream().sorted().toList()) {
+            TableColumn<LiftExample, String> transGroup = new TableColumn<>(
+                transType.isEmpty() ? I18n.get("col.translation") : transType);
+            for (String l : metaLangs) {
+                final String lang = l;
+                final String type = transType;
+                transGroup.getColumns().add(col(l, ex -> {
+                    MultiText mt = ex.getTranslations().get(type);
+                    return mt != null ? mt.getForm(lang).map(Form::toPlainText).orElse("") : "";
+                }));
+            }
+            exampleTable.getColumns().add(transGroup);
+        }
+
         exampleTable.getItems().addAll(currentDictionary.getLiftDictionaryComponents().getAllExamples());
         exampleTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> { if (n != null) populateExampleEditor(n); });
         tableContainer.getChildren().setAll(wrapTableWithFilters(exampleTable, (f,t2) -> updateCountLabel(f,t2), searchField != null ? searchField.textProperty() : null));
@@ -1492,10 +1532,12 @@ public final class MainController {
         }
 
         SenseEditor se = new SenseEditor();
-        se.setSense(sense, metaLangs, objLangs);
-        editorContainer.getChildren().add(se);
-
         LiftFactory factory = getFactory(currentDictionary);
+        BiConsumer<String, MultiText> onAddAnnotation = (factory != null)
+            ? (name, mt) -> factory.createAnnotation(name, mt)
+            : null;
+        se.setSense(sense, metaLangs, objLangs, onAddAnnotation, getKnownAnnotationNames());
+        editorContainer.getChildren().add(se);
         if (factory != null) {
             FlowPane addButtons = new FlowPane(8, 6);
             addButtons.setPadding(new Insets(8, 0, 0, 0));
@@ -1694,7 +1736,11 @@ public final class MainController {
         }
 
         ExampleEditor ee = new ExampleEditor();
-        ee.setExample(ex, getObjectLanguages(), getMetaLanguages());
+        LiftFactory factory = getFactory(currentDictionary);
+        BiConsumer<String, MultiText> onAddAnnotation = (factory != null)
+            ? (name, mt) -> factory.createAnnotation(name, mt)
+            : null;
+        ee.setExample(ex, getObjectLanguages(), getMetaLanguages(), onAddAnnotation, getKnownAnnotationNames());
         editorContainer.getChildren().add(ee);
     }
 

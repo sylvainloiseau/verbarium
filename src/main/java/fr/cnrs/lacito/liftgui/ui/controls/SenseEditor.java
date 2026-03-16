@@ -21,6 +21,8 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
 import java.util.Collection;
+import java.util.List;
+import java.util.function.BiConsumer;
 
 /**
  * Editor for a single {@link LiftSense}.
@@ -103,6 +105,15 @@ public final class SenseEditor extends VBox {
      * @param objLangs    object-languages for examples
      */
     public void setSense(LiftSense sense, Collection<String> metaLangs, Collection<String> objLangs) {
+        setSense(sense, metaLangs, objLangs, null, List.of());
+    }
+
+    /**
+     * Same as above with optional callback to create annotations on MultiText (definition, gloss).
+     */
+    public void setSense(LiftSense sense, Collection<String> metaLangs, Collection<String> objLangs,
+            BiConsumer<String, fr.cnrs.lacito.liftapi.model.MultiText> onAddAnnotation,
+            Collection<String> knownAnnotationNames) {
         examplesBox.getChildren().clear();
         relationsBox.getChildren().clear();
         reversalsBox.getChildren().clear();
@@ -111,7 +122,9 @@ public final class SenseEditor extends VBox {
         if (sense == null) {
             grammaticalInfoField.setText("");
             definitionEditor.setMultiText(null);
+            definitionEditor.setOnAddAnnotation(null, null);
             glossEditor.setMultiText(null);
+            glossEditor.setOnAddAnnotation(null, null);
             notableEditor.setModel(null, metaLangs);
             identityBlock.getChildren().clear();
             return;
@@ -141,14 +154,20 @@ public final class SenseEditor extends VBox {
 
         definitionEditor.setAvailableLanguages(metaLangs);
         definitionEditor.setMultiText(sense.getDefinition());
+        if (onAddAnnotation != null) {
+            definitionEditor.setOnAddAnnotation(onAddAnnotation, knownAnnotationNames);
+        }
 
         glossEditor.setAvailableLanguages(metaLangs);
         glossEditor.setMultiText(sense.getGloss());
+        if (onAddAnnotation != null) {
+            glossEditor.setOnAddAnnotation(onAddAnnotation, knownAnnotationNames);
+        }
 
         // Examples — object-languages for example text, meta-languages for translations
         for (LiftExample ex : sense.getExamples()) {
             ExampleEditor ee = new ExampleEditor();
-            ee.setExample(ex, objLangs, metaLangs);
+            ee.setExample(ex, objLangs, metaLangs, onAddAnnotation, knownAnnotationNames);
             examplesBox.getChildren().add(ee);
         }
 
@@ -169,7 +188,7 @@ public final class SenseEditor extends VBox {
         // Sub-senses (recursive)
         for (LiftSense sub : sense.getSubSenses()) {
             SenseEditor se = new SenseEditor();
-            se.setSense(sub, metaLangs, objLangs);
+            se.setSense(sub, metaLangs, objLangs, onAddAnnotation, knownAnnotationNames);
             subSensesBox.getChildren().add(se);
         }
         subSensesPane.setExpanded(!sense.getSubSenses().isEmpty());

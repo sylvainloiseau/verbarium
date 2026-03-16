@@ -22,7 +22,9 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 
 /**
  * Editor for a single {@link LiftExample}.
@@ -73,6 +75,14 @@ public final class ExampleEditor extends VBox {
      * @param metaLangs meta-languages for translations, notes, etc.
      */
     public void setExample(LiftExample ex, Collection<String> objLangs, Collection<String> metaLangs) {
+        setExample(ex, objLangs, metaLangs, null, List.of());
+    }
+
+    /**
+     * Same with optional callback to create annotations on MultiText (example, translations).
+     */
+    public void setExample(LiftExample ex, Collection<String> objLangs, Collection<String> metaLangs,
+            BiConsumer<String, MultiText> onAddAnnotation, Collection<String> knownAnnotationNames) {
         translationsBox.getChildren().clear();
 
         if (ex == null) {
@@ -80,6 +90,7 @@ public final class ExampleEditor extends VBox {
             if (sourceListener != null) sourceField.textProperty().removeListener(sourceListener);
             sourceListener = null;
             exampleTextEditor.setMultiText(null);
+            exampleTextEditor.setOnAddAnnotation(null, null);
             notableEditor.setModel(null, metaLangs);
             return;
         }
@@ -90,6 +101,9 @@ public final class ExampleEditor extends VBox {
         sourceField.textProperty().addListener(sourceListener);
         exampleTextEditor.setAvailableLanguages(objLangs);
         exampleTextEditor.setMultiText(ex.getExample());
+        if (onAddAnnotation != null) {
+            exampleTextEditor.setOnAddAnnotation(onAddAnnotation, knownAnnotationNames);
+        }
 
         // Translations: one MultiTextEditor per translation type — meta-languages
         for (Map.Entry<String, MultiText> kv : ex.getTranslations().entrySet()) {
@@ -100,6 +114,9 @@ public final class ExampleEditor extends VBox {
             MultiTextEditor mte = new MultiTextEditor();
             mte.setAvailableLanguages(metaLangs);
             mte.setMultiText(mt);
+            if (onAddAnnotation != null) {
+                mte.setOnAddAnnotation(onAddAnnotation, knownAnnotationNames);
+            }
 
             TitledPane tp = new TitledPane(label, mte);
             tp.setExpanded(true);
