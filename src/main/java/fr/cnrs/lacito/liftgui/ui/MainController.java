@@ -1952,6 +1952,7 @@ public final class MainController {
             if (o instanceof LiftVariant v) return v.getRefId().orElse("");
             if (o instanceof LiftEtymology et) return et.getType() != null ? et.getType() : "";
             if (o instanceof LiftRelation r) return (r.getType() != null ? r.getType() : "") + " @ " + describeParent(r.getParent());
+            if (o instanceof LiftPronunciation p) return p.getParent() != null ? describeParent(p.getParent()) : "";
             return "";
         }));
         table.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
@@ -1974,6 +1975,9 @@ public final class MainController {
             if (p instanceof LiftEntry e) { switchView(NAV_ENTRIES); selectEntryInTable(e); populateEntryEditor(e); }
             else if (p instanceof LiftSense s) { findParentEntry(s).ifPresent(entry -> { switchView(NAV_ENTRIES); selectEntryInTable(entry); populateEntryEditor(entry); }); }
             else if (p instanceof LiftVariant v) { if (v.getParent() != null) { switchView(NAV_ENTRIES); selectEntryInTable(v.getParent()); populateEntryEditor(v.getParent()); } }
+        }
+        else if (obj instanceof LiftPronunciation p) {
+            if (p.getParent() instanceof LiftEntry e) { switchView(NAV_ENTRIES); selectEntryInTable(e); populateEntryEditor(e); }
         }
     }
 
@@ -2001,6 +2005,22 @@ public final class MainController {
         values.put(I18n.get("col.text"), field.getText().getForms().stream().findFirst().map(Form::toPlainText).orElse(""));
         populateSummaryEditor(I18n.get("nav.fields"), "", values);
         addGoToParentButton(field.getParent());
+        Button accessBtn = new Button(I18n.get("btn.accessObjects"));
+        accessBtn.getStyleClass().add("example-add-button");
+        accessBtn.setMaxWidth(Double.MAX_VALUE);
+        accessBtn.setOnAction(e -> showObjectsWithFieldType(field.getName()));
+        editorContainer.getChildren().add(accessBtn);
+    }
+
+    private void showObjectsWithFieldType(String fieldType) {
+        if (currentDictionary == null) return;
+        List<Object> matches = currentDictionary.getLiftDictionaryComponents().getAllFields().stream()
+            .filter(f -> fieldType.equals(f.getName()))
+            .map(LiftField::getParent)
+            .filter(Objects::nonNull)
+            .distinct()
+            .collect(Collectors.toList());
+        showFilteredObjectsTable(matches, I18n.get("nav.fields") + ": " + fieldType);
     }
 
     private void addGoToParentButton(Object parent) {
