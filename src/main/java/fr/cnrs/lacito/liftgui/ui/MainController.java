@@ -2612,21 +2612,72 @@ public final class MainController {
 
     @FXML private void onExportCsv() {
         if (currentDictionary == null) { showError(I18n.get("error.export"), I18n.get("error.noDictionaryShort")); return; }
-        FileChooser ch = new FileChooser(); ch.setTitle(I18n.get("dialog.exportCsv"));
+        TableView<?> table = getCurrentTableView();
+        if (table == null) {
+            showError(I18n.get("error.export"), I18n.get("error.exportNoTable"));
+            return;
+        }
+        FileChooser ch = new FileChooser();
+        ch.setTitle(I18n.get("dialog.exportCsv"));
         ch.getExtensionFilters().add(new FileChooser.ExtensionFilter(I18n.get("dialog.csvFilter"), "*.csv"));
         File f = ch.showSaveDialog(navTree.getScene().getWindow());
         if (f == null) return;
-        try (PrintWriter pw = new PrintWriter(f, "UTF-8")) {
-            List<String> ol = getObjectLanguages();
-            pw.print("id"); for (String l : ol) pw.print("\tform[" + l + "]"); pw.println();
-            for (LiftEntry e : currentDictionary.getLiftDictionaryComponents().getAllEntries()) {
-                pw.print(e.getId().orElse("")); for (String l : ol) pw.print("\t" + e.getForms().getForm(l).map(Form::toPlainText).orElse("")); pw.println();
-            }
+        try {
+            exportTableToCsv(table, f);
             showInfo(I18n.get("error.export"), I18n.get("info.exportSuccess", f.getAbsolutePath()));
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Export CSV", e);
             showError(I18n.get("error.export"), I18n.formatErrorMessage("error.export.detail", e));
         }
+    }
+
+    /** Returns the TableView currently displayed in tableContainer, or null. */
+    private TableView<?> getCurrentTableView() {
+        if (tableContainer.getChildren().isEmpty()) return null;
+        javafx.scene.Node first = tableContainer.getChildren().get(0);
+        if (first instanceof TableView<?> tv) return tv;
+        if (first instanceof VBox vbox && vbox.getChildren().size() >= 3) {
+            javafx.scene.Node third = vbox.getChildren().get(2);
+            if (third instanceof TableView<?> tv) return tv;
+        }
+        return null;
+    }
+
+    /** Export table to CSV: column headers match table, comma-separated, values escaped per RFC 4180. */
+    private static <T> void exportTableToCsv(TableView<T> table, File file) throws IOException {
+        List<TableColumn<T, ?>> leaves = collectLeafColumns(table);
+        if (leaves.isEmpty()) return;
+        try (PrintWriter pw = new PrintWriter(file, java.nio.charset.StandardCharsets.UTF_8)) {
+            pw.print('\uFEFF'); // BOM for Excel UTF-8 recognition
+            pw.print(escapeCsv(getColumnHeader(leaves.get(0))));
+            for (int i = 1; i < leaves.size(); i++) {
+                pw.print(",");
+                pw.print(escapeCsv(getColumnHeader(leaves.get(i))));
+            }
+            pw.println();
+            for (T row : table.getItems()) {
+                pw.print(escapeCsv(cellText(row, leaves.get(0))));
+                for (int i = 1; i < leaves.size(); i++) {
+                    pw.print(",");
+                    pw.print(escapeCsv(cellText(row, leaves.get(i))));
+                }
+                pw.println();
+            }
+        }
+    }
+
+    private static String getColumnHeader(TableColumn<?, ?> col) {
+        String t = col.getText();
+        return t != null ? t : "";
+    }
+
+    /** RFC 4180: wrap in quotes if contains comma, quote, or newline; double internal quotes. */
+    private static String escapeCsv(String value) {
+        if (value == null) return "";
+        if (value.contains(",") || value.contains("\"") || value.contains("\n") || value.contains("\r")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
     }
 
     @FXML private void onModifyEntry() {
