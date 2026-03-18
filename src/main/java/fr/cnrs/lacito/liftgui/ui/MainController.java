@@ -1291,11 +1291,21 @@ public final class MainController {
 
         addSectionTitle(editorContainer, "editor.section.lexicalContent");
         addSection(editorContainer, I18n.get("editor.forms"), () -> { MultiTextEditor m = new MultiTextEditor(); m.setAvailableLanguages(objLangs); m.setMultiText(entry.getForms()); return m; }, true);
+        LiftFactory factory = getFactory(currentDictionary);
         addListSection(editorContainer, I18n.get("editor.traits"), safeList(entry.getTraits()), t -> {
             TraitEditor te = new TraitEditor();
             te.setTrait(t, objLangs, traitNames, traitValues, findFieldDef(t.getName()));
             return te;
-        }, true);
+        }, true, factory != null ? () -> {
+            List<String> names = getKnownTraitNamesFor(FieldDefinitionTarget.ENTRY);
+            ChoiceDialog<String> dlg = new ChoiceDialog<>(names.isEmpty() ? null : names.get(0), names);
+            dlg.setTitle(I18n.get("btn.addTrait"));
+            dlg.setHeaderText(I18n.get("col.name"));
+            dlg.showAndWait().ifPresent(name -> {
+                factory.createTrait(name, "", entry);
+                populateEntryEditor(entry);
+            });
+        } : null);
         addListSection(editorContainer, I18n.get("editor.pronunciations"), safeList(entry.getPronunciations()), p -> { PronunciationEditor pe = new PronunciationEditor(); pe.setPronunciation(p, objLangs); return pe; }, false);
 
         List<LiftSense> senses = safeList(entry.getSenses());
@@ -1313,17 +1323,59 @@ public final class MainController {
             }, true);
         }
         addSectionTitle(editorContainer, "editor.section.variantsRelations");
-        addListSection(editorContainer, I18n.get("editor.variants"), safeList(entry.getVariants()), v -> { VariantEditor ve = new VariantEditor(); ve.setVariant(v, objLangs, metaLangs); return ve; }, false);
+        addListSection(editorContainer, I18n.get("editor.variants"), safeList(entry.getVariants()), v -> {
+            VariantEditor ve = new VariantEditor();
+            ve.setVariant(v, objLangs, metaLangs, factory != null ? createVariantAddActions(v) : null);
+            return ve;
+        }, false, factory != null ? () -> {
+            factory.createVariant(new org.xml.sax.helpers.AttributesImpl(), entry);
+            populateEntryEditor(entry);
+        } : null);
         addListSection(editorContainer, I18n.get("editor.relations"), safeList(entry.getRelations()), r -> { RelationEditor re = new RelationEditor(); re.setRelation(r, metaLangs); return re; }, false);
         addListSection(editorContainer, I18n.get("editor.etymologies"), safeList(entry.getEtymologies()), et -> { EtymologyEditor ee = new EtymologyEditor(); ee.setEtymology(et, objLangs, metaLangs); return ee; }, false);
         addSectionTitle(editorContainer, "editor.section.annotationsFields");
         addListSection(editorContainer, I18n.get("editor.annotations"), safeList(entry.getAnnotations()), a -> {
             AnnotationEditor ae = new AnnotationEditor(); ae.setAnnotation(a, metaLangs, annotationNames); return ae;
-        }, false);
-        addListSection(editorContainer, I18n.get("editor.notes"), new ArrayList<>(safeMapValues(entry.getNotes())), n -> { NoteEditor ne = new NoteEditor(); ne.setNote(n, metaLangs); return ne; }, false);
+        }, false, factory != null ? () -> {
+            List<String> names = getKnownAnnotationNames();
+            Optional<String> nameOpt;
+            if (names.isEmpty()) {
+                TextInputDialog tid = new TextInputDialog();
+                tid.setTitle(I18n.get("btn.addAnnotation"));
+                tid.setHeaderText(I18n.get("col.name"));
+                nameOpt = tid.showAndWait();
+            } else {
+                ChoiceDialog<String> dlg = new ChoiceDialog<>(names.get(0), names);
+                dlg.setTitle(I18n.get("btn.addAnnotation"));
+                dlg.setHeaderText(I18n.get("col.name"));
+                nameOpt = dlg.showAndWait();
+            }
+            nameOpt.filter(n -> n != null && !n.isBlank()).ifPresent(name -> {
+                factory.createAnnotation(name.trim(), entry);
+                populateEntryEditor(entry);
+            });
+        } : null);
+        addListSection(editorContainer, I18n.get("editor.notes"), new ArrayList<>(safeMapValues(entry.getNotes())), n -> { NoteEditor ne = new NoteEditor(); ne.setNote(n, metaLangs); return ne; }, false, factory != null ? () -> {
+            List<String> types = getKnownNoteTypes();
+            ChoiceDialog<String> dlg = new ChoiceDialog<>(types.isEmpty() ? null : types.get(0), types);
+            dlg.setTitle(I18n.get("btn.addNote"));
+            dlg.setHeaderText(I18n.get("col.type"));
+            dlg.showAndWait().ifPresent(type -> {
+                factory.createNote(type, entry);
+                populateEntryEditor(entry);
+            });
+        } : null);
         addListSection(editorContainer, I18n.get("editor.fields"), safeList(entry.getFields()), f -> {
             FieldEditor fe = new FieldEditor(); fe.setField(f, metaLangs, fieldTypes); return fe;
-        }, false);
+        }, false, factory != null ? () -> {
+            ChoiceDialog<String> dlg = new ChoiceDialog<>(fieldTypes.isEmpty() ? null : fieldTypes.get(0), fieldTypes);
+            dlg.setTitle(I18n.get("btn.addField"));
+            dlg.setHeaderText(I18n.get("col.type"));
+            dlg.showAndWait().ifPresent(type -> {
+                factory.createField(type, entry);
+                populateEntryEditor(entry);
+            });
+        } : null);
         addSectionTitle(editorContainer, "editor.section.metadata");
         addSection(editorContainer, I18n.get("editor.identity"), () -> {
             GridPane g = new GridPane(); g.setHgap(8); g.setVgap(6);
@@ -1343,7 +1395,6 @@ public final class MainController {
             return g;
         }, true);
 
-        LiftFactory factory = getFactory(currentDictionary);
         if (factory != null) {
             FlowPane addButtons = new FlowPane(8, 6);
             addButtons.setPadding(new Insets(8, 0, 0, 0));
@@ -1366,63 +1417,6 @@ public final class MainController {
             addPronBtn.setOnAction(e -> {
                 factory.createPronunciation(entry);
                 populateEntryEditor(entry);
-            });
-
-            Button addTraitBtn = new Button(I18n.get("btn.addTrait"));
-            addTraitBtn.setOnAction(e -> {
-                List<String> names = getKnownTraitNames();
-                ChoiceDialog<String> dlg = new ChoiceDialog<>(names.isEmpty() ? null : names.get(0), names);
-                dlg.setTitle(I18n.get("btn.addTrait"));
-                dlg.setHeaderText(I18n.get("col.name"));
-                dlg.showAndWait().ifPresent(name -> {
-                    factory.createTrait(name, "", entry);
-                    populateEntryEditor(entry);
-                });
-            });
-
-            Button addNoteBtn = new Button(I18n.get("btn.addNote"));
-            addNoteBtn.setOnAction(e -> {
-                List<String> types = getKnownNoteTypes();
-                ChoiceDialog<String> dlg = new ChoiceDialog<>(types.isEmpty() ? null : types.get(0), types);
-                dlg.setTitle(I18n.get("btn.addNote"));
-                dlg.setHeaderText(I18n.get("col.type"));
-                dlg.showAndWait().ifPresent(type -> {
-                    factory.createNote(type, entry);
-                    populateEntryEditor(entry);
-                });
-            });
-
-            Button addFieldBtn = new Button(I18n.get("btn.addField"));
-            addFieldBtn.setOnAction(e -> {
-                List<String> types = getKnownFieldTypes();
-                ChoiceDialog<String> dlg = new ChoiceDialog<>(types.isEmpty() ? null : types.get(0), types);
-                dlg.setTitle(I18n.get("btn.addField"));
-                dlg.setHeaderText(I18n.get("col.type"));
-                dlg.showAndWait().ifPresent(type -> {
-                    factory.createField(type, entry);
-                    populateEntryEditor(entry);
-                });
-            });
-
-            Button addAnnotBtn = new Button(I18n.get("btn.addAnnotation"));
-            addAnnotBtn.setOnAction(e -> {
-                List<String> names = getKnownAnnotationNames();
-                Optional<String> nameOpt;
-                if (names.isEmpty()) {
-                    TextInputDialog tid = new TextInputDialog();
-                    tid.setTitle(I18n.get("btn.addAnnotation"));
-                    tid.setHeaderText(I18n.get("col.name"));
-                    nameOpt = tid.showAndWait();
-                } else {
-                    ChoiceDialog<String> dlg = new ChoiceDialog<>(names.get(0), names);
-                    dlg.setTitle(I18n.get("btn.addAnnotation"));
-                    dlg.setHeaderText(I18n.get("col.name"));
-                    nameOpt = dlg.showAndWait();
-                }
-                nameOpt.filter(n -> n != null && !n.isBlank()).ifPresent(name -> {
-                    factory.createAnnotation(name.trim(), entry);
-                    populateEntryEditor(entry);
-                });
             });
 
             Button addRelationBtn = new Button(I18n.get("btn.addRelation"));
@@ -1453,7 +1447,7 @@ public final class MainController {
                 showAddEtymologyDialog(entry, factory);
             });
 
-            addButtons.getChildren().addAll(addSenseBtn, addVariantBtn, addPronBtn, addTraitBtn, addNoteBtn, addFieldBtn, addAnnotBtn, addRelationBtn, addEtymologyBtn);
+            addButtons.getChildren().addAll(addSenseBtn, addVariantBtn, addPronBtn, addRelationBtn, addEtymologyBtn);
             editorContainer.getChildren().add(addButtons);
         }
         } catch (Exception ex) {
@@ -1546,7 +1540,9 @@ public final class MainController {
         BiConsumer<String, MultiText> onAddAnnotation = (factory != null)
             ? (name, mt) -> factory.createAnnotation(name, mt)
             : null;
-        se.setSense(sense, metaLangs, objLangs, onAddAnnotation, getKnownAnnotationNames());
+        se.setSense(sense, metaLangs, objLangs, onAddAnnotation, getKnownAnnotationNames(),
+            factory != null ? this::createSenseAddActions : null,
+            factory != null ? this::createExampleAddActions : null);
         editorContainer.getChildren().add(se);
         if (factory != null) {
             FlowPane addButtons = new FlowPane(8, 6);
@@ -1606,55 +1602,18 @@ public final class MainController {
                 senseAttrs.addAttribute("", "id", "id", "CDATA", UUID.randomUUID().toString());
                 factory.createSense(senseAttrs, sense);
                 populateSenseEditor(sense);
+                refreshSenseTableAndFilters();
             });
 
-            Button addTraitBtn = new Button(I18n.get("btn.addTrait"));
-            addTraitBtn.setOnAction(e -> {
-                List<String> names = getKnownTraitNames();
-                ChoiceDialog<String> dlg = new ChoiceDialog<>(names.isEmpty() ? null : names.get(0), names);
-                dlg.setTitle(I18n.get("btn.addTrait"));
-                dlg.setHeaderText(I18n.get("col.name"));
-                dlg.showAndWait().ifPresent(name -> {
-                    factory.createTrait(name, "", sense);
-                    populateSenseEditor(sense);
-                });
-            });
-
-            Button addAnnotBtn = new Button(I18n.get("btn.addAnnotation"));
-            addAnnotBtn.setOnAction(e -> {
-                List<String> names = getKnownAnnotationNames();
-                Optional<String> nameOpt;
-                if (names.isEmpty()) {
-                    TextInputDialog tid = new TextInputDialog();
-                    tid.setTitle(I18n.get("btn.addAnnotation"));
-                    tid.setHeaderText(I18n.get("col.name"));
-                    nameOpt = tid.showAndWait();
-                } else {
-                    ChoiceDialog<String> dlg = new ChoiceDialog<>(names.get(0), names);
-                    dlg.setTitle(I18n.get("btn.addAnnotation"));
-                    dlg.setHeaderText(I18n.get("col.name"));
-                    nameOpt = dlg.showAndWait();
-                }
-                nameOpt.filter(n -> n != null && !n.isBlank()).ifPresent(name -> {
-                    factory.createAnnotation(name.trim(), sense);
-                    populateSenseEditor(sense);
-                });
-            });
-
-            Button addFieldBtn = new Button(I18n.get("btn.addField"));
-            addFieldBtn.setOnAction(e -> {
-                List<String> types = getKnownFieldTypesFor(FieldDefinitionTarget.SENSE);
-                ChoiceDialog<String> dlg = new ChoiceDialog<>(types.isEmpty() ? null : types.get(0), types);
-                dlg.setTitle(I18n.get("btn.addField"));
-                dlg.setHeaderText(I18n.get("col.type"));
-                dlg.showAndWait().ifPresent(type -> {
-                    factory.createField(type, sense);
-                    populateSenseEditor(sense);
-                });
-            });
-
-            addButtons.getChildren().addAll(addExBtn, addNoteBtn, addRelationBtn, addReversalBtn, addSubSenseBtn, addTraitBtn, addAnnotBtn, addFieldBtn);
+            addButtons.getChildren().addAll(addExBtn, addNoteBtn, addRelationBtn, addReversalBtn, addSubSenseBtn);
             editorContainer.getChildren().add(addButtons);
+        }
+    }
+
+    /** Rebuilds the sense table and filter dropdowns (e.g. after adding a sub-sense). */
+    private void refreshSenseTableAndFilters() {
+        if (NAV_SENSES.equals(currentView) && currentDictionary != null) {
+            showSenseView();
         }
     }
 
@@ -1767,7 +1726,8 @@ public final class MainController {
         BiConsumer<String, MultiText> onAddAnnotation = (factory != null)
             ? (name, mt) -> factory.createAnnotation(name, mt)
             : null;
-        ee.setExample(ex, getObjectLanguages(), getMetaLanguages(), onAddAnnotation, getKnownAnnotationNames());
+        ee.setExample(ex, getObjectLanguages(), getMetaLanguages(), onAddAnnotation, getKnownAnnotationNames(),
+            factory != null ? createExampleAddActions(ex) : null);
         editorContainer.getChildren().add(ee);
     }
 
@@ -2236,8 +2196,61 @@ public final class MainController {
             editorContainer.getChildren().add(backBtn);
         }
         VariantEditor ve = new VariantEditor();
-        ve.setVariant(v, getObjectLanguages(), getMetaLanguages());
+        ve.setVariant(v, getObjectLanguages(), getMetaLanguages(), getFactory(currentDictionary) != null ? createVariantAddActions(v) : null);
         editorContainer.getChildren().add(ve);
+    }
+
+    private ExtensibleAddActions createSenseAddActions(LiftSense s) {
+        LiftFactory f = getFactory(currentDictionary);
+        if (f == null) return null;
+        return new ExtensibleAddActions() {
+            @Override public void addTrait(String name, String value) { f.createTrait(name, value, s); }
+            @Override public void addAnnotation(String name) { f.createAnnotation(name, s); }
+            @Override public void addField(String type) { f.createField(type, s); }
+            @Override public void addNote(String type) { f.createNote(type, s); }
+            @Override public void refresh() { populateSenseEditor(s); }
+            @Override public List<String> getKnownTraitNames() { return getKnownTraitNamesFor(FieldDefinitionTarget.SENSE); }
+            @Override public List<String> getKnownAnnotationNames() { return getKnownAnnotationNames(); }
+            @Override public List<String> getKnownFieldTypes() { return getKnownFieldTypesFor(FieldDefinitionTarget.SENSE); }
+            @Override public List<String> getKnownNoteTypes() { return getKnownNoteTypes(); }
+        };
+    }
+
+    private ExtensibleAddActions createExampleAddActions(LiftExample ex) {
+        LiftFactory f = getFactory(currentDictionary);
+        if (f == null) return null;
+        return new ExtensibleAddActions() {
+            @Override public void addTrait(String name, String value) { f.createTrait(name, value, ex); }
+            @Override public void addAnnotation(String name) { f.createAnnotation(name, ex); }
+            @Override public void addField(String type) { f.createField(type, ex); }
+            @Override public void addNote(String type) { f.createNote(type, ex); }
+            @Override public void refresh() { populateExampleEditor(ex); }
+            @Override public List<String> getKnownTraitNames() { return getKnownTraitNamesFor(FieldDefinitionTarget.EXAMPLE); }
+            @Override public List<String> getKnownAnnotationNames() { return getKnownAnnotationNames(); }
+            @Override public List<String> getKnownFieldTypes() { return getKnownFieldTypesFor(FieldDefinitionTarget.EXAMPLE); }
+            @Override public List<String> getKnownNoteTypes() { return getKnownNoteTypes(); }
+        };
+    }
+
+    private ExtensibleAddActions createVariantAddActions(LiftVariant v) {
+        LiftFactory f = getFactory(currentDictionary);
+        if (f == null) return null;
+        return new ExtensibleAddActions() {
+            @Override public void addTrait(String name, String value) { f.createTrait(name, value, v); }
+            @Override public void addAnnotation(String name) { f.createAnnotation(name, v); }
+            @Override public void addField(String type) { f.createField(type, v); }
+            @Override public void addPronunciation() { f.createPronunciation(v); }
+            @Override public void addRelation(String type) {
+                org.xml.sax.helpers.AttributesImpl attrs = new org.xml.sax.helpers.AttributesImpl();
+                attrs.addAttribute("", "type", "type", "CDATA", type);
+                f.createRelation(attrs, v);
+            }
+            @Override public void refresh() { populateVariantEditor(v); }
+            @Override public List<String> getKnownTraitNames() { return getKnownTraitNamesFor(FieldDefinitionTarget.VARIANT); }
+            @Override public List<String> getKnownAnnotationNames() { return getKnownAnnotationNames(); }
+            @Override public List<String> getKnownFieldTypes() { return getKnownFieldTypesFor(FieldDefinitionTarget.VARIANT); }
+            @Override public List<String> getKnownRelationTypes() { return getKnownRelationTypes(); }
+        };
     }
 
     /* ─── Setup generic tables ─── */
@@ -3654,10 +3667,36 @@ public final class MainController {
     }
 
     private static <T> void addListSection(VBox container, String title, List<T> items, ItemRenderer<T> renderer, boolean expanded) {
-        if (items == null || items.isEmpty()) { TitledPane tp = new TitledPane(title + " (0)", new Label(I18n.get("editor.none"))); tp.setExpanded(false); tp.setAnimated(false); container.getChildren().add(tp); return; }
-        VBox box = new VBox(4); int i = 1;
-        for (T item : items) { TitledPane ip = new TitledPane("#" + i++, renderer.render(item)); ip.setExpanded(false); ip.setAnimated(false); box.getChildren().add(ip); }
-        TitledPane tp = new TitledPane(title + " (" + items.size() + ")", box); tp.setExpanded(expanded); tp.setAnimated(false); container.getChildren().add(tp);
+        addListSection(container, title, items, renderer, expanded, null);
+    }
+
+    private static <T> void addListSection(VBox container, String title, List<T> items, ItemRenderer<T> renderer, boolean expanded, Runnable onAdd) {
+        VBox box = new VBox(4);
+        if (onAdd != null) {
+            Button addBtn = new Button(I18n.get("btn.add"));
+            addBtn.getStyleClass().add("example-add-button");
+            addBtn.setOnAction(e -> onAdd.run());
+            box.getChildren().add(addBtn);
+        }
+        if (items == null || items.isEmpty()) {
+            box.getChildren().add(new Label(I18n.get("editor.none")));
+            TitledPane tp = new TitledPane(title + " (0)", box);
+            tp.setExpanded(false);
+            tp.setAnimated(false);
+            container.getChildren().add(tp);
+            return;
+        }
+        int i = 1;
+        for (T item : items) {
+            TitledPane ip = new TitledPane("#" + i++, renderer.render(item));
+            ip.setExpanded(false);
+            ip.setAnimated(false);
+            box.getChildren().add(ip);
+        }
+        TitledPane tp = new TitledPane(title + " (" + items.size() + ")", box);
+        tp.setExpanded(expanded);
+        tp.setAnimated(false);
+        container.getChildren().add(tp);
     }
 
     private static void addReadOnlyRow(GridPane grid, int row, String label, String value) {

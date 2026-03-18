@@ -14,15 +14,22 @@ import fr.cnrs.lacito.liftapi.model.LiftPronunciation;
 import fr.cnrs.lacito.liftapi.model.LiftRelation;
 import fr.cnrs.lacito.liftapi.model.LiftVariant;
 import fr.cnrs.lacito.liftapi.model.MultiText;
+import fr.cnrs.lacito.liftgui.ui.I18n;
 import javafx.geometry.Insets;
+import javafx.scene.control.Button;
+import javafx.scene.control.ChoiceDialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.TitledPane;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
 import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
 
 /**
  * Editor for a single {@link LiftVariant}.
@@ -79,8 +86,13 @@ public final class VariantEditor extends VBox {
      * @param v          the variant
      * @param objLangs   object-languages for variant forms and pronunciations
      * @param metaLangs  meta-languages for relations (usage) and inherited properties
+     * @param addActions optional callbacks for adding pronunciation, relation, trait, annotation, field
      */
     public void setVariant(LiftVariant v, Collection<String> objLangs, Collection<String> metaLangs) {
+        setVariant(v, objLangs, metaLangs, null);
+    }
+
+    public void setVariant(LiftVariant v, Collection<String> objLangs, Collection<String> metaLangs, ExtensibleAddActions addActions) {
         pronunciationsBox.getChildren().clear();
         relationsBox.getChildren().clear();
 
@@ -88,7 +100,7 @@ public final class VariantEditor extends VBox {
             refIdField.setText("");
             parentEntryFormsEditor.setMultiText(null);
             formsEditor.setMultiText(null);
-            extensibleEditor.setModel(null, metaLangs);
+            extensibleEditor.setModel(null, metaLangs, null);
             return;
         }
         refIdField.setText(v.getRefId().orElse(""));
@@ -100,6 +112,43 @@ public final class VariantEditor extends VBox {
         formsEditor.setAvailableLanguages(objLangs);
         formsEditor.setMultiText(v.getForms());
         formsEditor.setReadOnly(true);
+
+        if (addActions != null) {
+            FlowPane pronAddRow = new FlowPane(6, 4);
+            Button addPronBtn = new Button(I18n.get("btn.addPronunciation"));
+            addPronBtn.getStyleClass().add("example-add-button");
+            addPronBtn.setOnAction(e -> {
+                addActions.addPronunciation();
+                addActions.refresh();
+            });
+            pronAddRow.getChildren().add(addPronBtn);
+            pronunciationsBox.getChildren().add(pronAddRow);
+
+            FlowPane relAddRow = new FlowPane(6, 4);
+            Button addRelBtn = new Button(I18n.get("btn.addRelation"));
+            addRelBtn.getStyleClass().add("example-add-button");
+            addRelBtn.setOnAction(e -> {
+                List<String> types = addActions.getKnownRelationTypes();
+                Optional<String> typeOpt;
+                if (types.isEmpty()) {
+                    TextInputDialog tid = new TextInputDialog();
+                    tid.setTitle(I18n.get("btn.addRelation"));
+                    tid.setHeaderText(I18n.get("col.type"));
+                    typeOpt = tid.showAndWait();
+                } else {
+                    ChoiceDialog<String> dlg = new ChoiceDialog<>(types.get(0), types);
+                    dlg.setTitle(I18n.get("btn.addRelation"));
+                    dlg.setHeaderText(I18n.get("col.type"));
+                    typeOpt = dlg.showAndWait();
+                }
+                typeOpt.filter(t -> t != null && !t.isBlank()).ifPresent(type -> {
+                    addActions.addRelation(type.trim());
+                    addActions.refresh();
+                });
+            });
+            relAddRow.getChildren().add(addRelBtn);
+            relationsBox.getChildren().add(relAddRow);
+        }
 
         for (LiftPronunciation p : v.getPronunciations()) {
             PronunciationEditor pe = new PronunciationEditor();
@@ -113,6 +162,6 @@ public final class VariantEditor extends VBox {
             relationsBox.getChildren().add(re);
         }
 
-        extensibleEditor.setModel(v, metaLangs);
+        extensibleEditor.setModel(v, metaLangs, addActions);
     }
 }

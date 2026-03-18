@@ -23,6 +23,7 @@ import javafx.scene.layout.VBox;
 import java.util.Collection;
 import java.util.List;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 /**
  * Editor for a single {@link LiftSense}.
@@ -126,6 +127,19 @@ public final class SenseEditor extends VBox {
     public void setSense(LiftSense sense, Collection<String> metaLangs, Collection<String> objLangs,
             BiConsumer<String, fr.cnrs.lacito.liftapi.model.MultiText> onAddAnnotation,
             Collection<String> knownAnnotationNames) {
+        setSense(sense, metaLangs, objLangs, onAddAnnotation, knownAnnotationNames, s -> null, ex -> null);
+    }
+
+    /**
+     * Same with optional add actions for trait/annotation/field/note in NotableEditor.
+     * addActionsFactory creates add actions for a given sense (used for sub-senses).
+     * exampleAddActionsFactory creates add actions for examples (used in ExampleEditor).
+     */
+    public void setSense(LiftSense sense, Collection<String> metaLangs, Collection<String> objLangs,
+            BiConsumer<String, fr.cnrs.lacito.liftapi.model.MultiText> onAddAnnotation,
+            Collection<String> knownAnnotationNames, Function<LiftSense, ExtensibleAddActions> addActionsFactory,
+            java.util.function.Function<fr.cnrs.lacito.liftapi.model.LiftExample, ExtensibleAddActions> exampleAddActionsFactory) {
+        ExtensibleAddActions addActions = addActionsFactory != null ? addActionsFactory.apply(sense) : null;
         examplesBox.getChildren().clear();
         relationsBox.getChildren().clear();
         reversalsBox.getChildren().clear();
@@ -179,7 +193,8 @@ public final class SenseEditor extends VBox {
         // Examples — object-languages for example text, meta-languages for translations
         for (LiftExample ex : sense.getExamples()) {
             ExampleEditor ee = new ExampleEditor();
-            ee.setExample(ex, objLangs, metaLangs, onAddAnnotation, knownAnnotationNames);
+            ExtensibleAddActions exAddActions = exampleAddActionsFactory != null ? exampleAddActionsFactory.apply(ex) : null;
+            ee.setExample(ex, objLangs, metaLangs, onAddAnnotation, knownAnnotationNames, exAddActions);
             examplesBox.getChildren().add(ee);
         }
 
@@ -200,11 +215,11 @@ public final class SenseEditor extends VBox {
         // Sub-senses (recursive)
         for (LiftSense sub : sense.getSubSenses()) {
             SenseEditor se = new SenseEditor();
-            se.setSense(sub, metaLangs, objLangs, onAddAnnotation, knownAnnotationNames);
+            se.setSense(sub, metaLangs, objLangs, onAddAnnotation, knownAnnotationNames, addActionsFactory, exampleAddActionsFactory);
             subSensesBox.getChildren().add(se);
         }
         subSensesPane.setExpanded(!sense.getSubSenses().isEmpty());
 
-        notableEditor.setModel(sense, metaLangs);
+        notableEditor.setModel(sense, metaLangs, addActions);
     }
 }

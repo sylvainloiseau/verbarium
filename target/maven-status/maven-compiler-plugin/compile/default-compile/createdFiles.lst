@@ -1,5 +1,6 @@
 fr\cnrs\lacito\liftgui\ui\controls\NotableEditor.class
 fr\cnrs\lacito\liftgui\ui\controls\TraitEditor.class
+fr\cnrs\lacito\liftgui\ui\MainController$8.class
 fr\cnrs\lacito\liftgui\ui\MainController$MultiTextField.class
 fr\cnrs\lacito\liftgui\ui\MainController$5.class
 fr\cnrs\lacito\liftgui\ui\controls\EtymologyEditor.class
@@ -13,6 +14,7 @@ fr\cnrs\lacito\liftgui\ui\MainController$3.class
 fr\cnrs\lacito\liftgui\ui\MainController$NoteTypeRow.class
 fr\cnrs\lacito\liftgui\MainApp.class
 fr\cnrs\lacito\liftgui\ui\controls\VariantEditor.class
+fr\cnrs\lacito\liftgui\ui\MainController$10.class
 fr\cnrs\lacito\liftgui\ui\controls\ExtensibleWithFieldEditor.class
 fr\cnrs\lacito\liftgui\ui\MainController$4.class
 fr\cnrs\lacito\liftgui\ui\controls\TraitEditor$1.class
@@ -30,8 +32,10 @@ fr\cnrs\lacito\liftgui\undo\DeleteSenseCommand.class
 fr\cnrs\lacito\liftgui\ui\model\SenseRow.class
 fr\cnrs\lacito\liftgui\ui\controls\TraitEditor$2.class
 fr\cnrs\lacito\liftgui\ui\controls\MultiTextEditor$Row.class
+fr\cnrs\lacito\liftgui\ui\controls\ExtensibleAddActions.class
 fr\cnrs\lacito\liftgui\ui\Icons.class
 fr\cnrs\lacito\liftgui\ui\controls\SenseEditor.class
+fr\cnrs\lacito\liftgui\ui\MainController$9.class
 fr\cnrs\lacito\liftgui\ui\MainController$ListSupplier.class
 fr\cnrs\lacito\liftgui\ui\controls\AnnotationEditor.class
 fr\cnrs\lacito\liftgui\ui\MainController$6.class

@@ -12,10 +12,15 @@ package fr.cnrs.lacito.liftgui.ui.controls;
 
 import fr.cnrs.lacito.liftapi.model.AbstractNotable;
 import fr.cnrs.lacito.liftapi.model.LiftNote;
+import fr.cnrs.lacito.liftgui.ui.I18n;
+import javafx.scene.control.Button;
+import javafx.scene.control.ChoiceDialog;
 import javafx.scene.control.TitledPane;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.VBox;
 
 import java.util.Collection;
+import java.util.List;
 
 /**
  * Editor for {@link AbstractNotable} objects.
@@ -38,11 +43,32 @@ public class NotableEditor extends ExtensibleWithFieldEditor {
     }
 
     public void setModel(AbstractNotable model, Collection<String> availableLangs) {
-        // Delegate fields + traits + annotations + dates to the parent editor
-        super.setModel(model, availableLangs);
+        setModel(model, availableLangs, null);
+    }
+
+    public void setModel(AbstractNotable model, Collection<String> availableLangs, ExtensibleAddActions addActions) {
+        super.setModel(model, availableLangs, addActions);
 
         notesBox.getChildren().clear();
         if (model == null) return;
+
+        if (addActions != null) {
+            FlowPane noteAddRow = new FlowPane(6, 4);
+            Button addNoteBtn = new Button(I18n.get("btn.addNote"));
+            addNoteBtn.getStyleClass().add("example-add-button");
+            addNoteBtn.setOnAction(e -> {
+                List<String> types = addActions.getKnownNoteTypes();
+                ChoiceDialog<String> dlg = new ChoiceDialog<>(types.isEmpty() ? null : types.get(0), types);
+                dlg.setTitle(I18n.get("btn.addNote"));
+                dlg.setHeaderText(I18n.get("col.type"));
+                dlg.showAndWait().ifPresent(type -> {
+                    addActions.addNote(type);
+                    addActions.refresh();
+                });
+            });
+            noteAddRow.getChildren().add(addNoteBtn);
+            notesBox.getChildren().add(noteAddRow);
+        }
 
         for (LiftNote note : model.getNotes().values()) {
             NoteEditor ne = new NoteEditor();

@@ -83,6 +83,15 @@ public final class ExampleEditor extends VBox {
      */
     public void setExample(LiftExample ex, Collection<String> objLangs, Collection<String> metaLangs,
             BiConsumer<String, MultiText> onAddAnnotation, Collection<String> knownAnnotationNames) {
+        setExample(ex, objLangs, metaLangs, onAddAnnotation, knownAnnotationNames, null);
+    }
+
+    /**
+     * Same with optional add actions for trait/annotation/field/note at example level.
+     */
+    public void setExample(LiftExample ex, Collection<String> objLangs, Collection<String> metaLangs,
+            BiConsumer<String, MultiText> onAddAnnotation, Collection<String> knownAnnotationNames,
+            ExtensibleAddActions addActions) {
         translationsBox.getChildren().clear();
 
         if (ex == null) {
@@ -91,7 +100,7 @@ public final class ExampleEditor extends VBox {
             sourceListener = null;
             exampleTextEditor.setMultiText(null);
             exampleTextEditor.setOnAddAnnotation(null, null);
-            notableEditor.setModel(null, metaLangs);
+            notableEditor.setModel(null, metaLangs, null);
             return;
         }
         sourceField.setText(ex.getSource().orElse(""));
@@ -124,6 +133,6 @@ public final class ExampleEditor extends VBox {
             translationsBox.getChildren().add(tp);
         }
 
-        notableEditor.setModel(ex, metaLangs);
+        notableEditor.setModel(ex, metaLangs, addActions);
     }
 }
