@@ -1792,12 +1792,14 @@ public final class MainController {
     private void navigateToSenseKeepingEntriesFocus(LiftSense sense) {
         if (sense == null) return;
         switchView(NAV_SENSES);
-        clearSearchAndVisibleColumnFilters();
+        findParentEntry(sense).ifPresentOrElse(
+            this::applySenseTableFilterByEntry,
+            this::clearSearchAndVisibleColumnFilters
+        );
         if (senseTable.getItems().contains(sense)) {
             senseTable.getSelectionModel().select(sense);
             senseTable.scrollTo(sense);
         }
-        // ✅ Mettre le focus sur "Sens" dans le menu gauche
         selectNavItem(NAV_SENSES);
     }
     private void navigateToEntryFromSense(LiftEntry entry) {
@@ -1868,6 +1870,44 @@ public final class MainController {
             } else if (child instanceof TextField textField) {
                 textField.clear();
             }
+        }
+    }
+
+    /**
+     * Applique un filtre sur le tableau des sens pour n'afficher que les sens de l'entrée donnée.
+     * Utilisé lors de la navigation depuis le formulaire d'une entrée vers le tableau des sens.
+     */
+    private void applySenseTableFilterByEntry(LiftEntry entry) {
+        if (entry == null || tableContainer == null || tableContainer.getChildren().isEmpty()) return;
+        if (searchField != null && !searchField.getText().isBlank()) searchField.clear();
+        javafx.scene.Node root = tableContainer.getChildren().get(0);
+        if (!(root instanceof VBox wrapper) || wrapper.getChildren().size() < 2) return;
+        javafx.scene.Node filterNode = wrapper.getChildren().get(1);
+        if (!(filterNode instanceof Pane filterPane) || filterPane.getChildren().isEmpty()) return;
+
+        List<String> objLangs = getObjectLanguages();
+        String filterValue = null;
+        for (String lang : objLangs) {
+            String form = entry.getForms().getForm(lang).map(Form::toPlainText).orElse("").trim();
+            if (!form.isEmpty()) {
+                filterValue = form;
+                break;
+            }
+        }
+        if (filterValue == null) {
+            filterValue = entry.getForms().getForms().stream().findFirst().map(Form::toPlainText).orElse("").trim();
+        }
+        if (filterValue.isEmpty()) return;
+
+        javafx.scene.Node firstFilter = filterPane.getChildren().get(0);
+        if (firstFilter instanceof ComboBox<?> rawCombo) {
+            @SuppressWarnings("unchecked")
+            ComboBox<String> combo = (ComboBox<String>) rawCombo;
+            if (combo.getItems().contains(filterValue)) {
+                combo.setValue(filterValue);
+            }
+        } else if (firstFilter instanceof TextField tf) {
+            tf.setText(filterValue);
         }
     }
 
