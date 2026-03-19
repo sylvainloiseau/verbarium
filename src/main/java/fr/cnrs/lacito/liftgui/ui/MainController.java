@@ -417,22 +417,22 @@ public final class MainController {
             return;
         }
         switch (viewName) {
-            case NAV_ENTRIES     -> { setModifyButtonVisible(true); showEntryView(); }
-            case NAV_SENSES      -> { setModifyButtonVisible(false); showSenseView(); }
-            case NAV_EXAMPLES    -> { setModifyButtonVisible(false); showExampleView(); }
-            case NAV_NOTES       -> { setModifyButtonVisible(false); showNoteView(); }
-            case NAV_VARIANTS    -> { setModifyButtonVisible(false); showVariantView(); }
-            case NAV_ETYMOLOGIES -> { setModifyButtonVisible(false); showEtymologyView(); }
-            case NAV_RELATIONS   -> { setModifyButtonVisible(false); showRelationView(); }
-            case NAV_OBJ_LANGS   -> { setModifyButtonVisible(false); showLangFieldView(true); }
-            case NAV_META_LANGS  -> { setModifyButtonVisible(false); showLangFieldView(false); }
-            case NAV_TRAITS      -> { setModifyButtonVisible(false); showTraitView(); }
-            case NAV_ANNOTATIONS -> { setModifyButtonVisible(false); showAnnotationView(); }
-            case NAV_FIELDS      -> { setModifyButtonVisible(false); showFieldView(); }
-            case NAV_GRAM_INFO   -> { setModifyButtonVisible(false); showGramInfoView(); }
-            case NAV_TRANS_TYPES -> { setModifyButtonVisible(false); showTranslationTypesView(); }
-            case NAV_NOTE_TYPES    -> { setModifyButtonVisible(false); showNoteTypesView(); }
-            case NAV_RELATION_TYPES -> { setModifyButtonVisible(false); showRelationTypesView(); }
+            case NAV_ENTRIES     -> showEntryView();
+            case NAV_SENSES      -> showSenseView();
+            case NAV_EXAMPLES    -> showExampleView();
+            case NAV_NOTES       -> showNoteView();
+            case NAV_VARIANTS    -> showVariantView();
+            case NAV_ETYMOLOGIES -> showEtymologyView();
+            case NAV_RELATIONS   -> showRelationView();
+            case NAV_OBJ_LANGS   -> showLangFieldView(true);
+            case NAV_META_LANGS  -> showLangFieldView(false);
+            case NAV_TRAITS      -> showTraitView();
+            case NAV_ANNOTATIONS -> showAnnotationView();
+            case NAV_FIELDS      -> showFieldView();
+            case NAV_GRAM_INFO   -> showGramInfoView();
+            case NAV_TRANS_TYPES -> showTranslationTypesView();
+            case NAV_NOTE_TYPES    -> showNoteTypesView();
+            case NAV_RELATION_TYPES -> showRelationTypesView();
             case NAV_QUICK_ENTRY  -> showQuickEntryView();
             case NAV_CFG_DESC        -> { showHeaderDescView(); setRightPanelVisible(false); }
             case NAV_CFG_FIELD_DEFS  -> showHeaderFieldDefsView();
@@ -1247,7 +1247,6 @@ public final class MainController {
     /* ─── Editor population helpers ─── */
 
     private void populateEntryEditor(LiftEntry entry) {
-        setModifyButtonVisible(true);
         try {
         List<String> objLangs = getObjectLanguages();
         List<String> metaLangs = getMetaLanguages();
@@ -1892,7 +1891,6 @@ public final class MainController {
     }
 
     private void populateLangFieldEditor(MultiTextField row) {
-        setModifyButtonVisible(false);
         editEntryTitle.setText(I18n.get(currentView));
         editEntryCode.setText("");
         editorContainer.getChildren().clear();
@@ -1936,7 +1934,6 @@ public final class MainController {
     }
 
     private void populateTraitSummaryEditor(TraitRow row) {
-        setModifyButtonVisible(false);
         LinkedHashMap<String, String> values = new LinkedHashMap<>();
         values.put(I18n.get("col.name"), row.name());
         values.put(I18n.get("col.value"), row.value());
@@ -1950,7 +1947,6 @@ public final class MainController {
     }
 
     private void populateNoteTypeSummaryEditor(NoteTypeRow row) {
-        setModifyButtonVisible(false);
         LinkedHashMap<String, String> values = new LinkedHashMap<>();
         values.put(I18n.get("col.type"), row.type());
         values.put(I18n.get("col.parentType"), row.parentType());
@@ -2731,13 +2727,6 @@ public final class MainController {
             return "\"" + value.replace("\"", "\"\"") + "\"";
         }
         return value;
-    }
-
-    @FXML private void onModifyEntry() {
-        if (!currentView.equals(NAV_ENTRIES)) return;
-        LiftEntry entry = entryTable.getSelectionModel().getSelectedItem();
-        if (entry == null) { showError(I18n.get("error.modification"), I18n.get("error.noEntrySelected")); return; }
-        populateEntryEditor(entry);
     }
 
     /* ════════════════════ GRAMMATICAL INFO VIEW ════════════════════ */

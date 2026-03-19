@@ -140,10 +140,6 @@
               <Label fx:id="editEntryCode" text="" styleClass="edit-entry-code"/>
             </VBox>
             <VBox fx:id="editorContainer" spacing="8"/>
-            <HBox fx:id="modifyButtonRow" alignment="CENTER_RIGHT">
-              <Button fx:id="modifyButton" text="%btn.modifyEntry" onAction="#onModifyEntry" styleClass="example-add-button"
-                      maxWidth="1.7976931348623157E308" HBox.hgrow="ALWAYS"/>
-            </HBox>
           </VBox>
         </content>
       </ScrollPane>
