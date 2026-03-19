@@ -44,6 +44,9 @@ public final class RelationEditor extends VBox {
         typeField.setEditable(false);
         typeField.setPromptText("type");
         refIdField.setPromptText("ref ID");
+        refIdField.setVisible(false);
+        Label refIdLabel = new Label("Ref ID");
+        refIdLabel.setVisible(false);
         orderField.setPromptText("ordre");
 
         GridPane grid = new GridPane();
@@ -52,7 +55,7 @@ public final class RelationEditor extends VBox {
         int r = 0;
         grid.add(new Label("Type"), 0, r);
         grid.add(typeField, 1, r++);
-        grid.add(new Label("Ref ID"), 0, r);
+        grid.add(refIdLabel, 0, r);
         grid.add(refIdField, 1, r++);
         grid.add(new Label("Ordre"), 0, r);
         grid.add(orderField, 1, r++);

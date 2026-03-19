@@ -51,6 +51,9 @@ public final class VariantEditor extends VBox {
         setStyle("-fx-border-color: #bbc; -fx-border-radius: 4; -fx-background-color: #f6f6fa; -fx-background-radius: 4;");
 
         refIdField.setPromptText("ref ID");
+        refIdField.setVisible(false);
+        Label refIdLabel = new Label("Ref ID");
+        refIdLabel.setVisible(false);
 
         TitledPane parentFormsPane = new TitledPane("Entrée parent (lexical-unit)", parentEntryFormsEditor);
         parentFormsPane.setExpanded(true);
@@ -59,7 +62,7 @@ public final class VariantEditor extends VBox {
         GridPane grid = new GridPane();
         grid.setHgap(8);
         grid.setVgap(6);
-        grid.add(new Label("Ref ID"), 0, 0);
+        grid.add(refIdLabel, 0, 0);
         grid.add(refIdField, 1, 0);
         GridPane.setHgrow(refIdField, Priority.ALWAYS);
 
