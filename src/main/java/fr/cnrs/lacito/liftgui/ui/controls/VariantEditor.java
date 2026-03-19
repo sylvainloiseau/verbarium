@@ -28,6 +28,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 
@@ -112,6 +113,7 @@ public final class VariantEditor extends VBox {
             refIdField.setText("");
             parentEntryFormsEditor.setMultiText(null);
             formsEditor.setMultiText(null);
+            formsEditor.setReadOnly(true);
             extensibleEditor.setModel(null, metaLangs, null);
             return;
         }
@@ -121,9 +123,22 @@ public final class VariantEditor extends VBox {
         parentEntryFormsEditor.setAvailableLanguages(objLangs);
         parentEntryFormsEditor.setMultiText(parentForms);
         parentEntryFormsEditor.setReadOnly(true);
-        formsEditor.setAvailableLanguages(objLangs);
+        // Object langs from dictionary + langs already used on parent entry forms (avoids empty rows for new variants)
+        LinkedHashSet<String> variantFormLangs = new LinkedHashSet<>();
+        if (objLangs != null) {
+            for (String l : objLangs) {
+                if (l != null && !l.isBlank()) variantFormLangs.add(l.trim());
+            }
+        }
+        if (variant.getParent() != null && variant.getParent().getForms() != null) {
+            for (String l : variant.getParent().getForms().getLangs()) {
+                if (l != null && !l.isBlank()) variantFormLangs.add(l.trim());
+            }
+        }
+        formsEditor.setAvailableLanguages(variantFormLangs);
         formsEditor.setMultiText(v.getForms());
-        formsEditor.setReadOnly(true);
+        // Editable when dictionary is writable (addActions); parent lexical forms stay read-only above
+        formsEditor.setReadOnly(addActions == null);
 
         if (addActions != null) {
             FlowPane pronAddRow = new FlowPane(6, 4);
