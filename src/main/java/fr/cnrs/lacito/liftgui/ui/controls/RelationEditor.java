@@ -11,7 +11,9 @@ package fr.cnrs.lacito.liftgui.ui.controls;
 
 import fr.cnrs.lacito.liftapi.model.LiftRelation;
 import javafx.beans.value.ChangeListener;
+import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TitledPane;
@@ -20,6 +22,8 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
 import java.util.Collection;
+import java.util.List;
+import java.util.TreeSet;
 
 /**
  * Editor for a single {@link LiftRelation}.
@@ -28,7 +32,7 @@ import java.util.Collection;
  */
 public final class RelationEditor extends VBox {
 
-    private final TextField typeField = new TextField();
+    private final ComboBox<String> typeCombo = new ComboBox<>();
     private final TextField refIdField = new TextField();
     private final TextField orderField = new TextField();
     private ChangeListener<String> refIdListener;
@@ -41,8 +45,9 @@ public final class RelationEditor extends VBox {
         setPadding(new Insets(4));
         setStyle("-fx-border-color: #bca; -fx-border-radius: 4; -fx-background-color: #f8faf4; -fx-background-radius: 4;");
 
-        typeField.setEditable(false);
-        typeField.setPromptText("type");
+        typeCombo.setEditable(false);
+        typeCombo.setPromptText("type");
+        typeCombo.setMaxWidth(Double.MAX_VALUE);
         refIdField.setPromptText("ref ID");
         refIdField.setVisible(false);
         Label refIdLabel = new Label("Ref ID");
@@ -54,12 +59,12 @@ public final class RelationEditor extends VBox {
         grid.setVgap(6);
         int r = 0;
         grid.add(new Label("Type"), 0, r);
-        grid.add(typeField, 1, r++);
+        grid.add(typeCombo, 1, r++);
         grid.add(refIdLabel, 0, r);
         grid.add(refIdField, 1, r++);
         grid.add(new Label("Ordre"), 0, r);
         grid.add(orderField, 1, r++);
-        GridPane.setHgrow(typeField, Priority.ALWAYS);
+        GridPane.setHgrow(typeCombo, Priority.ALWAYS);
         GridPane.setHgrow(refIdField, Priority.ALWAYS);
         GridPane.setHgrow(orderField, Priority.ALWAYS);
 
@@ -74,9 +79,23 @@ public final class RelationEditor extends VBox {
         getChildren().addAll(grid, usagePane, extPane);
     }
 
+    private ChangeListener<String> typeListener;
+
     public void setRelation(LiftRelation rel, Collection<String> langs) {
+        setRelation(rel, langs, List.of());
+    }
+
+    /**
+     * @param relationTypes allowed types from header range {@code lexical-relation} (non-editable combo only).
+     */
+    public void setRelation(LiftRelation rel, Collection<String> langs, List<String> relationTypes) {
+        if (typeListener != null) {
+            typeCombo.valueProperty().removeListener(typeListener);
+            typeListener = null;
+        }
         if (rel == null) {
-            typeField.setText("");
+            typeCombo.setItems(FXCollections.observableArrayList());
+            typeCombo.setValue(null);
             refIdField.setText("");
             orderField.setText("");
             if (refIdListener != null) refIdField.textProperty().removeListener(refIdListener);
@@ -87,7 +106,17 @@ public final class RelationEditor extends VBox {
             extensibleEditor.setModel(null, langs);
             return;
         }
-        typeField.setText(rel.getType() != null ? rel.getType() : "");
+        TreeSet<String> items = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        if (relationTypes != null) items.addAll(relationTypes);
+        String current = rel.getType() != null ? rel.getType() : "";
+        if (!current.isBlank()) items.add(current);
+        typeCombo.setItems(FXCollections.observableArrayList(items));
+        typeCombo.setValue(current.isBlank() ? null : current);
+        LiftRelation relRef = rel;
+        typeListener = (obs, o, n) -> {
+            if (n != null && !n.isBlank()) relRef.setType(n);
+        };
+        typeCombo.valueProperty().addListener(typeListener);
         refIdField.setText(rel.getRefID().orElse(""));
         orderField.setText(rel.getOrder().map(String::valueOf).orElse(""));
         if (refIdListener != null) refIdField.textProperty().removeListener(refIdListener);

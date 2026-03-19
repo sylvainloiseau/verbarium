@@ -43,6 +43,8 @@ public final class MultiTextEditor extends VBox {
 
     private MultiText multiText;
     private boolean readOnly;
+    /** When true: one {@link TextField} row per configured language (no language picker ComboBox). */
+    private boolean fixedLanguageRows;
     private BiConsumer<String, MultiText> onAddAnnotation;
     private List<String> knownAnnotationNames = List.of();
 
@@ -84,11 +86,15 @@ public final class MultiTextEditor extends VBox {
             }
         }
         allLanguages.sort(Comparator.naturalOrder());
-        refreshAddLangChoices();
-        for (var node : rowsBox.getChildren()) {
-            if (node instanceof Row r) r.langLabel.setText(r.boundLang);
+        if (fixedLanguageRows && multiText != null) {
+            rebuild();
+        } else {
+            refreshAddLangChoices();
+            for (var node : rowsBox.getChildren()) {
+                if (node instanceof Row r) r.langLabel.setText(r.boundLang);
+            }
+            rebuildAnnotations();
         }
-        rebuildAnnotations();
     }
 
     public void setMultiText(MultiText mt) {
@@ -96,11 +102,23 @@ public final class MultiTextEditor extends VBox {
         rebuild();
     }
 
+    /**
+     * When true, shows a text field for every language from {@link #setAvailableLanguages(Collection)}
+     * instead of only languages that already have content plus a dropdown to add a language.
+     * Use for entry forms, sense gloss/definition, example text, etc.
+     */
+    public void setFixedLanguageRows(boolean fixed) {
+        this.fixedLanguageRows = fixed;
+        addLangCombo.setVisible(!fixed && !readOnly);
+        addLangCombo.setManaged(!fixed && !readOnly);
+        rebuild();
+    }
+
     /** When true, displays content as read-only (grayed, non-editable). */
     public void setReadOnly(boolean readOnly) {
         this.readOnly = readOnly;
-        addLangCombo.setVisible(!readOnly);
-        addLangCombo.setManaged(!readOnly);
+        addLangCombo.setVisible(!fixedLanguageRows && !readOnly);
+        addLangCombo.setManaged(!fixedLanguageRows && !readOnly);
         if (readOnly) setStyle("-fx-background-color: #e8e8e8; -fx-opacity: 0.9;");
         else setStyle("");
         for (var node : rowsBox.getChildren()) {
@@ -117,10 +135,18 @@ public final class MultiTextEditor extends VBox {
         }
         allLanguages.sort(Comparator.naturalOrder());
 
-        for (String lang : sorted(multiText.getLangs())) {
-            Row row = new Row(lang);
-            rowsBox.getChildren().add(row);
-            if (readOnly) row.applyReadOnly(true);
+        if (fixedLanguageRows) {
+            for (String lang : new ArrayList<>(allLanguages)) {
+                Row row = new Row(lang, true);
+                rowsBox.getChildren().add(row);
+                if (readOnly) row.applyReadOnly(true);
+            }
+        } else {
+            for (String lang : sorted(multiText.getLangs())) {
+                Row row = new Row(lang, false);
+                rowsBox.getChildren().add(row);
+                if (readOnly) row.applyReadOnly(true);
+            }
         }
         refreshAddLangChoices();
         rebuildAnnotations();
@@ -135,10 +161,15 @@ public final class MultiTextEditor extends VBox {
             allLanguages.sort(Comparator.naturalOrder());
         }
         multiText.formTextProperty(l).set("");
-        rowsBox.getChildren().add(new Row(l));
+        rowsBox.getChildren().add(new Row(l, fixedLanguageRows));
     }
 
     private void refreshAddLangChoices() {
+        if (fixedLanguageRows) {
+            addLangCombo.setItems(FXCollections.observableArrayList());
+            addLangCombo.setDisable(true);
+            return;
+        }
         Set<String> used = getUsedLanguages();
         List<String> available = new ArrayList<>();
         for (String l : allLanguages) {
@@ -230,9 +261,11 @@ public final class MultiTextEditor extends VBox {
         private final Button removeButton = new Button("-");
         private final Button editButton = new Button("edit");
         private String boundLang = "";
+        private final boolean fixedSlot;
 
-        private Row(String lang) {
+        private Row(String lang, boolean fixedSlot) {
             super(6);
+            this.fixedSlot = fixedSlot;
             setPadding(new Insets(2, 0, 2, 0));
             setAlignment(javafx.geometry.Pos.CENTER_LEFT);
 
@@ -254,6 +287,11 @@ public final class MultiTextEditor extends VBox {
             editButton.getStyleClass().add("page-button");
             editButton.setOnAction(e -> openEditDialog());
 
+            if (fixedSlot) {
+                removeButton.setVisible(false);
+                removeButton.setManaged(false);
+            }
+
             getChildren().addAll(langLabel, textField, removeButton, editButton);
 
             bindToLang(safeTrim(lang));
@@ -262,13 +300,14 @@ public final class MultiTextEditor extends VBox {
         void applyReadOnly(boolean ro) {
             textField.setEditable(!ro);
             textField.setStyle(ro ? "-fx-background-color: #e0e0e0; -fx-text-fill: #555;" : "");
-            removeButton.setVisible(!ro);
-            removeButton.setManaged(!ro);
+            removeButton.setVisible(!ro && !fixedSlot);
+            removeButton.setManaged(!ro && !fixedSlot);
             editButton.setVisible(!ro);
             editButton.setManaged(!ro);
         }
 
         private void removeRow() {
+            if (fixedSlot) return;
             if (multiText != null && !boundLang.isBlank()) {
                 multiText.formTextProperty(boundLang).set("");
             }

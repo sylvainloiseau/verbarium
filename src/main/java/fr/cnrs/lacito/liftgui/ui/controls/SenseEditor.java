@@ -46,6 +46,8 @@ public final class SenseEditor extends VBox {
     private final VBox subSensesBox = new VBox(6);
     private final TitledPane subSensesPane;
     private final NotableEditor notableEditor = new NotableEditor();
+    /** Types from header range {@code lexical-relation} for {@link RelationEditor}. */
+    private List<String> relationTypes = List.of();
 
     public SenseEditor() {
         super(6);
@@ -66,6 +68,9 @@ public final class SenseEditor extends VBox {
 
         Label semanticTitle = new Label(I18n.get("editor.section.semanticContent"));
         semanticTitle.getStyleClass().add("editor-section-title");
+
+        definitionEditor.setFixedLanguageRows(true);
+        glossEditor.setFixedLanguageRows(true);
 
         TitledPane defPane = new TitledPane("Définition (MultiText)", definitionEditor);
         defPane.setExpanded(true);
@@ -109,6 +114,10 @@ public final class SenseEditor extends VBox {
         identityPane.setAnimated(false);
 
         getChildren().addAll(gramTitle, grid, semanticTitle, defPane, glossPane, examplesTitle, exPane, relPane, revPane, subSensesPane, metadataTitle, extPane, identityPane);
+    }
+
+    public void setRelationTypes(List<String> relationTypes) {
+        this.relationTypes = relationTypes == null ? List.of() : List.copyOf(relationTypes);
     }
 
     /**
@@ -201,7 +210,7 @@ public final class SenseEditor extends VBox {
         // Relations — meta-languages for usage
         for (LiftRelation rel : sense.getRelations()) {
             RelationEditor re = new RelationEditor();
-            re.setRelation(rel, metaLangs);
+            re.setRelation(rel, metaLangs, relationTypes);
             relationsBox.getChildren().add(re);
         }
 

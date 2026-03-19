@@ -54,6 +54,8 @@ public final class ExampleEditor extends VBox {
         grid.add(sourceField, 1, 0);
         GridPane.setHgrow(sourceField, Priority.ALWAYS);
 
+        exampleTextEditor.setFixedLanguageRows(true);
+
         TitledPane exPane = new TitledPane("Exemple (MultiText)", exampleTextEditor);
         exPane.setExpanded(true);
         exPane.setAnimated(false);
@@ -121,6 +123,7 @@ public final class ExampleEditor extends VBox {
 
             String label = type.isBlank() ? "Traduction (par défaut)" : "Traduction [" + type + "]";
             MultiTextEditor mte = new MultiTextEditor();
+            mte.setFixedLanguageRows(true);
             mte.setAvailableLanguages(metaLangs);
             mte.setMultiText(mt);
             if (onAddAnnotation != null) {

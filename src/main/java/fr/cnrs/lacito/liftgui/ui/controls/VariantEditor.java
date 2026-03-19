@@ -44,6 +44,8 @@ public final class VariantEditor extends VBox {
     private final VBox pronunciationsBox = new VBox(6);
     private final VBox relationsBox = new VBox(6);
     private final ExtensibleWithFieldEditor extensibleEditor = new ExtensibleWithFieldEditor();
+    /** Types from header range {@code lexical-relation} for {@link RelationEditor}. */
+    private List<String> relationTypes = List.of();
 
     public VariantEditor() {
         super(6);
@@ -66,6 +68,9 @@ public final class VariantEditor extends VBox {
         grid.add(refIdField, 1, 0);
         GridPane.setHgrow(refIdField, Priority.ALWAYS);
 
+        parentEntryFormsEditor.setFixedLanguageRows(true);
+        formsEditor.setFixedLanguageRows(true);
+
         TitledPane formsPane = new TitledPane("Formes (MultiText)", formsEditor);
         formsPane.setExpanded(true);
         formsPane.setAnimated(false);
@@ -83,6 +88,10 @@ public final class VariantEditor extends VBox {
         extPane.setAnimated(false);
 
         getChildren().addAll(parentFormsPane, grid, formsPane, pronPane, relPane, extPane);
+    }
+
+    public void setRelationTypes(List<String> relationTypes) {
+        this.relationTypes = relationTypes == null ? List.of() : List.copyOf(relationTypes);
     }
 
     /**
@@ -161,7 +170,7 @@ public final class VariantEditor extends VBox {
 
         for (LiftRelation r : v.getRelations()) {
             RelationEditor re = new RelationEditor();
-            re.setRelation(r, metaLangs);
+            re.setRelation(r, metaLangs, relationTypes);
             relationsBox.getChildren().add(re);
         }
 

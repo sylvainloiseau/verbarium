@@ -899,7 +899,7 @@ public final class MainController {
             }
         }
         RelationEditor re = new RelationEditor();
-        re.setRelation(relation, metaLangs);
+        re.setRelation(relation, metaLangs, getKnownRelationTypes());
         editorContainer.getChildren().add(re);
     }
 
@@ -1289,7 +1289,13 @@ public final class MainController {
             editorContainer.getChildren().add(deleteBtn);
 
         addSectionTitle(editorContainer, "editor.section.lexicalContent");
-        addSection(editorContainer, I18n.get("editor.forms"), () -> { MultiTextEditor m = new MultiTextEditor(); m.setAvailableLanguages(objLangs); m.setMultiText(entry.getForms()); return m; }, true);
+        addSection(editorContainer, I18n.get("editor.forms"), () -> {
+            MultiTextEditor m = new MultiTextEditor();
+            m.setAvailableLanguages(objLangs);
+            m.setMultiText(entry.getForms());
+            m.setFixedLanguageRows(true);
+            return m;
+        }, true);
         LiftFactory factory = getFactory(currentDictionary);
         addListSection(editorContainer, I18n.get("editor.traits"), safeList(entry.getTraits()), t -> {
             TraitEditor te = new TraitEditor();
@@ -1324,13 +1330,18 @@ public final class MainController {
         addSectionTitle(editorContainer, "editor.section.variantsRelations");
         addListSection(editorContainer, I18n.get("editor.variants"), safeList(entry.getVariants()), v -> {
             VariantEditor ve = new VariantEditor();
+            ve.setRelationTypes(getKnownRelationTypes());
             ve.setVariant(v, objLangs, metaLangs, factory != null ? createVariantAddActions(v) : null);
             return ve;
         }, false, factory != null ? () -> {
             factory.createVariant(new org.xml.sax.helpers.AttributesImpl(), entry);
             populateEntryEditor(entry);
         } : null);
-        addListSection(editorContainer, I18n.get("editor.relations"), safeList(entry.getRelations()), r -> { RelationEditor re = new RelationEditor(); re.setRelation(r, metaLangs); return re; }, false);
+        addListSection(editorContainer, I18n.get("editor.relations"), safeList(entry.getRelations()), r -> {
+            RelationEditor re = new RelationEditor();
+            re.setRelation(r, metaLangs, getKnownRelationTypes());
+            return re;
+        }, false);
         addListSection(editorContainer, I18n.get("editor.etymologies"), safeList(entry.getEtymologies()), et -> { EtymologyEditor ee = new EtymologyEditor(); ee.setEtymology(et, objLangs, metaLangs); return ee; }, false);
         addSectionTitle(editorContainer, "editor.section.annotationsFields");
         addListSection(editorContainer, I18n.get("editor.annotations"), safeList(entry.getAnnotations()), a -> {
@@ -1535,6 +1546,7 @@ public final class MainController {
         }
 
         SenseEditor se = new SenseEditor();
+        se.setRelationTypes(getKnownRelationTypes());
         LiftFactory factory = getFactory(currentDictionary);
         BiConsumer<String, MultiText> onAddAnnotation = (factory != null)
             ? (name, mt) -> factory.createAnnotation(name, mt)
@@ -2192,6 +2204,7 @@ public final class MainController {
             editorContainer.getChildren().add(backBtn);
         }
         VariantEditor ve = new VariantEditor();
+        ve.setRelationTypes(getKnownRelationTypes());
         ve.setVariant(v, getObjectLanguages(), getMetaLanguages(), getFactory(currentDictionary) != null ? createVariantAddActions(v) : null);
         editorContainer.getChildren().add(ve);
     }
