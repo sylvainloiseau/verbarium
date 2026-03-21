@@ -7,6 +7,7 @@ fr\cnrs\lacito\liftgui\ui\controls\EtymologyEditor.class
 fr\cnrs\lacito\liftgui\ui\MainController$2.class
 fr\cnrs\lacito\liftgui\ui\controls\PronunciationEditor.class
 fr\cnrs\lacito\liftgui\ui\controls\ExampleEditor.class
+fr\cnrs\lacito\liftgui\ui\MainController$CommitOnFocusLossCell.class
 fr\cnrs\lacito\liftgui\ui\controls\TraitEditor$3.class
 fr\cnrs\lacito\liftgui\undo\UndoManager.class
 fr\cnrs\lacito\liftgui\ui\MainController$QuickEntryRow.class

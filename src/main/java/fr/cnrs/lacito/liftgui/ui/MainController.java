@@ -199,12 +199,49 @@ public final class MainController {
         private final Map<String, javafx.beans.property.StringProperty> forms = new HashMap<>();
         private final Map<String, javafx.beans.property.StringProperty> glosses = new HashMap<>();
         private final javafx.beans.property.StringProperty gramInfo = new javafx.beans.property.SimpleStringProperty("");
-        /** True once this row has been auto-committed as a new entry, to avoid double-creation. */
         private final javafx.beans.property.BooleanProperty created = new javafx.beans.property.SimpleBooleanProperty(false);
         public javafx.beans.property.StringProperty formProperty(String lang) { return forms.computeIfAbsent(lang, k -> new javafx.beans.property.SimpleStringProperty("")); }
         public javafx.beans.property.StringProperty glossProperty(String lang) { return glosses.computeIfAbsent(lang, k -> new javafx.beans.property.SimpleStringProperty("")); }
         public javafx.beans.property.StringProperty gramInfoProperty() { return gramInfo; }
         public javafx.beans.property.BooleanProperty createdProperty() { return created; }
+    }
+
+    /**
+     * TableCell that shows a TextField permanently and commits its value on
+     * focus loss, Tab, and Enter (not only Enter like the default TextFieldTableCell).
+     */
+    private static class CommitOnFocusLossCell<S> extends TableCell<S, String> {
+        private final TextField textField = new TextField();
+        private final java.util.function.Function<S, javafx.beans.property.StringProperty> propertyAccessor;
+        private javafx.beans.property.StringProperty boundProperty;
+
+        CommitOnFocusLossCell(java.util.function.Function<S, javafx.beans.property.StringProperty> propertyAccessor) {
+            this.propertyAccessor = propertyAccessor;
+            textField.setOnAction(e -> commitValue());
+            textField.focusedProperty().addListener((obs, wasFocused, isFocused) -> {
+                if (!isFocused) commitValue();
+            });
+        }
+
+        private void commitValue() {
+            if (boundProperty != null) boundProperty.set(textField.getText() != null ? textField.getText() : "");
+        }
+
+        @Override
+        protected void updateItem(String item, boolean empty) {
+            super.updateItem(item, empty);
+            if (empty || getTableRow() == null || getTableRow().getItem() == null) {
+                setGraphic(null);
+                boundProperty = null;
+                return;
+            }
+            S rowItem = getTableRow().getItem();
+            boundProperty = propertyAccessor.apply(rowItem);
+            if (!textField.isFocused()) {
+                textField.setText(boundProperty.get());
+            }
+            setGraphic(textField);
+        }
     }
 
     /* ─────────────────────── INITIALIZATION ─────────────────────── */
@@ -933,21 +970,29 @@ public final class MainController {
         List<MultiTextField> rows = new ArrayList<>();
         for (LiftEntry entry : currentDictionary.getLiftDictionaryComponents().getAllEntries()) {
             if (objectLangs) {
-                collectMtRows(rows, I18n.get("nav.entries"), entry.getId().orElse("?"), entry, entry.getForms(), langs);
-                for (LiftVariant v : entry.getVariants()) collectMtRows(rows, "variante", v.getRefId().orElse("?"), v, v.getForms(), langs);
-                for (LiftPronunciation p : entry.getPronunciations()) collectMtRows(rows, "pron", entry.getId().orElse("?"), p, p.getProunciation(), langs);
-                for (LiftSense s : entry.getSenses()) {
-                    for (LiftExample ex : s.getExamples()) collectMtRows(rows, "exemple", s.getId().orElse("?"), ex, ex.getExample(), langs);
+                String eid = entry.getId().orElse("?");
+                collectMtRows(rows, I18n.get("nav.entries"), eid, entry, entry.getForms(), langs);
+                for (LiftVariant v : entry.getVariants()) {
+                    collectMtRows(rows, "variante", v.getRefId().orElse("?"), v, v.getForms(), langs);
+                    for (LiftPronunciation vp : v.getPronunciations()) collectMtRows(rows, "pron", v.getRefId().orElse("?"), vp, vp.getProunciation(), langs);
                 }
+                for (LiftPronunciation p : entry.getPronunciations()) collectMtRows(rows, "pron", eid, p, p.getProunciation(), langs);
+                for (LiftSense s : entry.getSenses()) collectObjLangRowsForSense(rows, s, langs);
+                for (LiftEtymology et : entry.getEtymologies()) collectMtRows(rows, "étymologie", eid, et, et.getForms(), langs);
             } else {
-                for (LiftSense s : entry.getSenses()) {
-                    collectMtRows(rows, "définition", s.getId().orElse("?"), s, s.getDefinition(), langs);
-                    collectMtRows(rows, "gloss", s.getId().orElse("?"), s, s.getGloss(), langs);
-                    for (LiftExample ex : s.getExamples()) {
-                        for (MultiText tr : ex.getTranslations().values()) collectMtRows(rows, "traduction", s.getId().orElse("?"), ex, tr, langs);
-                    }
+                String eid = entry.getId().orElse("?");
+                collectMtRows(rows, "citation", eid, entry, entry.getCitations(), langs);
+                for (LiftNote n : entry.getNotes().values()) collectMtRows(rows, "note", eid, n, n.getText(), langs);
+                for (LiftRelation r : entry.getRelations()) collectMtRows(rows, "relation (usage)", eid, r, r.getUsage(), langs);
+                for (LiftField f : entry.getFields()) collectMtRows(rows, "champ", eid, f, f.getText(), langs);
+                for (LiftAnnotation a : entry.getAnnotations()) collectMtRows(rows, "annotation", eid, a, a.getText(), langs);
+                for (LiftSense s : entry.getSenses()) collectMetaLangRowsForSense(rows, s, langs);
+                for (LiftVariant v : entry.getVariants()) {
+                    String vid = v.getRefId().orElse("?");
+                    for (LiftRelation r : v.getRelations()) collectMtRows(rows, "relation (usage)", vid, r, r.getUsage(), langs);
+                    for (LiftField f : v.getFields()) collectMtRows(rows, "champ", vid, f, f.getText(), langs);
+                    for (LiftAnnotation a : v.getAnnotations()) collectMtRows(rows, "annotation", vid, a, a.getText(), langs);
                 }
-                for (LiftNote n : entry.getNotes().values()) collectMtRows(rows, "note", entry.getId().orElse("?"), n, n.getText(), langs);
             }
         }
 
@@ -974,11 +1019,40 @@ public final class MainController {
     }
 
     private static void collectMtRows(List<MultiTextField> rows, String parentType, String parentId, Object parentObject, MultiText mt, List<String> langs) {
+        if (mt == null) return;
         for (Form f : mt.getForms()) {
             if (langs.contains(f.getLang())) {
                 rows.add(new MultiTextField(parentType, parentId, f.getLang(), f.toPlainText(), parentObject, mt));
             }
         }
+    }
+
+    private static void collectObjLangRowsForSense(List<MultiTextField> rows, LiftSense s, List<String> langs) {
+        String sid = s.getId().orElse("?");
+        for (LiftExample ex : s.getExamples()) collectMtRows(rows, "exemple", sid, ex, ex.getExample(), langs);
+        for (LiftSense sub : s.getSubSenses()) collectObjLangRowsForSense(rows, sub, langs);
+    }
+
+    private static void collectMetaLangRowsForSense(List<MultiTextField> rows, LiftSense s, List<String> langs) {
+        String sid = s.getId().orElse("?");
+        collectMtRows(rows, "définition", sid, s, s.getDefinition(), langs);
+        collectMtRows(rows, "gloss", sid, s, s.getGloss(), langs);
+        for (LiftExample ex : s.getExamples()) {
+            for (MultiText tr : ex.getTranslations().values()) collectMtRows(rows, "traduction", sid, ex, tr, langs);
+            for (LiftNote n : ex.getNotes().values()) collectMtRows(rows, "note", sid, n, n.getText(), langs);
+            for (LiftField f : ex.getFields()) collectMtRows(rows, "champ", sid, f, f.getText(), langs);
+            for (LiftAnnotation a : ex.getAnnotations()) collectMtRows(rows, "annotation", sid, a, a.getText(), langs);
+        }
+        for (LiftReversal rev : s.getReversals()) {
+            collectMtRows(rows, "reversal", sid, rev, rev.getForms(), langs);
+            if (rev.getMain() != null) collectMtRows(rows, "reversal (main)", sid, rev.getMain(), rev.getMain().getForms(), langs);
+        }
+        for (LiftRelation r : s.getRelations()) collectMtRows(rows, "relation (usage)", sid, r, r.getUsage(), langs);
+        for (LiftNote n : s.getNotes().values()) collectMtRows(rows, "note", sid, n, n.getText(), langs);
+        for (LiftField f : s.getFields()) collectMtRows(rows, "champ", sid, f, f.getText(), langs);
+        for (LiftAnnotation a : s.getAnnotations()) collectMtRows(rows, "annotation", sid, a, a.getText(), langs);
+        for (LiftIllustration ill : s.getIllustrations()) collectMtRows(rows, "illustration", sid, ill, ill.getLabel(), langs);
+        for (LiftSense sub : s.getSubSenses()) collectMetaLangRowsForSense(rows, sub, langs);
     }
 
     /* ════════════════════ TRAIT VIEW (5.10 – split: names top, values bottom) ════════════════════ */
@@ -1072,8 +1146,7 @@ public final class MainController {
         for (String l : objLangs) {
             TableColumn<QuickEntryRow, String> c = new TableColumn<>("form [" + l + "]");
             c.setCellValueFactory(cd -> cd.getValue().formProperty(l));
-            c.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn());
-            c.setOnEditCommit(ev -> ev.getRowValue().formProperty(l).set(ev.getNewValue()));
+            c.setCellFactory(tc -> new CommitOnFocusLossCell<>(row -> row.formProperty(l)));
             c.setPrefWidth(130);
             c.setEditable(true);
             quickEntryTable.getColumns().add(c);
@@ -1081,8 +1154,7 @@ public final class MainController {
         for (String l : metaLangs) {
             TableColumn<QuickEntryRow, String> c = new TableColumn<>("sens [" + l + "]");
             c.setCellValueFactory(cd -> cd.getValue().glossProperty(l));
-            c.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn());
-            c.setOnEditCommit(ev -> ev.getRowValue().glossProperty(l).set(ev.getNewValue()));
+            c.setCellFactory(tc -> new CommitOnFocusLossCell<>(row -> row.glossProperty(l)));
             c.setPrefWidth(130);
             c.setEditable(true);
             quickEntryTable.getColumns().add(c);
@@ -1096,7 +1168,9 @@ public final class MainController {
         giCol.setCellValueFactory(cd -> cd.getValue().gramInfoProperty());
         giCol.setCellFactory(tc -> {
             ComboBox<String> combo = new ComboBox<>(gramItems);
-            combo.setEditable(true);
+            combo.setEditable(false);
+            combo.setMaxWidth(Double.MAX_VALUE);
+            combo.setPromptText("—");
             TableCell<QuickEntryRow, String> cell = new TableCell<>() {
                 @Override protected void updateItem(String item, boolean empty) {
                     super.updateItem(item, empty);
