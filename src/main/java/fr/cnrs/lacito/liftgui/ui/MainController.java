@@ -446,7 +446,7 @@ public final class MainController {
         editEntryCode.setText("");
         tableContainer.getChildren().clear();
         addButton.setText(I18n.get("btn.new"));
-        boolean showAddButton = NAV_ENTRIES.equals(viewName) || NAV_SENSES.equals(viewName) || NAV_QUICK_ENTRY.equals(viewName);
+        boolean showAddButton = NAV_ENTRIES.equals(viewName) || NAV_QUICK_ENTRY.equals(viewName);
         addButton.setVisible(showAddButton);
         addButton.setManaged(showAddButton);
 
@@ -1263,14 +1263,6 @@ public final class MainController {
         switch (currentView) {
             case NAV_QUICK_ENTRY -> createEntriesFromQuickTable(factory);
             case NAV_ENTRIES -> createNewEntry(factory);
-            case NAV_SENSES -> {
-                LiftEntry selEntry = entryTable.getSelectionModel().getSelectedItem();
-                if (selEntry == null) { showError(I18n.get("error.creation"), I18n.get("info.selectEntryForSense")); return; }
-                org.xml.sax.helpers.AttributesImpl senseAttrs = new org.xml.sax.helpers.AttributesImpl();
-                senseAttrs.addAttribute("", "id", "id", "CDATA", UUID.randomUUID().toString());
-                factory.createSense(senseAttrs, selEntry);
-                switchView(NAV_SENSES);
-            }
             default -> { }
         }
     }
