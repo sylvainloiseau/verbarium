@@ -446,6 +446,9 @@ public final class MainController {
         editEntryCode.setText("");
         tableContainer.getChildren().clear();
         addButton.setText(I18n.get("btn.new"));
+        boolean showAddButton = NAV_ENTRIES.equals(viewName) || NAV_SENSES.equals(viewName) || NAV_QUICK_ENTRY.equals(viewName);
+        addButton.setVisible(showAddButton);
+        addButton.setManaged(showAddButton);
 
         if (viewName.startsWith(NAV_CFG_RANGE_PREFIX)) {
             setRightPanelVisible(true);
@@ -1268,9 +1271,7 @@ public final class MainController {
                 factory.createSense(senseAttrs, selEntry);
                 switchView(NAV_SENSES);
             }
-            case NAV_RELATIONS, NAV_EXAMPLES, NAV_NOTES, NAV_VARIANTS, NAV_ETYMOLOGIES ->
-                showInfo(I18n.get("error.creation"), I18n.get("info.addFromParent"));
-            default -> showInfo(I18n.get("error.creation"), I18n.get("info.useQuickEntry"));
+            default -> { }
         }
     }
 
