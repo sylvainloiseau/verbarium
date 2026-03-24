@@ -3289,6 +3289,36 @@ public final class MainController {
         Label title = new Label(I18n.get("nav.cfgDesc"));
         title.setStyle("-fx-font-size:15px; -fx-font-weight:bold; -fx-text-fill:#4c6f76;");
         box.getChildren().add(title);
+
+        GridPane infoGrid = new GridPane();
+        infoGrid.setHgap(12);
+        infoGrid.setVgap(6);
+        int row = 0;
+        String version = currentDictionary.getLiftVersion();
+        if (version != null && !version.isBlank()) {
+            Label vLabel = new Label("LIFT version :");
+            vLabel.setStyle("-fx-font-weight:bold;");
+            TextField vField = new TextField(version);
+            vField.setEditable(false);
+            vField.setPrefWidth(200);
+            vField.setStyle("-fx-background-color: #eee;");
+            infoGrid.add(vLabel, 0, row);
+            infoGrid.add(vField, 1, row);
+            row++;
+        }
+        String producer = currentDictionary.getLiftProducer();
+        if (producer != null && !producer.isBlank()) {
+            Label pLabel = new Label("Producer :");
+            pLabel.setStyle("-fx-font-weight:bold;");
+            TextField pField = new TextField(producer);
+            pField.setEditable(false);
+            pField.setPrefWidth(200);
+            pField.setStyle("-fx-background-color: #eee;");
+            infoGrid.add(pLabel, 0, row);
+            infoGrid.add(pField, 1, row);
+        }
+        box.getChildren().add(infoGrid);
+
         addMultiTextRow(box, I18n.get("cfg.description"), header.getDescription(), metaLangs);
         tableContainer.getChildren().setAll(box);
         editorContainer.getChildren().clear();
