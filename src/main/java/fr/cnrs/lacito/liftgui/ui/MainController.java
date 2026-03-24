@@ -476,14 +476,20 @@ public final class MainController {
             case NAV_QUICK_ENTRY  -> showQuickEntryView();
             case NAV_CFG_DESC        -> { showHeaderDescView(); setRightPanelVisible(false); }
             case NAV_CFG_FIELD_DEFS  -> showHeaderFieldDefsView();
-            case NAV_CFG_MANAGE_LANGS -> { openManageLanguagesDialog(); showHeaderDescView(); setRightPanelVisible(false); }
-            case NAV_CFG_MANAGE_NOTE_TYPES -> { onConfigNoteTypes(); showHeaderDescView(); setRightPanelVisible(false); }
-            case NAV_CFG_MANAGE_TRANS_TYPES -> { onConfigTranslationTypes(); showHeaderDescView(); setRightPanelVisible(false); }
-            case NAV_CFG_MANAGE_ANNOTATION_TYPES -> { onConfigAnnotationTypes(); showHeaderDescView(); setRightPanelVisible(false); }
-            case NAV_CFG_MANAGE_RELATION_TYPES -> { onConfigRelationTypes(); showHeaderDescView(); setRightPanelVisible(false); }
+            case NAV_CFG_MANAGE_LANGS -> { showManageLanguagesView(); setRightPanelVisible(false); }
+            case NAV_CFG_MANAGE_NOTE_TYPES -> { showConfigNoteTypesView(); setRightPanelVisible(false); }
+            case NAV_CFG_MANAGE_TRANS_TYPES -> { showConfigTranslationTypesView(); setRightPanelVisible(false); }
+            case NAV_CFG_MANAGE_ANNOTATION_TYPES -> { showConfigAnnotationTypesView(); setRightPanelVisible(false); }
+            case NAV_CFG_MANAGE_RELATION_TYPES -> { showConfigRelationTypesView(); setRightPanelVisible(false); }
             default -> showEntryView();
         }
-        if (!NAV_CFG_DESC.equals(viewName)) setRightPanelVisible(true);
+        boolean hideRightPanel = NAV_CFG_DESC.equals(viewName)
+                || NAV_CFG_MANAGE_LANGS.equals(viewName)
+                || NAV_CFG_MANAGE_NOTE_TYPES.equals(viewName)
+                || NAV_CFG_MANAGE_TRANS_TYPES.equals(viewName)
+                || NAV_CFG_MANAGE_ANNOTATION_TYPES.equals(viewName)
+                || NAV_CFG_MANAGE_RELATION_TYPES.equals(viewName);
+        if (!hideRightPanel) setRightPanelVisible(true);
         // Hide search field in quick entry view (not needed there)
         if (searchField != null) {
             boolean showSearch = !NAV_QUICK_ENTRY.equals(viewName);
@@ -2559,8 +2565,18 @@ public final class MainController {
             () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllNotes().stream().map(n -> n.getType().orElse("?")).distinct().sorted().toList(),
             val -> currentDictionary == null ? 0L : currentDictionary.getLiftDictionaryComponents().getAllNotes().stream().filter(n -> val.equals(n.getType().orElse(""))).count());
     }
+    private void showConfigNoteTypesView() {
+        showConfigInlineView(I18n.get("menu.config.noteTypes"),
+            () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllNotes().stream().map(n -> n.getType().orElse("?")).distinct().sorted().toList(),
+            val -> currentDictionary == null ? 0L : currentDictionary.getLiftDictionaryComponents().getAllNotes().stream().filter(n -> val.equals(n.getType().orElse(""))).count());
+    }
     @FXML private void onConfigTranslationTypes() {
         showConfigDialog(I18n.get("menu.config.translationTypes"),
+            () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllExamples().stream().flatMap(ex -> ex.getTranslations().keySet().stream()).distinct().sorted().toList(),
+            val -> currentDictionary == null ? 0L : currentDictionary.getLiftDictionaryComponents().getAllExamples().stream().filter(ex -> ex.getTranslations().containsKey(val)).count());
+    }
+    private void showConfigTranslationTypesView() {
+        showConfigInlineView(I18n.get("menu.config.translationTypes"),
             () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllExamples().stream().flatMap(ex -> ex.getTranslations().keySet().stream()).distinct().sorted().toList(),
             val -> currentDictionary == null ? 0L : currentDictionary.getLiftDictionaryComponents().getAllExamples().stream().filter(ex -> ex.getTranslations().containsKey(val)).count());
     }
@@ -2578,6 +2594,11 @@ public final class MainController {
             () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllAnnotations().stream().map(LiftAnnotation::getName).distinct().sorted().toList(),
             val -> currentDictionary == null ? 0L : currentDictionary.getLiftDictionaryComponents().getAllAnnotations().stream().filter(a -> val.equals(a.getName())).count());
     }
+    private void showConfigAnnotationTypesView() {
+        showConfigInlineView(I18n.get("menu.config.annotationTypes"),
+            () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllAnnotations().stream().map(LiftAnnotation::getName).distinct().sorted().toList(),
+            val -> currentDictionary == null ? 0L : currentDictionary.getLiftDictionaryComponents().getAllAnnotations().stream().filter(a -> val.equals(a.getName())).count());
+    }
     @FXML private void onConfigFieldTypes() {
         showConfigDialog(I18n.get("menu.config.fieldTypes"),
             () -> currentDictionary == null ? List.of() : currentDictionary.getFieldType().stream().sorted().toList(),
@@ -2589,32 +2610,37 @@ public final class MainController {
             () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllRelations().stream().map(LiftRelation::getType).distinct().sorted().toList(),
             val -> currentDictionary == null ? 0L : currentDictionary.getLiftDictionaryComponents().getAllRelations().stream().filter(r -> val.equals(r.getType())).count());
     }
+    private void showConfigRelationTypesView() {
+        showConfigInlineView(I18n.get("nav.cfgManageRelationTypes"),
+            () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllRelations().stream().map(LiftRelation::getType).distinct().sorted().toList(),
+            val -> currentDictionary == null ? 0L : currentDictionary.getLiftDictionaryComponents().getAllRelations().stream().filter(r -> val.equals(r.getType())).count());
+    }
 
-    /** Dialog for managing languages, with object-languages and meta-languages in separate sections.
-     *  Supports add/delete. Deleted languages are removed from all multitexts and no longer appear in dropdowns. */
-    private void openManageLanguagesDialog() {
-        if (currentDictionary == null) return;
+    private void showManageLanguagesView() {
+        if (currentDictionary == null) { tableContainer.getChildren().setAll(new Label(I18n.get("cfg.noHeader"))); return; }
         var ldc = currentDictionary.getLiftDictionaryComponents();
         List<String> objLangs = new ArrayList<>(getObjectLanguages());
         List<String> metaLangs = new ArrayList<>(getMetaLanguages());
 
-        Dialog<Void> dlg = new Dialog<>();
-        dlg.setTitle(I18n.get("config.title", I18n.get("nav.cfgManageLangs")));
-        dlg.setResizable(true);
-        dlg.getDialogPane().setPrefSize(520, 480);
-        dlg.getDialogPane().getButtonTypes().addAll(ButtonType.CLOSE);
+        VBox box = new VBox(10);
+        box.setPadding(new Insets(12));
+        Label title = new Label(I18n.get("nav.cfgManageLangs"));
+        title.setStyle("-fx-font-size:15px; -fx-font-weight:bold; -fx-text-fill:#4c6f76;");
 
         TitledPane objPane = new TitledPane(I18n.get("nav.objectLangs"),
             buildEditableLanguagePanel(objLangs, true, ldc.getAllObjectLanguagesMultiText()));
         objPane.setExpanded(true);
+        objPane.setAnimated(false);
         TitledPane metaPane = new TitledPane(I18n.get("nav.metaLangs"),
             buildEditableLanguagePanel(metaLangs, false, ldc.getAllMetaLanguagesMultiText()));
         metaPane.setExpanded(true);
+        metaPane.setAnimated(false);
 
-        VBox content = new VBox(10, objPane, metaPane);
-        content.setPadding(new Insets(12));
-        dlg.getDialogPane().setContent(content);
-        dlg.showAndWait();
+        box.getChildren().addAll(title, objPane, metaPane);
+        tableContainer.getChildren().setAll(box);
+        editorContainer.getChildren().clear();
+        editEntryTitle.setText(I18n.get("nav.cfgManageLangs"));
+        editEntryCode.setText("");
     }
 
     /** Builds an editable panel for a language list (object or meta) with add/delete. */
@@ -4210,6 +4236,93 @@ public final class MainController {
 
         dlg.showAndWait();
     }
+
+    private void showConfigInlineView(String title, ListSupplier supplier, UsageChecker usageChecker) {
+        List<String> items = supplier.get();
+
+        VBox box = new VBox(10);
+        box.setPadding(new Insets(12));
+        Label heading = new Label(title);
+        heading.setStyle("-fx-font-size:15px; -fx-font-weight:bold; -fx-text-fill:#4c6f76;");
+        Label countLabel = new Label(I18n.get("config.header", title, items.size()));
+        countLabel.setStyle("-fx-text-fill:#666;");
+
+        TableView<ConfigRow> configTable = new TableView<>();
+        configTable.setEditable(true);
+
+        TableColumn<ConfigRow, String> abbrCol = new TableColumn<>(I18n.get("col.abbreviation"));
+        abbrCol.setCellValueFactory(cd -> cd.getValue().abbrev());
+        abbrCol.setCellFactory(TextFieldTableCell.forTableColumn());
+        abbrCol.setOnEditCommit(e -> e.getRowValue().abbrev().set(e.getNewValue()));
+        abbrCol.setPrefWidth(180);
+
+        TableColumn<ConfigRow, String> usageCol = new TableColumn<>(I18n.get("cfg.usageCount"));
+        usageCol.setCellValueFactory(cd -> {
+            long n = usageChecker.count(cd.getValue().abbrev().get());
+            return new javafx.beans.property.ReadOnlyStringWrapper(String.valueOf(n));
+        });
+        usageCol.setPrefWidth(80);
+
+        TableColumn<ConfigRow, String> descCol = new TableColumn<>(I18n.get("col.description"));
+        descCol.setCellValueFactory(cd -> cd.getValue().description());
+        descCol.setCellFactory(TextFieldTableCell.forTableColumn());
+        descCol.setOnEditCommit(e -> e.getRowValue().description().set(e.getNewValue()));
+        descCol.setPrefWidth(320);
+
+        configTable.getColumns().addAll(abbrCol, usageCol, descCol);
+        for (String item : items) configTable.getItems().add(new ConfigRow(item, ""));
+
+        TextField addAbbrField = new TextField();
+        addAbbrField.setPromptText(I18n.get("config.addAbbr"));
+        TextField addDescField = new TextField();
+        addDescField.setPromptText(I18n.get("config.addDesc"));
+        Button addBtn = new Button(I18n.get("btn.add"));
+        addBtn.setOnAction(e -> {
+            String a = addAbbrField.getText().trim();
+            if (!a.isEmpty()) {
+                configTable.getItems().add(new ConfigRow(a, addDescField.getText().trim()));
+                addAbbrField.clear(); addDescField.clear();
+                countLabel.setText(I18n.get("config.header", title, configTable.getItems().size()));
+            }
+        });
+
+        Button removeBtn = new Button(I18n.get("btn.delete"));
+        removeBtn.setOnAction(e -> {
+            ConfigRow sel = configTable.getSelectionModel().getSelectedItem();
+            if (sel == null) return;
+            long usage = usageChecker.count(sel.abbrev().get());
+            if (usage > 0) {
+                Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+                confirm.setTitle(I18n.get("btn.delete"));
+                confirm.setHeaderText(I18n.get("config.deleteWarning", sel.abbrev().get(), usage));
+                confirm.setContentText(I18n.get("config.deleteConfirm"));
+                confirm.showAndWait().filter(r -> r == ButtonType.OK)
+                        .ifPresent(r -> { configTable.getItems().remove(sel); countLabel.setText(I18n.get("config.header", title, configTable.getItems().size())); });
+            } else {
+                configTable.getItems().remove(sel);
+                countLabel.setText(I18n.get("config.header", title, configTable.getItems().size()));
+            }
+        });
+
+        Button saveBtn = new Button(I18n.get("btn.save"));
+        saveBtn.setStyle("-fx-background-color: #4c6f76; -fx-text-fill: white; -fx-background-radius: 6; -fx-padding: 7 16 7 16;");
+        saveBtn.setOnAction(e -> {
+            persistConfigToHeader(title, configTable.getItems());
+            showInfo(title, I18n.get("info.saved"));
+        });
+
+        HBox controls = new HBox(8, addAbbrField, addDescField, addBtn, removeBtn, saveBtn);
+        controls.setPadding(new Insets(6, 0, 0, 0));
+        HBox.setHgrow(addAbbrField, Priority.ALWAYS);
+        HBox.setHgrow(addDescField, Priority.ALWAYS);
+
+        box.getChildren().addAll(heading, countLabel, configTable, controls);
+        tableContainer.getChildren().setAll(box);
+        editorContainer.getChildren().clear();
+        editEntryTitle.setText(title);
+        editEntryCode.setText("");
+    }
+
     private void persistConfigToHeader(String dialogTitle, List<ConfigRow> rows) {
         if (currentDictionary == null) return;
         LiftFactory factory = getFactory(currentDictionary);
