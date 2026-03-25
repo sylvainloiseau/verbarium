@@ -1081,10 +1081,12 @@ public final class MainController {
             });
         }
 
+        TableColumn<TraitRow, String> traitFreqCol = col(I18n.get("col.frequency"), r -> String.valueOf(r.frequency()));
+        traitFreqCol.getProperties().put("filterMode", FILTER_MODE_TEXT);
         traitTable.getColumns().addAll(
             col(I18n.get("col.name"), (TraitRow r) -> r.name()),
             col(I18n.get("col.value"), (TraitRow r) -> r.value()),
-            col(I18n.get("col.frequency"), r -> String.valueOf(r.frequency()))
+            traitFreqCol
         );
         traitTable.getItems().addAll(counts.values().stream().sorted(Comparator.comparingLong(TraitRow::frequency).reversed()).toList());
         traitTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
@@ -1102,6 +1104,11 @@ public final class MainController {
 
         List<LiftAnnotation> all = currentDictionary.getLiftDictionaryComponents().getAllAnnotations();
 
+        TableColumn<LiftAnnotation, String> annotFreqCol = col(I18n.get("col.frequency"), a -> {
+            long c = all.stream().filter(x -> x.getName().equals(a.getName()) && x.getValue().orElse("").equals(a.getValue().orElse(""))).count();
+            return String.valueOf(c);
+        });
+        annotFreqCol.getProperties().put("filterMode", FILTER_MODE_TEXT);
         annotationTable.getColumns().addAll(
             col(I18n.get("col.parentType"), (LiftAnnotation a) -> describeParentType(a.getParent())),
             col(I18n.get("col.parent"), (LiftAnnotation a) -> describeParent(a.getParent())),
@@ -1109,10 +1116,7 @@ public final class MainController {
             col(I18n.get("col.value"), a -> a.getValue().orElse("")),
             col(I18n.get("col.who"), a -> a.getWho().orElse("")),
             col(I18n.get("col.when"), a -> a.getWhen().orElse("")),
-            col(I18n.get("col.frequency"), a -> {
-                long c = all.stream().filter(x -> x.getName().equals(a.getName()) && x.getValue().orElse("").equals(a.getValue().orElse(""))).count();
-                return String.valueOf(c);
-            })
+            annotFreqCol
         );
         annotationTable.getItems().addAll(all);
         annotationTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
@@ -2874,10 +2878,12 @@ public final class MainController {
             });
         }
         TableView<NoteTypeRow> table = new TableView<>();
+        TableColumn<NoteTypeRow, String> noteFreqCol = col(I18n.get("col.frequency"), r -> String.valueOf(r.frequency()));
+        noteFreqCol.getProperties().put("filterMode", FILTER_MODE_TEXT);
         table.getColumns().addAll(
             col(I18n.get("col.type"), NoteTypeRow::type),
             col(I18n.get("col.parentType"), NoteTypeRow::parentType),
-            col(I18n.get("col.frequency"), r -> String.valueOf(r.frequency()))
+            noteFreqCol
         );
         counts.values().stream().sorted(Comparator.comparingLong(NoteTypeRow::frequency).reversed())
             .forEach(table.getItems()::add);
@@ -2915,6 +2921,7 @@ public final class MainController {
         TableColumn<CategoryRow, String> freqCol = new TableColumn<>(I18n.get("col.frequency"));
         freqCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(String.valueOf(cd.getValue().frequency())));
         freqCol.setPrefWidth(100);
+        freqCol.getProperties().put("filterMode", FILTER_MODE_TEXT);
         table.getColumns().addAll(valCol, freqCol);
         counts.entrySet().stream().sorted(Map.Entry.<String, Long>comparingByValue().reversed())
             .forEach(e -> table.getItems().add(new CategoryRow(e.getKey(), e.getValue())));
