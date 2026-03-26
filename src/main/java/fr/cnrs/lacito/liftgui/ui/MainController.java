@@ -1092,17 +1092,19 @@ public final class MainController {
         for (LiftTrait t : currentDictionary.getLiftDictionaryComponents().getAllTraits()) {
             String key = t.getName() + "|" + t.getValue();
             counts.compute(key, (k, row) -> {
-                if (row == null) return new TraitRow("", t.getName(), t.getValue(), 1);
-                return new TraitRow("", row.name, row.value, row.frequency + 1);
+                String parentType = describeParentType(t.getParent());
+                if (row == null) return new TraitRow(parentType, t.getName(), t.getValue(), 1);
+                return new TraitRow(row.parentType, row.name, row.value, row.frequency + 1);
             });
         }
 
         TableColumn<TraitRow, String> traitFreqCol = col(I18n.get("col.frequency"), r -> String.valueOf(r.frequency()));
         traitFreqCol.getProperties().put("filterMode", FILTER_MODE_TEXT);
         traitTable.getColumns().addAll(
-            col(I18n.get("col.name"), (TraitRow r) -> r.name()),
-            col(I18n.get("col.value"), (TraitRow r) -> r.value()),
-            traitFreqCol
+                col(I18n.get("col.parentType"), (TraitRow r) -> r.parentType()),
+                col(I18n.get("col.name"), (TraitRow r) -> r.name()),
+                col(I18n.get("col.value"), (TraitRow r) -> r.value()),
+                traitFreqCol
         );
         traitTable.getItems().addAll(counts.values().stream().sorted(Comparator.comparingLong(TraitRow::frequency).reversed()).toList());
         traitTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
