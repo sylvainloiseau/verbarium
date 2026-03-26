@@ -2945,7 +2945,9 @@ public final class MainController {
             javafx.beans.property.StringProperty searchTextProperty) {
         ObservableList<T> sourceItems = FXCollections.observableArrayList(table.getItems());
         FilteredList<T> filtered = new FilteredList<>(sourceItems, t -> true);
-        table.setItems(filtered);
+        javafx.collections.transformation.SortedList<T> sorted = new javafx.collections.transformation.SortedList<>(filtered);
+        sorted.comparatorProperty().bind(table.comparatorProperty());
+        table.setItems(sorted);
 
         List<TableColumn<T, ?>> leaves = collectLeafColumns(table);
         List<javafx.scene.Node> filterInputs = new ArrayList<>();
