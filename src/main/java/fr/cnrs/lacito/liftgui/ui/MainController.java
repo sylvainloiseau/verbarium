@@ -978,6 +978,15 @@ public final class MainController {
         etyTable.getColumns().addAll(typeCol, sourceCol, formGroup);
         currentDictionary.getLiftDictionaryComponents().getAllEntries().stream()
             .flatMap(e -> e.getEtymologies().stream()).forEach(etyTable.getItems()::add);
+        etyTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
+            if (n != null) {
+                EtymologyEditor ee = new EtymologyEditor();
+                ee.setEtymology(n, getObjectLanguages(), getMetaLanguages());
+                editEntryTitle.setText(n.getType() != null ? n.getType() : I18n.get("nav.etymologies"));
+                editEntryCode.setText(n.getSource() != null ? n.getSource() : "");
+                editorContainer.getChildren().setAll(ee);
+            }
+        });
         tableContainer.getChildren().setAll(wrapTableWithFilters(etyTable, (f,t2) -> updateCountLabel(f,t2)));
         updateCountLabel(etyTable.getItems().size(), etyTable.getItems().size());
     }
