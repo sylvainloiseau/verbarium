@@ -2329,6 +2329,7 @@ public final class MainController {
         }
         VariantEditor ve = new VariantEditor();
         ve.setRelationTypes(getKnownRelationTypes());
+        ve.setVariantTypes(new ArrayList<>(getKnownTraitValues().getOrDefault("variant-type", Set.of())));
         ve.setVariant(v, getObjectLanguages(), getMetaLanguages(), getFactory(currentDictionary) != null ? createVariantAddActions(v) : null);
         editorContainer.getChildren().add(ve);
     }
