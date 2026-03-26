@@ -252,7 +252,23 @@ public final class MainController {
         setupEntryTable();
         setupGenericTables();
         searchField.textProperty().addListener((obs, o, n) -> applyCurrentFilter());
-        setDictionary(loadDemoDictionary());
+      //  setDictionary(loadDemoDictionary());
+        // Recharge le dernier fichier ouvert, sinon charge le démo
+        List<String> recents = loadRecentFiles();
+        if (!recents.isEmpty()) {
+            File lastFile = new File(recents.get(0));
+            if (lastFile.exists()) {
+                try {
+                    setDictionary(LiftDictionary.loadDictionaryWithFile(lastFile));
+                } catch (Exception e) {
+                    setDictionary(loadDemoDictionary());
+                }
+            } else {
+                setDictionary(loadDemoDictionary());
+            }
+        } else {
+            setDictionary(loadDemoDictionary());
+        }
         ensureRightPanelVisible();
         setupMenuHover();
         switchView(NAV_ENTRIES);
@@ -1624,6 +1640,8 @@ public final class MainController {
 
         SenseEditor se = new SenseEditor();
         se.setRelationTypes(getKnownRelationTypes());
+        se.setGrammaticalInfoValues(getHeaderRangeValues("grammatical-info"));
+        se.setOnGramInfoChanged(() -> senseTable.refresh());
         LiftFactory factory = getFactory(currentDictionary);
         BiConsumer<String, MultiText> onAddAnnotation = (factory != null)
             ? (name, mt) -> factory.createAnnotation(name, mt)
@@ -2473,11 +2491,9 @@ public final class MainController {
     @FXML private void onSave() {
         if (currentDictionary == null) { showError(I18n.get("error.save"), I18n.get("error.noDictionary")); return; }
         try { currentDictionary.save(); } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Sauvegarde du dictionnaire", e);
             showError(I18n.get("error.save"), I18n.formatErrorMessage("error.save.detail", e));
         }
     }
-
     @FXML private void onNewDictionary() { setDictionary(null); switchView(NAV_ENTRIES); }
 
     @FXML private void onSaveAs() {

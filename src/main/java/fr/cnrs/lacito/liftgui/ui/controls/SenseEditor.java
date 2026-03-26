@@ -1,18 +1,18 @@
-
 /**
- 
-* @author Inès GBADAMASSI
-* @author Maryse GOEH-AKUE
-* @author Ermeline BRESSON
-* @author Ayman JARI
-* @author Erij MAZOUZ
 
-**/
+ * @author Inès GBADAMASSI
+ * @author Maryse GOEH-AKUE
+ * @author Ermeline BRESSON
+ * @author Ayman JARI
+ * @author Erij MAZOUZ
+
+ **/
 package fr.cnrs.lacito.liftgui.ui.controls;
 
 import fr.cnrs.lacito.liftapi.model.*;
 import fr.cnrs.lacito.liftgui.ui.I18n;
 import javafx.geometry.Insets;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TitledPane;
@@ -28,7 +28,7 @@ import java.util.function.Function;
 /**
  * Editor for a single {@link LiftSense}.
  *
- * Displays: id, grammaticalInfo, definition MultiText, gloss MultiText,
+ * Displays: id, grammaticalInfo (ComboBox, non-editable), definition MultiText, gloss MultiText,
  * examples (ExampleEditor each), relations (RelationEditor each),
  * sub-senses (recursive SenseEditor each),
  * + NotableEditor for inherited properties (notes, fields, traits, annotations, dates).
@@ -36,7 +36,8 @@ import java.util.function.Function;
 public final class SenseEditor extends VBox {
 
     private final TextField idField = new TextField();
-    private final TextField grammaticalInfoField = new TextField();
+    /** Non-editable ComboBox for grammatical info — values come from header range grammatical-info */
+    private final ComboBox<String> grammaticalInfoCombo = new ComboBox<>();
     private final GridPane identityBlock = new GridPane();
     private final MultiTextEditor definitionEditor = new MultiTextEditor();
     private final MultiTextEditor glossEditor = new MultiTextEditor();
@@ -48,13 +49,25 @@ public final class SenseEditor extends VBox {
     private final NotableEditor notableEditor = new NotableEditor();
     /** Types from header range {@code lexical-relation} for {@link RelationEditor}. */
     private List<String> relationTypes = List.of();
+    /** Currently displayed sense — used by the save listener. */
+    private LiftSense currentSense = null;
+    private Runnable onGramInfoChanged = null;
 
     public SenseEditor() {
         super(6);
         setPadding(new Insets(4));
         setStyle("-fx-border-color: #aab; -fx-border-radius: 4; -fx-background-color: #f4f4fa; -fx-background-radius: 4;");
 
-        grammaticalInfoField.setPromptText("info grammaticale");
+        grammaticalInfoCombo.setEditable(false);
+        grammaticalInfoCombo.setPromptText("info grammaticale");
+        grammaticalInfoCombo.setMaxWidth(Double.MAX_VALUE);
+
+        grammaticalInfoCombo.valueProperty().addListener((obs, oldVal, newVal) -> {
+            if (currentSense != null && newVal != null && !newVal.equals(oldVal)) {
+                currentSense.setGrammaticalInfo(newVal.trim());
+                if (onGramInfoChanged != null) onGramInfoChanged.run();
+            }
+        });
 
         Label gramTitle = new Label(I18n.get("editor.section.gramInfo"));
         gramTitle.getStyleClass().add("editor-section-title");
@@ -63,8 +76,8 @@ public final class SenseEditor extends VBox {
         grid.setHgap(8);
         grid.setVgap(6);
         grid.add(new Label("Gram. Info"), 0, 0);
-        grid.add(grammaticalInfoField, 1, 0);
-        GridPane.setHgrow(grammaticalInfoField, Priority.ALWAYS);
+        grid.add(grammaticalInfoCombo, 1, 0);
+        GridPane.setHgrow(grammaticalInfoCombo, Priority.ALWAYS);
 
         Label semanticTitle = new Label(I18n.get("editor.section.semanticContent"));
         semanticTitle.getStyleClass().add("editor-section-title");
@@ -120,6 +133,17 @@ public final class SenseEditor extends VBox {
         this.relationTypes = relationTypes == null ? List.of() : List.copyOf(relationTypes);
     }
 
+    public void setOnGramInfoChanged(Runnable callback) {
+        this.onGramInfoChanged = callback;
+    }
+    /**
+     * Set the allowed grammatical info values from the header range "grammatical-info".
+     * Call this before setSense() so the ComboBox is populated.
+     */
+    public void setGrammaticalInfoValues(List<String> values) {
+        grammaticalInfoCombo.getItems().setAll(values == null ? List.of() : values);
+    }
+
     /**
      * Populate with proper separation of meta-languages vs object-languages.
      * @param sense       the sense to display
@@ -134,20 +158,18 @@ public final class SenseEditor extends VBox {
      * Same as above with optional callback to create annotations on MultiText (definition, gloss).
      */
     public void setSense(LiftSense sense, Collection<String> metaLangs, Collection<String> objLangs,
-            BiConsumer<String, fr.cnrs.lacito.liftapi.model.MultiText> onAddAnnotation,
-            Collection<String> knownAnnotationNames) {
+                         BiConsumer<String, fr.cnrs.lacito.liftapi.model.MultiText> onAddAnnotation,
+                         Collection<String> knownAnnotationNames) {
         setSense(sense, metaLangs, objLangs, onAddAnnotation, knownAnnotationNames, s -> null, ex -> null);
     }
 
     /**
      * Same with optional add actions for trait/annotation/field/note in NotableEditor.
-     * addActionsFactory creates add actions for a given sense (used for sub-senses).
-     * exampleAddActionsFactory creates add actions for examples (used in ExampleEditor).
      */
     public void setSense(LiftSense sense, Collection<String> metaLangs, Collection<String> objLangs,
-            BiConsumer<String, fr.cnrs.lacito.liftapi.model.MultiText> onAddAnnotation,
-            Collection<String> knownAnnotationNames, Function<LiftSense, ExtensibleAddActions> addActionsFactory,
-            java.util.function.Function<fr.cnrs.lacito.liftapi.model.LiftExample, ExtensibleAddActions> exampleAddActionsFactory) {
+                         BiConsumer<String, fr.cnrs.lacito.liftapi.model.MultiText> onAddAnnotation,
+                         Collection<String> knownAnnotationNames, Function<LiftSense, ExtensibleAddActions> addActionsFactory,
+                         java.util.function.Function<fr.cnrs.lacito.liftapi.model.LiftExample, ExtensibleAddActions> exampleAddActionsFactory) {
         ExtensibleAddActions addActions = addActionsFactory != null ? addActionsFactory.apply(sense) : null;
         examplesBox.getChildren().clear();
         relationsBox.getChildren().clear();
@@ -155,7 +177,8 @@ public final class SenseEditor extends VBox {
         subSensesBox.getChildren().clear();
 
         if (sense == null) {
-            grammaticalInfoField.setText("");
+            currentSense = null;
+            grammaticalInfoCombo.setValue(null);
             definitionEditor.setMultiText(null);
             definitionEditor.setOnAddAnnotation(null, null);
             glossEditor.setMultiText(null);
@@ -164,9 +187,17 @@ public final class SenseEditor extends VBox {
             identityBlock.getChildren().clear();
             return;
         }
-        grammaticalInfoField.setText(sense.getGrammaticalInfo().map(GrammaticalInfo::getValue).orElse(""));
 
-        // Bloc identity en bas : ID, dates (gris, comme Entries)
+        // Set currentSense BEFORE setting combo value to avoid spurious save on load
+        currentSense = null;         String gramVal = sense.getGrammaticalInfo().map(GrammaticalInfo::getValue).orElse(null);
+        // Add current value to combo if not already present (handles values not in header range)
+        if (gramVal != null && !gramVal.isBlank() && !grammaticalInfoCombo.getItems().contains(gramVal)) {
+            grammaticalInfoCombo.getItems().add(0, gramVal);
+        }
+        grammaticalInfoCombo.setValue(gramVal);
+        currentSense = sense; // re-enable listener after loading
+
+        // Identity block: ID, dates (read-only, grey)
         identityBlock.getChildren().clear();
         idField.setText(sense.getId().orElse(""));
         idField.setEditable(false);
@@ -224,6 +255,7 @@ public final class SenseEditor extends VBox {
         // Sub-senses (recursive)
         for (LiftSense sub : sense.getSubSenses()) {
             SenseEditor se = new SenseEditor();
+            se.setGrammaticalInfoValues(new java.util.ArrayList<>(grammaticalInfoCombo.getItems()));
             se.setSense(sub, metaLangs, objLangs, onAddAnnotation, knownAnnotationNames, addActionsFactory, exampleAddActionsFactory);
             subSensesBox.getChildren().add(se);
         }
