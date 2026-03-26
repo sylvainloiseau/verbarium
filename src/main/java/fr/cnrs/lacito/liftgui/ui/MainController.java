@@ -252,7 +252,23 @@ public final class MainController {
         setupEntryTable();
         setupGenericTables();
         searchField.textProperty().addListener((obs, o, n) -> applyCurrentFilter());
-        setDictionary(loadDemoDictionary());
+      //  setDictionary(loadDemoDictionary());
+        // Recharge le dernier fichier ouvert, sinon charge le démo
+        List<String> recents = loadRecentFiles();
+        if (!recents.isEmpty()) {
+            File lastFile = new File(recents.get(0));
+            if (lastFile.exists()) {
+                try {
+                    setDictionary(LiftDictionary.loadDictionaryWithFile(lastFile));
+                } catch (Exception e) {
+                    setDictionary(loadDemoDictionary());
+                }
+            } else {
+                setDictionary(loadDemoDictionary());
+            }
+        } else {
+            setDictionary(loadDemoDictionary());
+        }
         ensureRightPanelVisible();
         setupMenuHover();
         switchView(NAV_ENTRIES);
@@ -962,6 +978,15 @@ public final class MainController {
         etyTable.getColumns().addAll(typeCol, sourceCol, formGroup);
         currentDictionary.getLiftDictionaryComponents().getAllEntries().stream()
             .flatMap(e -> e.getEtymologies().stream()).forEach(etyTable.getItems()::add);
+        etyTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
+            if (n != null) {
+                EtymologyEditor ee = new EtymologyEditor();
+                ee.setEtymology(n, getObjectLanguages(), getMetaLanguages());
+                editEntryTitle.setText(n.getType() != null ? n.getType() : I18n.get("nav.etymologies"));
+                editEntryCode.setText(n.getSource() != null ? n.getSource() : "");
+                editorContainer.getChildren().setAll(ee);
+            }
+        });
         tableContainer.getChildren().setAll(wrapTableWithFilters(etyTable, (f,t2) -> updateCountLabel(f,t2)));
         updateCountLabel(etyTable.getItems().size(), etyTable.getItems().size());
     }
@@ -1076,17 +1101,19 @@ public final class MainController {
         for (LiftTrait t : currentDictionary.getLiftDictionaryComponents().getAllTraits()) {
             String key = t.getName() + "|" + t.getValue();
             counts.compute(key, (k, row) -> {
-                if (row == null) return new TraitRow("", t.getName(), t.getValue(), 1);
-                return new TraitRow("", row.name, row.value, row.frequency + 1);
+                String parentType = describeParentType(t.getParent());
+                if (row == null) return new TraitRow(parentType, t.getName(), t.getValue(), 1);
+                return new TraitRow(row.parentType, row.name, row.value, row.frequency + 1);
             });
         }
 
         TableColumn<TraitRow, String> traitFreqCol = col(I18n.get("col.frequency"), r -> String.valueOf(r.frequency()));
         traitFreqCol.getProperties().put("filterMode", FILTER_MODE_TEXT);
         traitTable.getColumns().addAll(
-            col(I18n.get("col.name"), (TraitRow r) -> r.name()),
-            col(I18n.get("col.value"), (TraitRow r) -> r.value()),
-            traitFreqCol
+                col(I18n.get("col.parentType"), (TraitRow r) -> r.parentType()),
+                col(I18n.get("col.name"), (TraitRow r) -> r.name()),
+                col(I18n.get("col.value"), (TraitRow r) -> r.value()),
+                traitFreqCol
         );
         traitTable.getItems().addAll(counts.values().stream().sorted(Comparator.comparingLong(TraitRow::frequency).reversed()).toList());
         traitTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
@@ -1624,6 +1651,8 @@ public final class MainController {
 
         SenseEditor se = new SenseEditor();
         se.setRelationTypes(getKnownRelationTypes());
+        se.setGrammaticalInfoValues(getHeaderRangeValues("grammatical-info"));
+        se.setOnGramInfoChanged(() -> senseTable.refresh());
         LiftFactory factory = getFactory(currentDictionary);
         BiConsumer<String, MultiText> onAddAnnotation = (factory != null)
             ? (name, mt) -> factory.createAnnotation(name, mt)
@@ -2473,11 +2502,9 @@ public final class MainController {
     @FXML private void onSave() {
         if (currentDictionary == null) { showError(I18n.get("error.save"), I18n.get("error.noDictionary")); return; }
         try { currentDictionary.save(); } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Sauvegarde du dictionnaire", e);
             showError(I18n.get("error.save"), I18n.formatErrorMessage("error.save.detail", e));
         }
     }
-
     @FXML private void onNewDictionary() { setDictionary(null); switchView(NAV_ENTRIES); }
 
     @FXML private void onSaveAs() {
