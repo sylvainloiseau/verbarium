@@ -1546,20 +1546,15 @@ public final class MainController {
             });
 
             Button addRelationBtn = new Button(I18n.get("btn.addRelation"));
+            boolean noRelationTypes = getKnownRelationTypes().isEmpty();
+            addRelationBtn.setDisable(noRelationTypes);
             addRelationBtn.setOnAction(e -> {
                 List<String> types = getKnownRelationTypes();
-                Optional<String> typeOpt;
-                if (types.isEmpty()) {
-                    TextInputDialog tid = new TextInputDialog();
-                    tid.setTitle(I18n.get("btn.addRelation"));
-                    tid.setHeaderText(I18n.get("col.type"));
-                    typeOpt = tid.showAndWait();
-                } else {
-                    ChoiceDialog<String> dlg = new ChoiceDialog<>(types.get(0), types);
-                    dlg.setTitle(I18n.get("btn.addRelation"));
-                    dlg.setHeaderText(I18n.get("col.type"));
-                    typeOpt = dlg.showAndWait();
-                }
+                if (types.isEmpty()) return;
+                ChoiceDialog<String> dlg = new ChoiceDialog<>(types.get(0), types);
+                dlg.setTitle(I18n.get("btn.addRelation"));
+                dlg.setHeaderText(I18n.get("col.type"));
+                Optional<String> typeOpt = dlg.showAndWait();
                 typeOpt.filter(t -> t != null && !t.isBlank()).ifPresent(type -> {
                     org.xml.sax.helpers.AttributesImpl attrs = new org.xml.sax.helpers.AttributesImpl();
                     attrs.addAttribute("", "type", "type", "CDATA", type.trim());
@@ -1567,13 +1562,17 @@ public final class MainController {
                     populateEntryEditor(entry);
                 });
             });
+            StackPane addRelationWrapper = new StackPane(addRelationBtn);
+            if (noRelationTypes) {
+                Tooltip.install(addRelationWrapper, new Tooltip(I18n.get("tooltip.noRelationTypes")));
+            }
 
             Button addEtymologyBtn = new Button(I18n.get("btn.addEtymology"));
             addEtymologyBtn.setOnAction(e -> {
                 showAddEtymologyDialog(entry, factory);
             });
 
-            addButtons.getChildren().addAll(addSenseBtn, addVariantBtn, addPronBtn, addRelationBtn, addEtymologyBtn);
+            addButtons.getChildren().addAll(addSenseBtn, addVariantBtn, addPronBtn, addRelationWrapper, addEtymologyBtn);
             editorContainer.getChildren().add(addButtons);
         }
         } catch (Exception ex) {
