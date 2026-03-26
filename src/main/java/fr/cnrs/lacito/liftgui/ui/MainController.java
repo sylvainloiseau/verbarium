@@ -2236,6 +2236,9 @@ public final class MainController {
         if (currentDictionary == null) return;
         List<Object> matches = currentDictionary.getLiftDictionaryComponents().getAllSenses().stream()
             .filter(s -> s.getGrammaticalInfo().map(g -> gramInfoValue.equals(g.getValue())).orElse(false))
+            .map(this::findParentEntry)
+            .flatMap(Optional::stream)
+            .distinct()
             .collect(Collectors.toList());
         showFilteredObjectsTable(matches, I18n.get("nav.gramInfo") + ": " + gramInfoValue);
     }
