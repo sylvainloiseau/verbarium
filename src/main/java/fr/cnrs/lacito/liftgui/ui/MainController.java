@@ -128,6 +128,7 @@ public final class MainController {
     private static final String NAV_TRANS_TYPES = "nav.transTypes";
     private static final String NAV_NOTE_TYPES    = "nav.noteTypes";
     private static final String NAV_RELATION_TYPES = "nav.relationTypes";
+    private static final String NAV_FIELD_TYPES    = "nav.fieldTypes";
     private static final String NAV_QUICK_ENTRY  = "nav.quickEntry";
 
     /* ─── Header configuration nav keys ─── */
@@ -340,7 +341,7 @@ public final class MainController {
             navItem(NAV_ENTRIES), navItem(NAV_SENSES),
             navItem(NAV_EXAMPLES), navItem(NAV_NOTES),
             navItem(NAV_VARIANTS), navItem(NAV_ETYMOLOGIES),
-            navItem(NAV_RELATIONS)
+            navItem(NAV_RELATIONS), navItem(NAV_FIELDS)
         );
 
         TreeItem<String> langs = new TreeItem<>(I18n.get("nav.languages"));
@@ -354,7 +355,7 @@ public final class MainController {
             navItem(NAV_TRAITS), navItem(NAV_ANNOTATIONS),
             navItem(NAV_TRANS_TYPES), navItem(NAV_NOTE_TYPES),
             navItem(NAV_RELATION_TYPES),
-            navItem(NAV_FIELDS)
+            navItem(NAV_FIELD_TYPES)
         );
 
         headerCfgNode = new TreeItem<>(I18n.get("nav.headerConfig"));
@@ -499,6 +500,7 @@ public final class MainController {
             case NAV_TRANS_TYPES -> showTranslationTypesView();
             case NAV_NOTE_TYPES    -> showNoteTypesView();
             case NAV_RELATION_TYPES -> showRelationTypesView();
+            case NAV_FIELD_TYPES   -> showFieldTypesView();
             case NAV_QUICK_ENTRY  -> showQuickEntryView();
             case NAV_CFG_DESC        -> { showHeaderDescView(); setRightPanelVisible(false); }
             case NAV_CFG_FIELD_DEFS  -> showHeaderFieldDefsView();
@@ -2180,11 +2182,6 @@ public final class MainController {
         values.put(I18n.get("col.text"), field.getText().getForms().stream().findFirst().map(Form::toPlainText).orElse(""));
         populateSummaryEditor(I18n.get("nav.fields"), "", values);
         addGoToParentButton(field.getParent());
-        Button accessBtn = new Button(I18n.get("btn.accessObjects"));
-        accessBtn.getStyleClass().add("example-add-button");
-        accessBtn.setMaxWidth(Double.MAX_VALUE);
-        accessBtn.setOnAction(e -> showObjectsWithFieldType(field.getName()));
-        editorContainer.getChildren().add(accessBtn);
     }
 
     private void showObjectsWithFieldType(String fieldType) {
@@ -2951,6 +2948,48 @@ public final class MainController {
             counts.merge(r.getType() != null ? r.getType() : I18n.get("placeholder.noType"), 1L, Long::sum);
         }
         showCategoryTable(I18n.get("nav.relationTypes"), I18n.get("col.type"), counts, "relation-type");
+    }
+
+    /* ════════════════════ FIELD TYPES VIEW ════════════════════ */
+
+    private record FieldTypeRow(String fieldType, long frequency) {}
+
+    private void showFieldTypesView() {
+        if (currentDictionary == null) { tableContainer.getChildren().setAll(new Label(I18n.get("placeholder.noDictionary"))); return; }
+        Map<String, Long> counts = new LinkedHashMap<>();
+        for (LiftField f : currentDictionary.getLiftDictionaryComponents().getAllFields()) {
+            counts.merge(f.getName(), 1L, Long::sum);
+        }
+        TableView<FieldTypeRow> table = new TableView<>();
+        TableColumn<FieldTypeRow, String> typeCol = new TableColumn<>(I18n.get("col.type"));
+        typeCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue().fieldType()));
+        typeCol.setPrefWidth(250);
+        TableColumn<FieldTypeRow, String> freqCol = new TableColumn<>(I18n.get("col.frequency"));
+        freqCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(String.valueOf(cd.getValue().frequency())));
+        freqCol.setPrefWidth(100);
+        freqCol.getProperties().put("filterMode", FILTER_MODE_TEXT);
+        table.getColumns().addAll(typeCol, freqCol);
+        counts.entrySet().stream().sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+            .forEach(e -> table.getItems().add(new FieldTypeRow(e.getKey(), e.getValue())));
+        table.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
+            if (n != null) populateFieldTypeSummaryEditor(n);
+        });
+        VBox wrapper = wrapTableWithFilters(table);
+        tableContainer.getChildren().setAll(wrapper);
+        updateCountLabel(table.getItems().size(), table.getItems().size());
+    }
+
+    private void populateFieldTypeSummaryEditor(FieldTypeRow row) {
+        setModifyButtonVisible(false);
+        LinkedHashMap<String, String> values = new LinkedHashMap<>();
+        values.put(I18n.get("col.type"), row.fieldType());
+        values.put(I18n.get("col.frequency"), String.valueOf(row.frequency()));
+        populateSummaryEditor(I18n.get("nav.fieldTypes"), "", values);
+        Button accessBtn = new Button(I18n.get("btn.accessObjects"));
+        accessBtn.getStyleClass().add("example-add-button");
+        accessBtn.setMaxWidth(Double.MAX_VALUE);
+        accessBtn.setOnAction(e -> showObjectsWithFieldType(row.fieldType()));
+        editorContainer.getChildren().add(accessBtn);
     }
 
     /** Shared helper: show a simple value + frequency table for category views. */
