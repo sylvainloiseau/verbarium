@@ -192,6 +192,8 @@ public final class MainController {
     private List<LiftEntry> entrySubsetOverride = null;
     private String entrySubsetTitle = null;
     private boolean keepEntrySubsetOnNextEntryView = false;
+    private List<LiftSense> senseSubsetOverride = null;
+    private boolean keepSenseSubsetOnNextSenseView = false;
 
     /* ─── Wrapper for language field view ─── */
     public record MultiTextField(String parentType, String parentId, String lang, String text, Object parentObject, MultiText multiText) {
@@ -461,6 +463,12 @@ public final class MainController {
                 entrySubsetTitle = null;
             }
             keepEntrySubsetOnNextEntryView = false;
+        }
+        if (NAV_SENSES.equals(viewName)) {
+            if (!keepSenseSubsetOnNextSenseView) {
+                senseSubsetOverride = null;
+            }
+            keepSenseSubsetOnNextSenseView = false;
         }
         currentView = viewName;
         ensureRightPanelVisible();
@@ -799,7 +807,10 @@ public final class MainController {
             defGroup.getColumns().add(col(l, s -> s.getDefinition().getForm(l).map(Form::toPlainText).orElse("")));
         }
         senseTable.getColumns().addAll(parentEntryGroup, giCol, glossGroup, defGroup);
-        senseTable.getItems().addAll(currentDictionary.getLiftDictionaryComponents().getAllSenses());
+        List<LiftSense> sensesToShow = senseSubsetOverride != null
+            ? senseSubsetOverride
+            : currentDictionary.getLiftDictionaryComponents().getAllSenses();
+        senseTable.getItems().addAll(sensesToShow);
         senseTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> { if (n != null) populateSenseEditor(n); });
         tableContainer.getChildren().setAll(wrapTableWithFilters(senseTable, (f,t) -> updateCountLabel(f,t), searchField != null ? searchField.textProperty() : null));
         updateCountLabel(senseTable.getItems().size(), senseTable.getItems().size());
@@ -1531,7 +1542,16 @@ public final class MainController {
             addSenseBtn.setOnAction(e -> {
                 org.xml.sax.helpers.AttributesImpl senseAttrs = new org.xml.sax.helpers.AttributesImpl();
                 senseAttrs.addAttribute("", "id", "id", "CDATA", UUID.randomUUID().toString());
-                factory.createSense(senseAttrs, entry);
+                LiftSense newSense = factory.createSense(senseAttrs, entry);
+                List<String> giValues = getKnownGramInfoValues();
+                if (!giValues.isEmpty()) {
+                    ChoiceDialog<String> dlg = new ChoiceDialog<>(giValues.get(0), giValues);
+                    dlg.setTitle(I18n.get("btn.addSense"));
+                    dlg.setHeaderText(I18n.get("col.gramInfo"));
+                    dlg.showAndWait()
+                        .filter(v -> v != null && !v.isBlank())
+                        .ifPresent(v -> newSense.setGrammaticalInfo(v.trim()));
+                }
                 populateEntryEditor(entry);
             });
 
@@ -2234,12 +2254,17 @@ public final class MainController {
 
     private void showObjectsWithGramInfo(String gramInfoValue) {
         if (currentDictionary == null) return;
-        List<LiftEntry> matches = currentDictionary.getLiftDictionaryComponents().getAllSenses().stream()
+        List<LiftSense> matches = currentDictionary.getLiftDictionaryComponents().getAllSenses().stream()
             .filter(s -> s.getGrammaticalInfo().map(g -> gramInfoValue.equals(g.getValue())).orElse(false))
-            .map(this::findParentEntry)
-            .flatMap(Optional::stream)
+            .distinct()
             .collect(Collectors.toList());
-        showMatchingEntries(matches, I18n.get("nav.gramInfo") + ": " + gramInfoValue);
+        showMatchingSenses(matches);
+    }
+
+    private void showMatchingSenses(List<LiftSense> matches) {
+        senseSubsetOverride = matches;
+        keepSenseSubsetOnNextSenseView = true;
+        switchView(NAV_SENSES);
     }
 
     private void showObjectsWithTranslationType(String transType) {
@@ -2609,9 +2634,7 @@ public final class MainController {
 
     /* ─── Configuration menu ─── */
     @FXML private void onConfigNoteTypes() {
-        showConfigDialog(I18n.get("menu.config.noteTypes"),
-            () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllNotes().stream().map(n -> n.getType().orElse("?")).distinct().sorted().toList(),
-            val -> currentDictionary == null ? 0L : currentDictionary.getLiftDictionaryComponents().getAllNotes().stream().filter(n -> val.equals(n.getType().orElse(""))).count());
+        switchView(NAV_CFG_MANAGE_NOTE_TYPES);
     }
     private void showConfigNoteTypesView() {
         showConfigInlineView(I18n.get("menu.config.noteTypes"),
@@ -2619,9 +2642,7 @@ public final class MainController {
             val -> currentDictionary == null ? 0L : currentDictionary.getLiftDictionaryComponents().getAllNotes().stream().filter(n -> val.equals(n.getType().orElse(""))).count());
     }
     @FXML private void onConfigTranslationTypes() {
-        showConfigDialog(I18n.get("menu.config.translationTypes"),
-            () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllExamples().stream().flatMap(ex -> ex.getTranslations().keySet().stream()).distinct().sorted().toList(),
-            val -> currentDictionary == null ? 0L : currentDictionary.getLiftDictionaryComponents().getAllExamples().stream().filter(ex -> ex.getTranslations().containsKey(val)).count());
+        switchView(NAV_CFG_MANAGE_TRANS_TYPES);
     }
     private void showConfigTranslationTypesView() {
         showConfigInlineView(I18n.get("menu.config.translationTypes"),
@@ -2629,18 +2650,13 @@ public final class MainController {
             val -> currentDictionary == null ? 0L : currentDictionary.getLiftDictionaryComponents().getAllExamples().stream().filter(ex -> ex.getTranslations().containsKey(val)).count());
     }
     @FXML private void onConfigLanguages() {
-        showConfigDialog(I18n.get("menu.config.languages"), this::getAllLanguages,
-            val -> currentDictionary == null ? 0L : currentDictionary.getLiftDictionaryComponents().getAllEntries().stream().filter(e -> e.getForms().getForm(val).isPresent()).count());
+        switchView(NAV_CFG_MANAGE_LANGS);
     }
     @FXML private void onConfigTraitTypes() {
-        showConfigDialog(I18n.get("menu.config.traitTypes"),
-            () -> currentDictionary == null ? List.of() : currentDictionary.getTraitName().stream().sorted().toList(),
-            val -> currentDictionary == null ? 0L : currentDictionary.getLiftDictionaryComponents().getAllTraits().stream().filter(t -> val.equals(t.getName())).count());
+        switchView(NAV_TRAITS);
     }
     @FXML private void onConfigAnnotationTypes() {
-        showConfigDialog(I18n.get("menu.config.annotationTypes"),
-            () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllAnnotations().stream().map(LiftAnnotation::getName).distinct().sorted().toList(),
-            val -> currentDictionary == null ? 0L : currentDictionary.getLiftDictionaryComponents().getAllAnnotations().stream().filter(a -> val.equals(a.getName())).count());
+        switchView(NAV_CFG_MANAGE_ANNOTATION_TYPES);
     }
     private void showConfigAnnotationTypesView() {
         showConfigInlineView(I18n.get("menu.config.annotationTypes"),
@@ -2648,15 +2664,11 @@ public final class MainController {
             val -> currentDictionary == null ? 0L : currentDictionary.getLiftDictionaryComponents().getAllAnnotations().stream().filter(a -> val.equals(a.getName())).count());
     }
     @FXML private void onConfigFieldTypes() {
-        showConfigDialog(I18n.get("menu.config.fieldTypes"),
-            () -> currentDictionary == null ? List.of() : currentDictionary.getFieldType().stream().sorted().toList(),
-            val -> currentDictionary == null ? 0L : currentDictionary.getLiftDictionaryComponents().getAllFields().stream().filter(f -> val.equals(f.getName())).count());
+        switchView(NAV_FIELD_TYPES);
     }
 
     private void onConfigRelationTypes() {
-        showConfigDialog(I18n.get("nav.cfgManageRelationTypes"),
-            () -> currentDictionary == null ? List.of() : currentDictionary.getLiftDictionaryComponents().getAllRelations().stream().map(LiftRelation::getType).distinct().sorted().toList(),
-            val -> currentDictionary == null ? 0L : currentDictionary.getLiftDictionaryComponents().getAllRelations().stream().filter(r -> val.equals(r.getType())).count());
+        switchView(NAV_CFG_MANAGE_RELATION_TYPES);
     }
     private void showConfigRelationTypesView() {
         showConfigInlineView(I18n.get("nav.cfgManageRelationTypes"),
