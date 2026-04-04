@@ -119,6 +119,11 @@
               <module>fr.cnrs.lacito.liftgui/fr.cnrs.lacito.liftgui.MainApp</module>
               <runtimeImage>${project.build.directory}/maven-jlink/default</runtimeImage>
               <type>${jpackage.type}</type>
+              <winMenu>true</winMenu>
+              <winMenuGroup>${app.jpackage.name}</winMenuGroup>
+              <linuxShortcut>true</linuxShortcut>
+              <linuxMenuGroup>${app.jpackage.name}</linuxMenuGroup>
+              <linuxAppCategory>Office</linuxAppCategory>
             </configuration>
             <executions>
               <execution>
