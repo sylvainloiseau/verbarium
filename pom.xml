@@ -112,7 +112,7 @@
             <artifactId>jpackage-maven-plugin</artifactId>
             <configuration>
               <name>${app.jpackage.name}</name>
-              <appVersion>${project.version}</appVersion>
+              <appVersion>0.1.0</appVersion>
               <vendor>CNRS LACITO</vendor>
               <destination>${project.build.directory}/jpackage${jpackage.destSuffix}</destination>
               <removeDestination>true</removeDestination>
